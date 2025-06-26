@@ -13,57 +13,67 @@ class AgriHome extends StatefulWidget {
 
 class AgriHomeState extends State<AgriHome>{
   final byproducts = [
-    {"name":"배추", "type":"가공"},
-    {"name":"사과", "type":"가공"},
-    {"name":"사과" ,"type":"수확"},
+    {"name":"배추", "type":"수확"},
+    {"name":"사과(가공)", "type":"가공"},
+    {"name":"사과(수확)" ,"type":"수확"},
     {"name":"참깨","type":"수확"},
     {"name":"옥수수","type":"수확"}
   ];
-  Map<String,String?>? selected;
+  Map<String,String?>? selectedByproduct;
+  String? selectedType;
+  String? token;
+
   //무게 입력
   final TextEditingController weightController = TextEditingController();
-  final token = "4e5ffe467b0cb16db51cb3c13dc4bc8ab835f2f4"; //temp
 
 
 
   @override
   void initState() {
     super.initState();
+    temp_login();
   }
-
 
   Future<void> temp_login() async {
     final url = Uri.parse("http://10.0.2.2:8000/auth/api-token");
-    final token = await http.post(url,
+    final res = await http.post(url,
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
         body: {
-          "username": "test2",
-          "password" : "pbkdf2_sha256\$1000000\$qWBxYu1hdGJnwbS7BKf7OJ\$T624KHbrC9qbU/ndBPSpZYmfR4P8njPRCQ3DYUvG70E="
-        }); //복호화된 함수라서 이거 쓰면 안된다고 함 ...
+      "username": "test2",
+      "password": "asdfasdfasdf"
+    });
 
-    if (token.statusCode == 200){
-
-    }else{
-      throw Exception('로그인 실패: ${token.statusCode}');
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      setState(() {
+        token = data['token'];
+      });
+      print("로그인 성공: $token");
+    } else {
+      throw Exception('로그인 실패: ${res.statusCode}');
     }
-
   }
 
 
   //등록한 무게 저장
   Future<void> addWeight() async {
-    final String? type = selected?['type'];
+    final String? type = selectedByproduct?['type'];
+    final String? name = selectedByproduct?['name'];
+
     final String weight = weightController.text.trim();
 
     // 에러 처리 : 무게 혹은 타입을 입력하지 않는 경우
-    if (type == null || weight.isEmpty) {
+    if (type == null || name == null || weight.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("무게와 타입을 모두 입력하세요")),
+        SnackBar(content: Text("무게, 타입, 이름을 모두 입력하세요")),
       );
       if (weight.isNotEmpty) weightController.clear();
       return;
     }
 
-    // 에러 처리 : 유효한 값인지 확인
+    // 에러 처리 : weight 유효한 값인지 확인
     final parsedWeight = double.tryParse(weight); // 이상한 값은 전부 null 처리
     if (parsedWeight == null || parsedWeight <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -74,6 +84,7 @@ class AgriHomeState extends State<AgriHome>{
     }
 
     final url = Uri.parse("http://10.0.2.2:8000/api/add-weight");
+
     //무게 등록 값, 타입 POST
     try {
         final response = await http.post(url,
@@ -82,6 +93,7 @@ class AgriHomeState extends State<AgriHome>{
               "Authorization": "Token $token",
             },
             body: {
+              "name" : name,
               "weight": weight,
               "type": type,
             }
@@ -111,7 +123,6 @@ class AgriHomeState extends State<AgriHome>{
     final token = "4e5ffe467b0cb16db51cb3c13dc4bc8ab835f2f4";
     final url = Uri.parse("http://10.0.2.2:8000/api/add-weight");
   }
-
 
 
 
@@ -159,28 +170,72 @@ class AgriHomeState extends State<AgriHome>{
               ),
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: DropdownButtonHideUnderline(
-                child: DropdownButton<Map<String, String?>>(
-                  value: selected,
-                  hint: Text("부산물 유형을 선택해주세요"),
+                child: DropdownButton<String>(
+                  value: selectedType,
+                  hint: Text("유형을 선택해주세요"),
                   isExpanded: true,
-                  items: byproducts.map((item) {
-                    return DropdownMenuItem<Map<String, String?>>(
-                      value: item,
-                      child: Text(item['name']!),
+                  items: ["가공", "수확"].map((type) {
+                    return DropdownMenuItem(
+                      value: type,
+                      child: Text(type),
                     );
                   }).toList(),
                   onChanged: (value) {
                     setState(() {
-                      selected = value;
+                      selectedType = value;
+                      selectedByproduct = null; // reset 선택값
                     });
                   },
                 ),
               ),
             ),
+            SizedBox(height: 6),
 
-            SizedBox(height: 20),
 
-            // 2. 무게 입력 텍스트란
+
+            // 2단계 드롭다운 (품목)
+            if (selectedType != null)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 8),
+                  Text(
+                    '품목 선택',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white,
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<Map<String, String?>>(
+                        value: selectedByproduct,
+                        hint: Text("품목을 선택해주세요"),
+                        isExpanded: true,
+                        items: byproducts
+                            .where((item) => item['type'] == selectedType)
+                            .map((item) => DropdownMenuItem(
+                          value: item,
+                          child: Text(item['name']!),
+                        ))
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedByproduct = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+            SizedBox(height: 8),
+            // 3. 무게 입력 텍스트창
             Text(
               '무게 입력 (kg)',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -198,6 +253,7 @@ class AgriHomeState extends State<AgriHome>{
             ),
 
             SizedBox(height: 30),
+
 
             // 3. 무게 입력 버튼
             ElevatedButton(
