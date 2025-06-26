@@ -1,3 +1,4 @@
+import 'package:brownskin_app/pages/home_agriculture.dart';
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/pages/home_admin.dart';
 
@@ -21,7 +22,7 @@ class MyApp extends StatelessWidget {
       ),
 
       /* 실행될 때, 토큰을 가지고 관리자 홈으로 이동(로그인 화면 구현되면 연동 예정) */
-      home: AdminHomePage(token: token),
+      home: AgriHome(),//AdminHomePage(token: token),
 
     );
   }
