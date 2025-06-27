@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -16,11 +15,10 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     {"name": "사과", "type": "가공"},
     {"name": "사과", "type": "수확"},
     {"name": "참깨", "type": "수확"},
-    {"name": "옥수수", "type": "수확"}
+    {"name": "옥수수", "type": "수확"},
   ];
 
   Map<String, List<Map<String, dynamic>>> userByproduct = {};
-
   Map<String, String?>? selectedByproduct;
   String? selectedType;
   String? token;
@@ -29,74 +27,81 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
   final TextEditingController searchController = TextEditingController();
 
   // UI 상태 관리
-  String currentTab = "전체"; // 전체, 가공, 수확
-  String sortBy = "name"; // name, percent, status
+  String currentTab = "전체"; // 전체, 가공, 수확 탭
+  String sortBy = "name"; // 정렬 기준 : name, percent, status
   bool isGridView = true;
   String searchQuery = "";
+
 
   @override
   void initState() {
     super.initState();
-    print("initState 실행됨");
     WidgetsBinding.instance.addPostFrameCallback((_) {
       init();
     });
   }
 
+
   Future<void> init() async {
-    print("✅ init() 시작");
-    await temp_login();
-    print("✅ temp_login() 완료");
-    await fetchUserByProduct();
-    print("✅ fetchUserByProduct() 완료");
-    await drawAll(userByproduct);
-    print("✅ drawAll() 완료");
+    // ! 임시 로그인 ! 연동 후 수정 필요
+    try{
+      await temp_login();
+    } catch(e){
+      throw Exception("temp_login() failed : $e");
+    }
 
-    print("도넛 데이터 $donutData");
-  }
+    //사용자 부산물 데이터(total) 조회
+    try{
+      await fetchUserByProduct();
+    } catch(e){
+      throw Exception("fetchUserByProduct() failed : $e");
+    }
 
-  Future<void> fetchUserByProduct() async {
-    final url = Uri.parse('http://10.0.2.2:8000/api/my-byprod');
-
-    final response = await http.get(url, headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Accept-Charset": "utf-8",
-      "Authorization": "Token $token",
-    });
-
-
-    if (response.statusCode == 200) {
-      print("=======================Fetch ALL Byproduct of user===========================");
-      print("응답: ${response.body}");
-
-      final Map<String, dynamic> rawData =
-      jsonDecode(utf8.decode(response.bodyBytes));
-
-      if (rawData.isEmpty) {
-        throw Exception("데이터 없음");
-      }
-      userByproduct = rawData.map(
-            (key, value) => MapEntry(key, List<Map<String, dynamic>>.from(value)),
-      );
-
-    } else {
-      throw Exception('데이터 파싱 중 오류가 발생했습니다.');
+    //데이터 시각화
+    try{
+      await drawAll(userByproduct);
+    } catch(e){
+      throw Exception("drawAll() failed : $e");
     }
   }
 
+
+  /// 현재 사용자에 대한 모든 부산물 데이터를 DB에서 조회해 userByproduct에 저장한다.
+  Future<void> fetchUserByProduct() async {
+    final url = Uri.parse('http://10.0.2.2:8000/api/my-byprod');
+    final headers = {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Authorization": "Token $token",
+    };
+    final response = await http.get(url, headers : headers);
+
+    if (response.statusCode != 200) {
+      throw Exception('서버 요청 실패: 상태코드 ${response.statusCode}');
+    }
+
+    final Map<String, dynamic> rawData = jsonDecode(utf8.decode(response.bodyBytes));
+    if (rawData.isEmpty) {
+      throw Exception("데이터 없음");
+    }
+
+    //json parsing
+    userByproduct = rawData.map(
+          (key, value) => MapEntry(key, List<Map<String, dynamic>>.from(value)),
+    );
+  }
+
+
+  // temp function  (추후 삭제)
   Future<void> temp_login() async {
-    print("✅ temp_login() 진입");
-    
     final url = Uri.parse("http://10.0.2.2:8000/auth/api-token");
-    try{
-      final res = await http.post(url,
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: {"username": "test2", "password": "asdfasdfasdf"});
+    try {
+      final res = await http.post(
+        url,
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: {"username": "test2", "password": "asdfasdfasdf"},
+      );
 
       print("📨 응답 status: ${res.statusCode}");
-
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -106,108 +111,101 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
         });
         print("로그인 성공: $token");
 
-        //drawAll(userByproduct);
+
       } else {
         throw Exception('로그인 실패: ${res.statusCode}');
       }
-    } catch(e) {
-      print("❌ temp_login 에러 발생: $e");
+    } catch (e) {
+      print("temp_login 에러 발생: $e");
     }
   }
 
-  Future<void> addWeight() async {
+
+
+ /// 출력을 편하게하는 helper function
+  void showSnack(String message, {Color color = Colors.green}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+      ),
+    );
+  }
+
+
+
+  /// 등록한 무게를 DB에 전달 및 UI 갱신
+  Future<bool> addWeight() async {
+    //UI의 input 값
     final String? type = selectedByproduct?['type'];
     final String? name = selectedByproduct?['name'];
     final String weight = weightController.text.trim();
 
+    //서버 url, headers
+    final url = Uri.parse("http://10.0.2.2:8000/api/add-weight");
+    final headers = {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Authorization": "Token $token",
+    };
 
+    //에러 핸들링1 : type, name, weight의 내용이 비어있을 경우
     if (type == null || name == null || weight.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("무게, 타입, 이름을 모두 입력하세요")),
-      );
-      if (weight.isNotEmpty) weightController.clear();
-      return;
+      showSnack("무게, 타입, 이름을 모두 입력하세요");
+      weightController.clear();
+      return false;
     }
-
+    //에러 핸들링2 : weight <= 0 || weight != 숫자
     final parsedWeight = double.tryParse(weight);
     if (parsedWeight == null || parsedWeight <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("유효하지 않은 입력입니다.")),
-      );
-      if (weight.isNotEmpty) weightController.clear();
-      return;
+      showSnack("유효하지 않은 입력입니다.");
+      weightController.clear();
+      return false;
     }
 
-    final url = Uri.parse("http://10.0.2.2:8000/api/add-weight");
+    final response = await http.post(url,
+      headers: headers, body: {"name": name, "weight": weight, "type": type});
 
-
-    try {
-      final response = await http.post(url,
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Authorization": "Token $token",
-          },
-          body: {
-            "name": name,
-            "weight": weight,
-            "type": type,
-          });
-
-      if (response.statusCode == 200) {
-        print('addWeight 성공');
-        print("addWeight: $type $name $weight kg을 추가합니다.");
-
-        await fetchUserByProduct();
-        await drawAll(userByproduct);
-        weightController.clear();
-        setState(() {
-          selectedByproduct = null;
-          selectedType = null;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("성공적으로 등록되었습니다!"),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        final err = response.body.isNotEmpty
-            ? jsonDecode(response.body)['error'] ?? '알 수 없는 에러'
-            : '알 수 없는 에러';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("실패: $err")),
-        );
-        print('addWeight 실패: $err');
-      }
-    } catch (e) {
-      print("Network doesn't work : $e");
-      rethrow;
+    if (response.statusCode != 200) {
+      final err = response.body.isNotEmpty ? jsonDecode(response.body)['error'] ?? '알 수 없는 에러' : '알 수 없는 에러';
+      showSnack("실패: $err", color: Colors.red);
+      return false;
     }
+
+    await fetchUserByProduct();
+    weightController.clear();
+    setState(() {
+      selectedByproduct = null;
+      selectedType = null;
+    });
+    showSnack("성공적으로 등록되었습니다!");
+    return true;
   }
 
 
-  //부산물 정보를 가져옴
+  /// (name,type)에 해당하는 부산물 정보를 가져옴 (현재 쓰이지 않으나.. 장래 이용가능성이 있어 남겨둡니다.)
+  /*
   Future<Map<String, dynamic>> getWeight(String name, String type) async {
-    final url = Uri.http(
-      '10.0.2.2:8000',
-      '/api/get-weight',
-      {
-        'type': type,
-        'name': name,
+
+    final url = Uri.http('10.0.2.2:8000', '/api/get-weight', {
+      'type': type,
+      'name': name,
+    });
+    final response = await http.get(
+      url,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": "Token $token",
       },
     );
-
-    final response = await http.get(url, headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Authorization": "Token $token",
-    });
 
     print("getWeight 함수 시작 ");
     print("요청: $name, $type");
     print("응답: ${response.body}");
 
     if (response.statusCode == 200) {
-      print("====================부산물 $type $name 로드 성공========================== ");
+      print(
+        "====================부산물 $type $name 로드 성공========================== ",
+      );
       final Map<String, dynamic> rawData = jsonDecode(response.body);
       if (rawData.isEmpty) {
         throw Exception("데이터 없음");
@@ -221,22 +219,26 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
       throw Exception('데이터 파싱 중 오류가 발생했습니다.');
     }
   }
+  */
 
 
-  Future<void> drawAll(Map<String, List<Map<String, dynamic>>> byproductList) async {
+
+  Future<void> drawAll(
+    Map<String, List<Map<String, dynamic>>> byproductList,
+  ) async {
     List<Map<String, dynamic>> tempList = [];
     print("draw All 실행 ");
 
     for (final entry in byproductList.entries) {
       final type = entry.key; // "가공", "수확"
-      final products = entry.value; // List<Map<String,dynamic>> :  [name,weight, threshold, is_ablove]
+      final products = entry
+          .value; // List<Map<String,dynamic>> :  [name,weight, threshold, is_ablove]
 
-
-      for (final item in products){
+      for (final item in products) {
         try {
           final name = item['name'];
-          final threshold = (item["threshold"] ?? 200 ) as num;
-          final weight = (item["weight_float"] ?? 0 ) as num;
+          final threshold = (item["threshold"] ?? 200) as num;
+          final weight = (item["weight_float"] ?? 0) as num;
           final percent = (weight / threshold).clamp(0.0, 1.0);
 
           tempList.add({
@@ -246,12 +248,10 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
             "weight": weight,
             "percent": percent,
           });
-
         } catch (e) {
           print("${type}_${item['name']} 파싱 실패: $e");
         }
       }
-
     }
 
     setState(() {
@@ -259,6 +259,12 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     });
   }
 
+
+
+
+
+
+  // 사실 여기서부턴 제 손을 떠났는데.... 노력해보겠습니다.
 
   // 진행률에 따른 색상 및 상태 관리
   Color getProgressColor(double percent) {
@@ -303,8 +309,11 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
       bool tabMatch = currentTab == "전체" || item["type"] == currentTab;
 
       // 검색 필터링
-      bool searchMatch = searchQuery.isEmpty ||
-          item["name"].toString().toLowerCase().contains(searchQuery.toLowerCase());
+      bool searchMatch =
+          searchQuery.isEmpty ||
+          item["name"].toString().toLowerCase().contains(
+            searchQuery.toLowerCase(),
+          );
 
       return tabMatch && searchMatch;
     }).toList();
@@ -315,7 +324,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
         case "percent":
           return b["percent"].compareTo(a["percent"]);
         case "status":
-          return getStatusPriority(b["percent"]).compareTo(getStatusPriority(a["percent"]));
+          return getStatusPriority(
+            b["percent"],
+          ).compareTo(getStatusPriority(a["percent"]));
         case "name":
         default:
           return a["name"].compareTo(b["name"]);
@@ -327,15 +338,21 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
 
   // 요약 정보 계산
   Map<String, dynamic> getSummaryData() {
-    if (donutData.isEmpty) return {"total": 0, "average": 0, "danger": 0, "warning": 0};
+    if (donutData.isEmpty)
+      return {"total": 0, "average": 0, "danger": 0, "warning": 0};
 
     List<Map<String, dynamic>> filtered = getFilteredData();
-    if (filtered.isEmpty) return {"total": 0, "average": 0, "danger": 0, "warning": 0};
+    if (filtered.isEmpty)
+      return {"total": 0, "average": 0, "danger": 0, "warning": 0};
 
     double totalWeight = filtered.fold(0, (sum, item) => sum + item["weight"]);
-    double averagePercent = filtered.fold(0.0, (sum, item) => sum + item["percent"]) / filtered.length;
+    double averagePercent =
+        filtered.fold(0.0, (sum, item) => sum + item["percent"]) /
+        filtered.length;
     int dangerCount = filtered.where((item) => item["percent"] >= 0.9).length;
-    int warningCount = filtered.where((item) => item["percent"] >= 0.7 && item["percent"] < 0.9).length;
+    int warningCount = filtered
+        .where((item) => item["percent"] >= 0.7 && item["percent"] < 0.9)
+        .length;
 
     return {
       "total": totalWeight,
@@ -345,7 +362,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
       "count": filtered.length,
     };
   }
-// 컴팩트한 그리드 카드 (많은 데이터용)
+
+  // 컴팩트한 그리드 카드 (많은 데이터용)
   Widget _buildCompactGridCard(Map<String, dynamic> item) {
     double percent = item["percent"];
     Color progressColor = getProgressColor(percent);
@@ -373,11 +391,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // 상태 아이콘 + 이름 + 유형 (중앙 정렬)
-            Icon(
-              getStatusIcon(percent),
-              color: progressColor,
-              size: 16,
-            ),
+            Icon(getStatusIcon(percent), color: progressColor, size: 16),
             SizedBox(height: 4),
             Text(
               "${item['name']}",
@@ -533,14 +547,18 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: item['type'] == '가공' ? Colors.blue.shade100 : Colors.green.shade100,
+                color: item['type'] == '가공'
+                    ? Colors.blue.shade100
+                    : Colors.green.shade100,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 item['type'],
                 style: TextStyle(
                   fontSize: 10,
-                  color: item['type'] == '가공' ? Colors.blue.shade700 : Colors.green.shade700,
+                  color: item['type'] == '가공'
+                      ? Colors.blue.shade700
+                      : Colors.green.shade700,
                 ),
               ),
             ),
@@ -563,11 +581,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              getStatusIcon(percent),
-              color: progressColor,
-              size: 20,
-            ),
+            Icon(getStatusIcon(percent), color: progressColor, size: 20),
             SizedBox(height: 2),
             Text(
               getStatusText(percent),
@@ -598,14 +612,16 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
           decoration: BoxDecoration(
             color: isSelected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
-            boxShadow: isSelected ? [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                spreadRadius: 1,
-                blurRadius: 4,
-                offset: Offset(0, 2),
-              ),
-            ] : null,
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           child: Text(
             title,
@@ -619,8 +635,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
       ),
     );
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -697,7 +711,10 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                             ),
                             Text(
                               "총 품목",
-                              style: TextStyle(color: Colors.white70, fontSize: 12),
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
@@ -723,7 +740,10 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                             ),
                             Text(
                               "평균 포화률",
-                              style: TextStyle(color: Colors.white70, fontSize: 12),
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
@@ -749,7 +769,10 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                             ),
                             Text(
                               "위험 품목",
-                              style: TextStyle(color: Colors.white70, fontSize: 12),
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
@@ -779,7 +802,10 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                       ),
                       filled: true,
                       fillColor: Colors.grey[100],
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     onChanged: (value) {
                       setState(() {
@@ -819,39 +845,46 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
           Expanded(
             child: filteredData.isEmpty
                 ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
-                  SizedBox(height: 16),
-                  Text(
-                    "검색 결과가 없습니다",
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                  ),
-                ],
-              ),
-            )
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_off,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          "검색 결과가 없습니다",
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 : isGridView
                 ? GridView.builder(
-              padding: EdgeInsets.all(12),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 0.8,
-              ),
-              itemCount: filteredData.length,
-              itemBuilder: (context, index) {
-                return _buildCompactGridCard(filteredData[index]);
-              },
-            )
+                    padding: EdgeInsets.all(12),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                      childAspectRatio: 0.8,
+                    ),
+                    itemCount: filteredData.length,
+                    itemBuilder: (context, index) {
+                      return _buildCompactGridCard(filteredData[index]);
+                    },
+                  )
                 : ListView.builder(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              itemCount: filteredData.length,
-              itemBuilder: (context, index) {
-                return _buildListItem(filteredData[index]);
-              },
-            ),
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    itemCount: filteredData.length,
+                    itemBuilder: (context, index) {
+                      return _buildListItem(filteredData[index]);
+                    },
+                  ),
           ),
         ],
       ),
@@ -865,9 +898,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
-
-
-
 
   // 부산물 추가 다이얼로그
   void _showAddWeightDialog() {
@@ -908,7 +938,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                     DropdownButtonFormField<String>(
                       value: selectedType,
                       decoration: InputDecoration(
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         filled: true,
                         fillColor: Colors.grey[50],
                       ),
@@ -931,17 +963,21 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                       DropdownButtonFormField<Map<String, String?>>(
                         value: selectedByproduct,
                         decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           filled: true,
                           fillColor: Colors.grey[50],
                         ),
                         hint: Text("품목을 선택해주세요"),
                         items: byproductsCategory
                             .where((item) => item['type'] == selectedType)
-                            .map((item) => DropdownMenuItem(
-                          value: item,
-                          child: Text(item['name']!),
-                        ))
+                            .map(
+                              (item) => DropdownMenuItem(
+                                value: item,
+                                child: Text(item['name']!),
+                              ),
+                            )
                             .toList(),
                         onChanged: (value) {
                           setModalState(() {
@@ -959,7 +995,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         hintText: '예: 100',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         filled: true,
                         fillColor: Colors.grey[50],
                       ),
@@ -967,8 +1005,11 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
 
                     SizedBox(height: 20),
                     ElevatedButton(
-                      onPressed: () {
-                        addWeight();
+                      onPressed: () async {
+                        final success = await addWeight();
+                        if (success) {
+                          await drawAll(userByproduct);
+                        }
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(
@@ -979,7 +1020,13 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Text('등록하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        '등록하기',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -990,7 +1037,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
       },
     );
   }
-
 
   Widget _buildBottomNavigationBar() {
     return Container(
@@ -1011,10 +1057,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
         backgroundColor: Colors.white,
         elevation: 0,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: '홈',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: '홈'),
           BottomNavigationBarItem(
             icon: Icon(Icons.local_shipping_rounded),
             label: '배송 요청',

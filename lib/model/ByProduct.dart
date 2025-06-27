@@ -21,7 +21,6 @@ class ByProduct {
     required this.is_above_threshold,
   });
 
-
   //JSON 데이터 -> ByProduct 객체
   factory ByProduct.fromJson(Map<String, dynamic> json) {
     final user = json['user'] ?? {};
