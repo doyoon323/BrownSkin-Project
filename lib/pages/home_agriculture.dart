@@ -10,7 +10,7 @@ class AgriHome extends StatefulWidget {
 }
 
 class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
-  final byproductsCategory = [
+  final byproductsCategory = [ //전체 품목, 추후 17 종까지 늘어날 예정
     {"name": "배추", "type": "수확"},
     {"name": "사과", "type": "가공"},
     {"name": "사과", "type": "수확"},
@@ -268,7 +268,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
 
   // 사실 여기서부턴 제 손을 떠났는데.... 노력해보겠습니다.
 
-  // 진행률에 따른 색상 및 상태 관리
+  /// 진행률에 따른 색상 및 상태 관리
   Color getProgressColor(double percent) {
     if (percent >= 0.9) return Colors.red.shade600;
     if (percent >= 0.7) return Colors.orange.shade600;
@@ -304,7 +304,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     return 1;
   }
 
-  // 필터링 및 정렬된 데이터 반환
+
+  /// 필터링 및 정렬된 데이터 반환
   List<Map<String, dynamic>> getFilteredData() {
     List<Map<String, dynamic>> filtered = donutData.where((item) {
       // 탭 필터링
@@ -338,7 +339,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     return filtered;
   }
 
-  // 요약 정보 계산
+  /// 요약 정보 계산
   Map<String, dynamic> getSummaryData() {
     if (donutData.isEmpty)
       return {"total": 0, "average": 0, "danger": 0, "warning": 0};
@@ -365,7 +366,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     };
   }
 
-  // 컴팩트한 그리드 카드 (많은 데이터용)
+  /// 1. 도넛 차트 & 그리드 시각화
   Widget _buildCompactGridCard(Map<String, dynamic> item) {
     double percent = item["percent"];
     Color progressColor = getProgressColor(percent);
@@ -392,6 +393,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+
+
             // 상태 아이콘 + 이름 + 유형 (중앙 정렬)
             Icon(getStatusIcon(percent), color: progressColor, size: 16),
             SizedBox(height: 4),
@@ -428,6 +431,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
             ),
             SizedBox(height: 8),
 
+
+
             // 원형 진행률 표시
             CircularPercentIndicator(
               radius: 35.0,
@@ -462,6 +467,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
             ),
             SizedBox(height: 8),
 
+
+
             // 무게 정보
             Text(
               "${item["weight"]}/${item["threshold"]}kg",
@@ -472,6 +479,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
               ),
               textAlign: TextAlign.center,
             ),
+
+
 
             // 위험 상태 표시
             if (percent >= 0.9)
@@ -497,7 +506,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     );
   }
 
-  // 리스트 뷰 아이템
+  /// 2. 리스트 시각화
   Widget _buildListItem(Map<String, dynamic> item) {
     double percent = item["percent"];
     Color progressColor = getProgressColor(percent);
@@ -599,7 +608,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     );
   }
 
-  // 탭 버튼
+  /// 탭 버튼
   Widget _buildTabButton(String title, String value) {
     bool isSelected = currentTab == value;
     return Expanded(
@@ -645,6 +654,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
+
+      ///앱 바
       appBar: AppBar(
         title: Text(
           '부산물 관리 시스템',
@@ -664,6 +675,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
           ),
         ],
       ),
+
+      /// 상단 헤더 (탭 버튼 + 요약 정보)
       body: Column(
         children: [
           // 상단 헤더 (탭 + 요약 정보)
@@ -786,12 +799,13 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
             ),
           ),
 
-          // 검색 및 정렬 바
+          /// 검색 및 정렬 바
           Container(
             color: Colors.white,
             padding: EdgeInsets.all(16),
             child: Row(
               children: [
+                // 검색창
                 Expanded(
                   child: TextField(
                     controller: searchController,
@@ -817,6 +831,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                   ),
                 ),
                 SizedBox(width: 12),
+
+                // 정렬 드롭다운
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.grey[100],
@@ -843,9 +859,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
             ),
           ),
 
-          // 메인 콘텐츠
+          /// 메인 콘텐츠 (Grid / List 뷰)
           Expanded(
-            child: filteredData.isEmpty
+            child: filteredData.isEmpty //검색결과 없음
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -866,7 +882,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                       ],
                     ),
                   )
-                : isGridView
+
+                : isGridView // 그리드 뷰
                 ? GridView.builder(
                     padding: EdgeInsets.all(12),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -880,7 +897,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                       return _buildCompactGridCard(filteredData[index]);
                     },
                   )
-                : ListView.builder(
+
+                : ListView.builder(// 리스트 뷰
                     padding: EdgeInsets.symmetric(vertical: 8),
                     itemCount: filteredData.length,
                     itemBuilder: (context, index) {
@@ -890,6 +908,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
           ),
         ],
       ),
+
+
+      /// 하단 부산물 추가 버튼
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           _showAddWeightDialog();
@@ -897,11 +918,13 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
         backgroundColor: Colors.green[700],
         child: Icon(Icons.add, color: Colors.white),
       ),
+
+      /// 하단 메뉴 바
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
-  // 부산물 추가 다이얼로그
+  /// 부산물 추가 다이얼로그
   void _showAddWeightDialog() {
     showModalBottomSheet(
       context: context,
@@ -1040,6 +1063,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     );
   }
 
+  /// 하단 메뉴바 (미구현: 클릭 시 이동)
   Widget _buildBottomNavigationBar() {
     return Container(
       decoration: BoxDecoration(
