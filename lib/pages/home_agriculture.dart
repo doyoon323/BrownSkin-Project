@@ -59,9 +59,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
 
     //데이터 시각화
     try{
-      await drawAll(userByproduct);
+      await updateData(userByproduct);
     } catch(e){
-      throw Exception("drawAll() failed : $e");
+      throw Exception("updateData() failed : $e");
     }
   }
 
@@ -221,44 +221,46 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
   }
   */
 
+  /// data transform helper function
+  Map<String, dynamic> transformItem(String type, Map<String, dynamic> item, int defaultThreshold) {
+    final name = item['name'];
+    final threshold = (item["threshold"] ?? defaultThreshold) as num;
+    final weight = (item["weight_float"] ?? 0) as num;
+    final percent = (weight / threshold).clamp(0.0, 1.0);
+
+    return {
+      "name": name,
+      "type": type,
+      "threshold": threshold,
+      "weight": weight,
+      "percent": percent,
+    };
+  }
 
 
-  Future<void> drawAll(
-    Map<String, List<Map<String, dynamic>>> byproductList,
-  ) async {
-    List<Map<String, dynamic>> tempList = [];
-    print("draw All 실행 ");
+  /// 데이터 시각화용 데이터를 갱신하는 함수
+  Future<void> updateData(Map<String, List<Map<String, dynamic>>> byproductList ) async {
+    List<Map<String, dynamic>> tempList = [];// 최종 UI 갱신 데이터
+    const defaultThreshold = 200; // !! default = 200 (데이터를 기반으로 수정해야함)
 
-    for (final entry in byproductList.entries) {
-      final type = entry.key; // "가공", "수확"
-      final products = entry
-          .value; // List<Map<String,dynamic>> :  [name,weight, threshold, is_ablove]
+    for (final byproduct in byproductList.entries) {
+      final type = byproduct.key; // "가공", "수확"
+      final products = byproduct.value; // {"name": "사과", "weight_float": 80, "threshold": 200, is_above: false} 추출
 
       for (final item in products) {
         try {
-          final name = item['name'];
-          final threshold = (item["threshold"] ?? 200) as num;
-          final weight = (item["weight_float"] ?? 0) as num;
-          final percent = (weight / threshold).clamp(0.0, 1.0);
-
-          tempList.add({
-            "name": name,
-            "type": type,
-            "threshold": threshold,
-            "weight": weight,
-            "percent": percent,
-          });
+          tempList.add(transformItem(type, item, defaultThreshold));
         } catch (e) {
           print("${type}_${item['name']} 파싱 실패: $e");
         }
       }
     }
 
+    // 갱신
     setState(() {
       donutData = tempList;
     });
   }
-
 
 
 
@@ -1008,7 +1010,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                       onPressed: () async {
                         final success = await addWeight();
                         if (success) {
-                          await drawAll(userByproduct);
+                          await updateData(userByproduct);
                         }
                         Navigator.pop(context);
                       },
