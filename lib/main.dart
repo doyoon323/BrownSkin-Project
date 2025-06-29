@@ -1,6 +1,5 @@
-import 'package:brownskin_app/pages/home_agriculture.dart';
 import 'package:flutter/material.dart';
-import 'package:brownskin_app/pages/home_admin.dart';
+import 'package:brownskin_app/pages/login_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -9,22 +8,23 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  final String token = 'fake token';
-
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Brownskin Admin',
+      title: 'Brownskin',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.brown),
       ),
-
-      /* 실행될 때, 토큰을 가지고 관리자 홈으로 이동(로그인 화면 구현되면 연동 예정) */
-      home: AgriHome(), //AdminHomePage(token: token),
+      home: const LoginPage(), //AdminHomePage(token: token),
     );
   }
 }
+
+
+//까지
+
+
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});

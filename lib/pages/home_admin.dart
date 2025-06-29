@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
+import 'package:brownskin_app/constants.dart';
 import 'dart:convert';
 import 'package:brownskin_app/model/ByProduct.dart';
 import 'dart:async';
@@ -58,7 +59,7 @@ class _AdminHomePageState extends State<AdminHomePage>
 
     try {
       /* 첫 페이지 URL */
-      String? nextUrl = "http://10.0.2.2:8000/api/byprod-list?page=1";
+      String? nextUrl = "$BASE_URL/api/byprod-list?page=1";
       List<ByProduct> allData = [];
 
       /* 페이지 순회하며 모든 데이터를 받아옴 */
@@ -66,8 +67,7 @@ class _AdminHomePageState extends State<AdminHomePage>
         var result = await http.get(
           Uri.parse(nextUrl),
           headers: {
-            /* 현재는 관리자 token을 직접 입력한 상태 (추후 DB 또는 로그인 기반 동적 처리 예정) */
-            'Authorization': 'Token 1320615697a307cd25763951e3fe5b4a7e2364b6',
+            'Authorization': 'Token ${widget.token}',
           },
         );
 

@@ -2,9 +2,13 @@ import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:brownskin_app/constants.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 
 class AgriHome extends StatefulWidget {
+  final String token;
+  const AgriHome({required this.token, super.key});
+
   @override
   AgriHomeState createState() => AgriHomeState();
 }
@@ -21,7 +25,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
   Map<String, List<Map<String, dynamic>>> userByproduct = {};
   Map<String, String?>? selectedByproduct;
   String? selectedType;
-  String? token;
+  String get token => widget.token;
   List<Map<String, dynamic>> donutData = [];
   final TextEditingController weightController = TextEditingController();
   final TextEditingController searchController = TextEditingController();
@@ -43,11 +47,11 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
 
 
   Future<void> init() async {
-    // ! 임시 로그인 ! 연동 후 수정 필요
     try{
-      await temp_login();
+      await fetchUserByProduct();
+      await updateData(userByproduct);
     } catch(e){
-      throw Exception("temp_login() failed : $e");
+      throw Exception("초기화 실패: $e");
     }
 
     //사용자 부산물 데이터(total) 조회
@@ -68,7 +72,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
 
   /// 현재 사용자에 대한 모든 부산물 데이터를 DB에서 조회해 userByproduct에 저장한다.
   Future<void> fetchUserByProduct() async {
-    final url = Uri.parse('http://10.0.2.2:8000/api/my-byprod');
+    final url = Uri.parse('$BASE_URL/api/my-byprod');
     final headers = {
       "Content-Type": "application/x-www-form-urlencoded",
       "Authorization": "Token $token",
@@ -88,36 +92,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     userByproduct = rawData.map(
           (key, value) => MapEntry(key, List<Map<String, dynamic>>.from(value)),
     );
-  }
-
-
-  // temp function  (추후 삭제)
-  Future<void> temp_login() async {
-    final url = Uri.parse("http://10.0.2.2:8000/auth/api-token");
-    try {
-      final res = await http.post(
-        url,
-        headers: {"Content-Type": "application/x-www-form-urlencoded"},
-        body: {"username": "test2", "password": "asdfasdfasdf"},
-      );
-
-      print("📨 응답 status: ${res.statusCode}");
-
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        final fetched = data['token'];
-        setState(() {
-          token = fetched;
-        });
-        print("로그인 성공: $token");
-
-
-      } else {
-        throw Exception('로그인 실패: ${res.statusCode}');
-      }
-    } catch (e) {
-      print("temp_login 에러 발생: $e");
-    }
   }
 
 
@@ -142,7 +116,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     final String weight = weightController.text.trim();
 
     //서버 url, headers
-    final url = Uri.parse("http://10.0.2.2:8000/api/add-weight");
+    final url = Uri.parse("$BASE_URL/api/add-weight");
     final headers = {
       "Content-Type": "application/x-www-form-urlencoded",
       "Authorization": "Token $token",
