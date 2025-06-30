@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/constants.dart';
 import 'package:percent_indicator/percent_indicator.dart';
+import 'package:brownskin_app/pages/deliveryReq_agriculture.dart';
 
 class AgriHome extends StatefulWidget {
   final String token;
@@ -1063,6 +1064,18 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
             label: '배송 요청',
           ),
         ],
+        onTap: (index) {
+          if (index == 1) {
+            //배송 요청 탭을 눌렀을 때 이동
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const DeliveryReqAgriculturePage(),
+              ),
+            );
+          }
+          // index == 0 일 때는 홈이므로 아무 동작 안 함
+        },
       ),
     );
   }

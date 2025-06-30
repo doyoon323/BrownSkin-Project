@@ -43,7 +43,7 @@ class _LoginPageState extends State<LoginPage> {
 
         await _checkRoleAndMove(token); // 역할에 따라 화면 분기
       } else {
-        _showMessage('로그인 실패: ${response.body}');
+        _showMessage('로그인 실패: ${response.statusCode}');
       }
     } catch (e) {
       if (kDebugMode) print('네트워크 오류: $e');
