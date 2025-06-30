@@ -5,7 +5,6 @@ import 'dart:convert';
 import 'package:brownskin_app/model/ByProduct.dart';
 import 'dart:async';
 
-
 //관리자 홈 화면 (부산물 데이터를 시각화하여 보여준다)
 class AdminHomePage extends StatefulWidget {
   /* 인증 토큰을 매개변수로 받아 저장 */
@@ -18,7 +17,6 @@ class AdminHomePage extends StatefulWidget {
 
 class _AdminHomePageState extends State<AdminHomePage>
     with TickerProviderStateMixin {
-
   List<ByProduct> data = []; //전체 데이터
   List<String> usernames = []; // 사용자 이름 추출
   List<double> weights = []; // 무게 추출
@@ -50,7 +48,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     super.dispose();
   }
 
-/* 서버에서 데이터를 받아오는 함수 */
+  /* 서버에서 데이터를 받아오는 함수 */
   Future<void> getData() async {
     /* 로딩 상태로 UI 갱신 */
     setState(() {
@@ -113,9 +111,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     }
   }
 
-
-
-/* UI */
+  /* UI */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -125,10 +121,7 @@ class _AdminHomePageState extends State<AdminHomePage>
       appBar: AppBar(
         title: const Text(
           '무게 데이터 관리',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: Colors.indigo[600],
         elevation: 0,
@@ -154,8 +147,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     );
   }
 
-
-/* 데이터 로딩 중 표시되는 위젯 */
+  /* 데이터 로딩 중 표시되는 위젯 */
   Widget _buildLoadingWidget() {
     return const Center(
       child: Column(
@@ -167,10 +159,7 @@ class _AdminHomePageState extends State<AdminHomePage>
           SizedBox(height: 16),
           Text(
             '데이터를 불러오는 중...',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.grey),
           ),
         ],
       ),
@@ -185,11 +174,7 @@ class _AdminHomePageState extends State<AdminHomePage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red[300],
-            ),
+            Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
             const SizedBox(height: 16),
             Text(
               '데이터를 불러올 수 없습니다',
@@ -202,10 +187,7 @@ class _AdminHomePageState extends State<AdminHomePage>
             const SizedBox(height: 8),
             Text(
               errorMessage ?? '알 수 없는 오류가 발생했습니다',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -228,7 +210,6 @@ class _AdminHomePageState extends State<AdminHomePage>
     );
   }
 
-
   /* 데이터 시각화 메인 콘텐츠 위젯 */
   Widget _buildMainContent() {
     return FadeTransition(
@@ -249,15 +230,16 @@ class _AdminHomePageState extends State<AdminHomePage>
     );
   }
 
-
-/* 통계 카드 레이아웃  */
+  /* 통계 카드 레이아웃  */
   Widget _buildStatsCards() {
     final totalItems = data.length;
     final aboveThreshold = data.where((item) => item.is_above_threshold).length;
     final averageWeight = data.isEmpty
         ? 0.0
         : data.map((e) => e.weight).reduce((a, b) => a + b) / data.length;
-    final maxWeight = data.isEmpty ? 0.0 : data.map((e) => e.weight).reduce((a, b) => a > b ? a : b);
+    final maxWeight = data.isEmpty
+        ? 0.0
+        : data.map((e) => e.weight).reduce((a, b) => a > b ? a : b);
 
     return Row(
       children: [
@@ -300,9 +282,13 @@ class _AdminHomePageState extends State<AdminHomePage>
     );
   }
 
-
   /* 통계 카드(총 개수, 임계값 초과, 평균/최대 무게 등 요약) */
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -332,10 +318,7 @@ class _AdminHomePageState extends State<AdminHomePage>
           const SizedBox(height: 4),
           Text(
             title,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
         ],
@@ -387,15 +370,11 @@ class _AdminHomePageState extends State<AdminHomePage>
             ],
           ),
           const SizedBox(height: 20),
-          SizedBox(
-            height: 300,
-            child: _buildChart(data),
-          ),
+          SizedBox(height: 300, child: _buildChart(data)),
         ],
       ),
     );
   }
-
 
   /* 차트 범례용 아이템 위젯 */
   Widget _buildLegendItem(String label, Color color) {
@@ -411,17 +390,10 @@ class _AdminHomePageState extends State<AdminHomePage>
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
       ],
     );
   }
-
 
   /* 무게 데이터 시각화 막대 차트 */
   Widget _buildChart(List<ByProduct> data) {
@@ -437,9 +409,7 @@ class _AdminHomePageState extends State<AdminHomePage>
         barRods: [
           BarChartRodData(
             toY: item.weight,
-            color: item.is_above_threshold
-                ? Colors.red[400]
-                : Colors.blue[400],
+            color: item.is_above_threshold ? Colors.red[400] : Colors.blue[400],
             width: 20,
             borderRadius: BorderRadius.circular(6),
             gradient: LinearGradient(
@@ -449,7 +419,7 @@ class _AdminHomePageState extends State<AdminHomePage>
               begin: Alignment.bottomCenter,
               end: Alignment.topCenter,
             ),
-          )
+          ),
         ],
       );
     }).toList();
@@ -515,7 +485,9 @@ class _AdminHomePageState extends State<AdminHomePage>
                   child: Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
-                      index >= 0 && index < xLabels.length ? xLabels[index] : '',
+                      index >= 0 && index < xLabels.length
+                          ? xLabels[index]
+                          : '',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.grey[600],
@@ -527,8 +499,12 @@ class _AdminHomePageState extends State<AdminHomePage>
               },
             ),
           ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
         ),
         borderData: FlBorderData(
           show: true,
@@ -542,10 +518,7 @@ class _AdminHomePageState extends State<AdminHomePage>
           drawVerticalLine: false,
           horizontalInterval: 50,
           getDrawingHorizontalLine: (value) {
-            return FlLine(
-              color: Colors.grey[200]!,
-              strokeWidth: 1,
-            );
+            return FlLine(color: Colors.grey[200]!, strokeWidth: 1);
           },
         ),
       ),
@@ -592,10 +565,30 @@ class _AdminHomePageState extends State<AdminHomePage>
             child: DataTable(
               headingRowColor: MaterialStateProperty.all(Colors.grey[50]),
               columns: const [
-                DataColumn(label: Text('사용자명', style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(label: Text('회사명', style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(label: Text('무게 (kg)', style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(label: Text('상태', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(
+                  label: Text(
+                    '사용자명',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    '회사명',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    '무게 (kg)',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    '상태',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
               ],
               rows: data.map((item) {
                 return DataRow(
@@ -605,7 +598,10 @@ class _AdminHomePageState extends State<AdminHomePage>
                     DataCell(Text(item.weight.toStringAsFixed(1))),
                     DataCell(
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: item.is_above_threshold
                               ? Colors.red[100]
@@ -655,17 +651,10 @@ class _AdminHomePageState extends State<AdminHomePage>
         backgroundColor: Colors.white,
         elevation: 0,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: '홈',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: '설정',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: '설정'),
         ],
       ),
     );
   }
 }
-
