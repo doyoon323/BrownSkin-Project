@@ -1,13 +1,13 @@
-import 'package:flutter/material.dart'; 
-import 'package:flutter/foundation.dart';//이거 두 개 경로 그대로 가능. 내장 라이브러리
-import 'package:http/http.dart' as http; 
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; //이거 두 개 경로 그대로 가능. 내장 라이브러리
+import 'package:http/http.dart' as http;
 import 'package:brownskin_app/constants.dart';
-import 'dart:convert'; 
-import 'signup_page.dart'; 
+import 'dart:convert';
+import 'signup_page.dart';
 import 'home_agriculture.dart';
 import 'home_admin.dart';
 
-class LoginPage extends StatefulWidget { 
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
@@ -16,13 +16,13 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController(); 
+  final _passwordController = TextEditingController();
 
   void _login() async {
     var url = Uri.parse('$BASE_URL/auth/api-token');
 
     //서버로 아이디비번 전송하고 post  요청
-    try { 
+    try {
       var response = await http.post(
         url,
         headers: {"Content-Type": "application/x-www-form-urlencoded"},
@@ -99,13 +99,13 @@ class _LoginPageState extends State<LoginPage> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('확인'),
-          )
+          ),
         ],
       ),
     );
   }
 
-//여기부터는 디자인툴
+  //여기부터는 디자인툴
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,7 +122,10 @@ class _LoginPageState extends State<LoginPage> {
                   color: Colors.white.withAlpha(204),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withAlpha(25), blurRadius: 20),
+                    BoxShadow(
+                      color: Colors.black.withAlpha(25),
+                      blurRadius: 20,
+                    ),
                   ],
                 ),
                 child: Padding(
@@ -132,7 +135,11 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 16),
                       const Text(
                         '로그인',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.brown),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.brown,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       const Text(
@@ -140,8 +147,18 @@ class _LoginPageState extends State<LoginPage> {
                         style: TextStyle(color: Colors.black54),
                       ),
                       const SizedBox(height: 24),
-                      _buildLabeledField('아이디', _usernameController, false, Icons.person),
-                      _buildLabeledField('비밀번호', _passwordController, true, Icons.lock),
+                      _buildLabeledField(
+                        '아이디',
+                        _usernameController,
+                        false,
+                        Icons.person,
+                      ),
+                      _buildLabeledField(
+                        '비밀번호',
+                        _passwordController,
+                        true,
+                        Icons.lock,
+                      ),
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
@@ -149,10 +166,15 @@ class _LoginPageState extends State<LoginPage> {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.brown,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
                           onPressed: _login,
-                          child: const Text('로그인', style: TextStyle(color: Colors.white, fontSize: 16)),
+                          child: const Text(
+                            '로그인',
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -161,7 +183,10 @@ class _LoginPageState extends State<LoginPage> {
                           Expanded(child: Divider(color: Colors.black26)),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 8),
-                            child: Text('또는', style: TextStyle(color: Colors.black54)),
+                            child: Text(
+                              '또는',
+                              style: TextStyle(color: Colors.black54),
+                            ),
                           ),
                           Expanded(child: Divider(color: Colors.black26)),
                         ],
@@ -171,17 +196,25 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (_) => const SignUpPage()),
+                            MaterialPageRoute(
+                              builder: (_) => const SignUpPage(),
+                            ),
                           );
                         },
-                        child: const Text('계정이 없으신가요? 회원가입', style: TextStyle(color: Colors.brown)),
+                        child: const Text(
+                          '계정이 없으신가요? 회원가입',
+                          style: TextStyle(color: Colors.brown),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('© 2025 BrownSkin. All rights reserved.', style: TextStyle(color: Colors.black38, fontSize: 12)),
+              const Text(
+                '© 2025 BrownSkin. All rights reserved.',
+                style: TextStyle(color: Colors.black38, fontSize: 12),
+              ),
             ],
           ),
         ),
@@ -189,7 +222,12 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildLabeledField(String label, TextEditingController controller, bool obscure, IconData icon) {
+  Widget _buildLabeledField(
+    String label,
+    TextEditingController controller,
+    bool obscure,
+    IconData icon,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextField(
@@ -216,9 +254,7 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('홈 화면')),
-      body: const Center(
-        child: Text('로그인 성공! 홈 화면입니다.'),
-      ),
+      body: const Center(child: Text('로그인 성공! 홈 화면입니다.')),
     );
   }
 }

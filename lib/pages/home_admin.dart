@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:brownskin_app/constants.dart';
 import 'dart:convert';
 import 'package:brownskin_app/model/ByProduct.dart';
+import 'package:brownskin_app/model/RegionWeight.dart';
 import 'dart:async';
 
 //관리자 홈 화면 (부산물 데이터를 시각화하여 보여준다)
@@ -18,9 +19,30 @@ class AdminHomePage extends StatefulWidget {
 
 class _AdminHomePageState extends State<AdminHomePage>
     with TickerProviderStateMixin {
+
   List<ByProduct> data = []; //전체 데이터
   List<String> usernames = []; // 사용자 이름 추출
   List<double> weights = []; // 무게 추출
+
+
+  String? selectedProvince; // default = 미선택
+  String? selectedType = "가공"; // default = 가공
+  Map<String, String?>? selectedByproduct = {"name": "사과", "type": "가공"};
+  String? selectedByproductName = "사과"; // default = 가공
+
+  static const List<Map<String, String?>> byproductsCategory = [
+    {"type": "가공", "name": "사과"},
+    {"type": "수확", "name": "사과"},
+    {"type": "수확", "name": "배추"},
+    {"type": "수확", "name": "참깨"},
+    {"type": "수확", "name": "옥수수"},
+  ];
+
+  List<String> provinces = [];
+
+  List<RegionWeight>? regionData;
+
+  double? totalWeight = 0.0;
 
   //UI 구성
   bool isLoading = true;
@@ -39,8 +61,48 @@ class _AdminHomePageState extends State<AdminHomePage>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
+
     // 최초 페이지 로딩 시 데이터 불러오기
-    getData();
+    updateInfo();
+    getProvinceData();
+  }
+
+
+  Future<void> getProvinceData() async {
+    print("✅ getProvinceData() 호출됨");
+    String? nextUrl = "$BASE_URL/api/byprod-list?page=1";
+    List<String> temp = [];
+
+    while (nextUrl != null) {
+      print("✅ while 루프 시작: $nextUrl");
+      final result = await http.get(
+        Uri.parse(nextUrl),
+        headers: {'Authorization': 'Token ${widget.token}'},
+      );
+
+      if (result.statusCode == 200) {
+        final body = jsonDecode(utf8.decode(result.bodyBytes));
+        final List<dynamic> results = body['results'];
+
+        print("✅$results");
+        // 여기서 addr1만 추출
+        temp.addAll(
+            results.map<String>((item) => item['user']['addr1'] as String)
+        );
+
+        nextUrl = body['next'] as String?;
+      } else {
+        throw Exception('서버 오류: ${result.statusCode}');
+      }
+    }
+
+    // 중복 제거
+    setState(() {
+      provinces = temp.toSet().toList(); // 중복 제거해서 리스트에 담기
+      provinces = ["전국"] + provinces;
+    });
+
+    print("================$provinces================");
   }
 
   @override
@@ -49,8 +111,90 @@ class _AdminHomePageState extends State<AdminHomePage>
     super.dispose();
   }
 
+  void updateInfo() async {
+    print("👁️ UPDATA INFO ");
+    String? selectedDistrict = null;
+    List<RegionWeight> tempList1 = [];
+
+    var sum_data;
+    if (selectedProvince == "전국"){
+      sum_data = await getData(
+        selectedType,
+        selectedByproductName,
+        null,
+        selectedDistrict,
+      );
+    }
+    else {
+      sum_data = await getData(
+        selectedType,
+        selectedByproductName,
+        selectedProvince,
+        selectedDistrict,
+      );
+    }
+
+    if (sum_data.containsKey("results") && sum_data["results"] != null) { //전국단위라 모든 시,도를 긁어ㄴ오는ing....
+      final resultsMap = sum_data["results"] as Map<String, dynamic>;
+
+      // Map을 entries로 순회해서 RegionWeight 리스트 생성
+      tempList1 = resultsMap.entries.map(
+            (entry) => RegionWeight(
+          weight: (entry.value as num).toDouble(),
+              city: entry.key,
+            ),
+      ).toList();
+
+      setState(() {
+        regionData = tempList1;
+        totalWeight = (sum_data["total_weight"] as num?)?.toDouble();
+      });
+    } else { //하나의 시만 보여주는 ing... 근데 무게만 보이면 심심하니까... 업체도 그냥 전부 보여주자는 스불재..
+
+      await getDisposerData(selectedProvince);
+      setState(() {
+        totalWeight = (sum_data["total_weight"] as num?)?.toDouble();
+      });
+    }
+  }
+
+  // A안: default를 가공/사과로 설정해두기
+  Future<Map<String, dynamic>> getData(String? type, String? name,
+      String? addr1,
+      String? addr2) async {
+    String url = "$BASE_URL/api/sum-byprod?" + "type=$type&" + "name=$name";
+
+    if (addr1 != null) { //시도
+      url += "&addr1=$addr1";
+    }
+
+    if (addr2 != null && addr1 != null) { //구
+      url += "&addr2=$addr2";
+    }
+
+    final headers = {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Authorization": "Token ${widget.token}",
+    };
+
+
+    final response = await http.get(Uri.parse(url), headers: headers);
+
+    if (response.statusCode == 200) {
+      //전국이면 results, addr1이면 total weight;
+      // 현 상황에서는 total_weight 외 필요 하지 않음
+      final data = jsonDecode(
+        response.body,); //result = weight of type-name fruit in address
+      return data;
+    } else {
+      throw Exception('Failed to load data');
+    }
+  }
+
+
+
   /* 서버에서 데이터를 받아오는 함수 */
-  Future<void> getData() async {
+  Future<void> getDisposerData(String? addr1) async {
     /* 로딩 상태로 UI 갱신 */
     setState(() {
       isLoading = true;
@@ -59,16 +203,16 @@ class _AdminHomePageState extends State<AdminHomePage>
 
     try {
       /* 첫 페이지 URL */
-      String? nextUrl = "$BASE_URL/api/byprod-list?page=1";
+
+      String? nextUrl = "$BASE_URL/api/byprod-list?"+"addr1=$addr1&"+"type=$selectedType&"+"name=$selectedByproductName&"
+          +"page=1";
       List<ByProduct> allData = [];
 
       /* 페이지 순회하며 모든 데이터를 받아옴 */
       while (nextUrl != null) {
         var result = await http.get(
           Uri.parse(nextUrl),
-          headers: {
-            'Authorization': 'Token ${widget.token}',
-          },
+          headers: {'Authorization': 'Token ${widget.token}'},
         );
 
         /* 서버 인증 성공 시 */
@@ -111,365 +255,41 @@ class _AdminHomePageState extends State<AdminHomePage>
     }
   }
 
-  /* UI */
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
 
-      /* 상단 AppBar (제목 + 새로고침 버튼) */
-      appBar: AppBar(
-        title: const Text(
-          '무게 데이터 관리',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        backgroundColor: Colors.indigo[600],
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-
-            /* 새로고침 시 데이터 재요청 */
-            onPressed: getData,
-          ),
-        ],
-      ),
-
-      /* 본문 : 로딩/에러/정상 UI 분기 처리 */
-      body: isLoading
-          ? _buildLoadingWidget()
-          : errorMessage != null
-          ? _buildErrorWidget()
-          : _buildMainContent(),
-
-      /* 하단  */
-      bottomNavigationBar: _buildBottomNavigationBar(),
-    );
-  }
-
-  /* 데이터 로딩 중 표시되는 위젯 */
-  Widget _buildLoadingWidget() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.indigo),
-          ),
-          SizedBox(height: 16),
-          Text(
-            '데이터를 불러오는 중...',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /* 오류 발생 시 표시되는 위젯 */
-  Widget _buildErrorWidget() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-            const SizedBox(height: 16),
-            Text(
-              '데이터를 불러올 수 없습니다',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              errorMessage ?? '알 수 없는 오류가 발생했습니다',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: getData,
-              icon: const Icon(Icons.refresh),
-              label: const Text('다시 시도'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo[600],
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
+  Widget buildRegionBarChart(List<RegionWeight> data) {
+    final barGroups = data.asMap().entries.map(
+          (entry) {
+        final index = entry.key;
+        final item = entry.value;
+        return BarChartGroupData(
+          x: index,
+          barRods: [
+            BarChartRodData(
+              toY: item.weight,
+              color: Colors.indigo,
+              width: 20,
+              borderRadius: BorderRadius.circular(4),
             ),
           ],
-        ),
-      ),
-    );
-  }
+        );
+      },
+    ).toList();
 
-  /* 데이터 시각화 메인 콘텐츠 위젯 */
-  Widget _buildMainContent() {
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatsCards(), // 통계 요약
-            const SizedBox(height: 24),
-            _buildChartCard(), // 무게 분포
-            const SizedBox(height: 24),
-            _buildDataTable(), // 상세 데이터 테이블
-          ],
-        ),
-      ),
-    );
-  }
-
-  /* 통계 카드 레이아웃  */
-  Widget _buildStatsCards() {
-    final totalItems = data.length;
-    final aboveThreshold = data.where((item) => item.is_above_threshold).length;
-    final averageWeight = data.isEmpty
-        ? 0.0
-        : data.map((e) => e.weight).reduce((a, b) => a + b) / data.length;
-    final maxWeight = data.isEmpty
-        ? 0.0
-        : data.map((e) => e.weight).reduce((a, b) => a > b ? a : b);
-
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            '총 항목',
-            totalItems.toString(),
-            Icons.inventory,
-            Colors.blue,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            '임계값 초과',
-            aboveThreshold.toString(),
-            Icons.warning,
-            Colors.red,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            '평균 무게',
-            '${averageWeight.toStringAsFixed(1)}kg',
-            Icons.scale,
-            Colors.green,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            '최대 무게',
-            '${maxWeight.toStringAsFixed(1)}kg',
-            Icons.trending_up,
-            Colors.orange,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /* 통계 카드(총 개수, 임계값 초과, 평균/최대 무게 등 요약) */
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /* 무게 분포 차트 UI */
-  Widget _buildChartCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.bar_chart, color: Colors.indigo[600], size: 24),
-              const SizedBox(width: 8),
-              Text(
-                '무게 분포 차트',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _buildLegendItem('정상', Colors.blue[400]!),
-              const SizedBox(width: 16),
-              _buildLegendItem('임계값 초과', Colors.red[400]!),
-              const SizedBox(width: 16),
-              _buildLegendItem('임계선', Colors.orange[600]!),
-            ],
-          ),
-          const SizedBox(height: 20),
-          SizedBox(height: 300, child: _buildChart(data)),
-        ],
-      ),
-    );
-  }
-
-  /* 차트 범례용 아이템 위젯 */
-  Widget _buildLegendItem(String label, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-      ],
-    );
-  }
-
-  /* 무게 데이터 시각화 막대 차트 */
-  Widget _buildChart(List<ByProduct> data) {
-    // 임계값 설정 (필요에 따라 조정 가능)
-    final double thresholdValue = 150.0;
-
-    final barGroups = data.asMap().entries.map((entry) {
-      final index = entry.key;
-      final item = entry.value;
-
-      return BarChartGroupData(
-        x: index,
-        barRods: [
-          BarChartRodData(
-            toY: item.weight,
-            color: item.is_above_threshold ? Colors.red[400] : Colors.blue[400],
-            width: 20,
-            borderRadius: BorderRadius.circular(6),
-            gradient: LinearGradient(
-              colors: item.is_above_threshold
-                  ? [Colors.red[300]!, Colors.red[500]!]
-                  : [Colors.blue[300]!, Colors.blue[500]!],
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-            ),
-          ),
-        ],
-      );
-    }).toList();
-
-    final xLabels = data.map((e) => e.username).toList();
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
-        maxY: 250,
+        maxY: data.map((e) => e.weight).reduce((a, b) => a > b ? a : b) + 50,
         minY: 0,
         barGroups: barGroups,
-        // 임계선 추가
-        extraLinesData: ExtraLinesData(
-          horizontalLines: [
-            HorizontalLine(
-              y: thresholdValue,
-              color: Colors.orange[600]!,
-              strokeWidth: 2,
-              dashArray: [8, 4], // 점선 효과
-              label: HorizontalLineLabel(
-                show: true,
-                alignment: Alignment.topRight,
-                padding: const EdgeInsets.only(right: 8, bottom: 8),
-                style: TextStyle(
-                  color: Colors.orange[700],
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-                labelResolver: (line) => '임계값: ${thresholdValue.toInt()}kg',
-              ),
-            ),
-          ],
-        ),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              interval: 50,
               reservedSize: 40,
               getTitlesWidget: (value, meta) {
-                return SideTitleWidget(
-                  axisSide: meta.axisSide,
-                  child: Text(
-                    '${value.toInt()}kg',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                return Text(
+                  "${value.toInt()}kg",
+                  style: const TextStyle(fontSize: 10),
                 );
               },
             ),
@@ -477,23 +297,13 @@ class _AdminHomePageState extends State<AdminHomePage>
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 40,
               getTitlesWidget: (value, meta) {
-                int index = value.toInt();
+                int idx = value.toInt();
                 return SideTitleWidget(
                   axisSide: meta.axisSide,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      index >= 0 && index < xLabels.length
-                          ? xLabels[index]
-                          : '',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                  child: Text(
+                    idx >= 0 && idx < data.length ? data[idx].city : "",
+                    style: const TextStyle(fontSize: 10),
                   ),
                 );
               },
@@ -508,153 +318,250 @@ class _AdminHomePageState extends State<AdminHomePage>
         ),
         borderData: FlBorderData(
           show: true,
-          border: Border(
-            bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-            left: BorderSide(color: Colors.grey[300]!, width: 1),
+          border: const Border(
+            bottom: BorderSide(),
+            left: BorderSide(),
           ),
         ),
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: 50,
-          getDrawingHorizontalLine: (value) {
-            return FlLine(color: Colors.grey[200]!, strokeWidth: 1);
-          },
-        ),
+        gridData: FlGridData(show: true),
       ),
     );
   }
 
-  /* 사용자별 무게 데이터 테이블 */
-  Widget _buildDataTable() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('무게 데이터 관리'),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Icon(Icons.table_chart, color: Colors.indigo[600], size: 24),
-                const SizedBox(width: 8),
-                Text(
-                  '상세 데이터',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
-                  ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+
+
+            // 부산물 유형 선택
+            const Text('부산물 유형 선택'),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: selectedType,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ],
-            ),
-          ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              headingRowColor: MaterialStateProperty.all(Colors.grey[50]),
-              columns: const [
-                DataColumn(
-                  label: Text(
-                    '사용자명',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                DataColumn(
-                  label: Text(
-                    '회사명',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                DataColumn(
-                  label: Text(
-                    '무게 (kg)',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                DataColumn(
-                  label: Text(
-                    '상태',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-              rows: data.map((item) {
-                return DataRow(
-                  cells: [
-                    DataCell(Text(item.username)),
-                    DataCell(Text(item.company_name)),
-                    DataCell(Text(item.weight.toStringAsFixed(1))),
-                    DataCell(
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: item.is_above_threshold
-                              ? Colors.red[100]
-                              : Colors.green[100],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          item.is_above_threshold ? '초과' : '정상',
-                          style: TextStyle(
-                            color: item.is_above_threshold
-                                ? Colors.red[700]
-                                : Colors.green[700],
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
+              hint: const Text("유형을 선택해주세요"),
+              items: ["가공", "수확"].map((type) {
+                return DropdownMenuItem(value: type, child: Text(type));
               }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  selectedType = value;
+                  selectedByproductName = null;
+                  updateInfo(); // 유형 선택 시 갱신
+                });
+              },
             ),
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
 
-  /* 하단 네비게이션 바 (UI만 구현) */
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        currentIndex: 0,
-        selectedItemColor: Colors.indigo[600],
-        unselectedItemColor: Colors.grey[400],
-        backgroundColor: Colors.white,
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: '설정'),
-        ],
+
+            if (selectedType != null) ...[
+              const SizedBox(height: 16),
+              const Text('품목 선택'),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: selectedByproductName,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
+                hint: const Text("품목을 선택해주세요"),
+                items: byproductsCategory
+                    .where((item) => item['type'] == selectedType)
+                    .map(
+                      (item) =>
+                      DropdownMenuItem<String>(
+                        value: item['name'],
+                        child: Text(item['name']!),
+                      ),
+                ).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedByproductName = value;
+                    print("value : $value and selectedByproductName : $selectedByproductName");
+                    updateInfo(); // 품목 선택 시 갱신
+                  });
+                },
+              ),
+
+              const SizedBox(height: 16),
+              const Text('지역 선택'),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: selectedProvince,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
+                hint: const Text("지역을 선택하세요"),
+                items: provinces.map((province) {
+                  return DropdownMenuItem(
+                      value: province, child: Text(province));
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedProvince = value;
+                    updateInfo(); // 지역 선택 시 갱신
+                  });
+                },
+              ),
+            ],
+
+            const SizedBox(height: 24),
+
+            // 무게 설명
+            Text(
+              "${selectedProvince ?? '전국'}의 ${selectedByproductName ??
+                  ''}(${selectedType ?? '전국'}) 부산물의 총 무게",
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.indigo,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // 무게 데이터 표시
+            Text(
+              totalWeight != null
+                  ? "${totalWeight!.toStringAsFixed(1)} kg"
+                  : "데이터 없음",
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.indigo,
+              ),
+            ),
+
+            if (regionData != null && regionData!.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              const Text(
+                "지역별 무게 분포",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 300,
+                child: buildRegionBarChart(regionData!),
+              ),
+            ]
+            else if (data != null && data!.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              const Text(
+                "업체별 무게 분포",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 300,
+                child: buildCompanyBarChart(data!),
+              ),
+            ]
+
+          ],
+        ),
       ),
     );
   }
+}
+
+Widget buildCompanyBarChart(List<ByProduct> data) {
+  final barGroups = data.asMap().entries.map(
+        (entry) {
+          print("🤢🤢 $entry");
+      final index = entry.key;
+      final item = entry.value;
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            toY: item.weight,
+            color: Colors.teal,
+            width: 20,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ],
+      );
+    },
+  ).toList();
+
+  return BarChart(
+    BarChartData(
+      alignment: BarChartAlignment.spaceAround,
+      maxY: data.map((e) => e.weight).reduce((a, b) => a > b ? a : b) + 50,
+      minY: 0,
+      barGroups: barGroups,
+      titlesData: FlTitlesData(
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 40,
+            getTitlesWidget: (value, meta) {
+              return Text(
+                "${value.toInt()}kg",
+                style: const TextStyle(fontSize: 10),
+              );
+            },
+          ),
+        ),
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            getTitlesWidget: (value, meta) {
+              int idx = value.toInt();
+              return SideTitleWidget(
+                axisSide: meta.axisSide,
+                child: Text(
+                  idx >= 0 && idx < data.length ? data[idx].company_name : "",
+                  style: const TextStyle(fontSize: 10),
+                ),
+              );
+            },
+          ),
+        ),
+        topTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+      ),
+      borderData: FlBorderData(
+        show: true,
+        border: const Border(
+          bottom: BorderSide(),
+          left: BorderSide(),
+        ),
+      ),
+      gridData: FlGridData(show: true),
+    ),
+  );
 }

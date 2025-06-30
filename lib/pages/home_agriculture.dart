@@ -15,7 +15,8 @@ class AgriHome extends StatefulWidget {
 }
 
 class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
-  final byproductsCategory = [ //전체 품목, 추후 17 종까지 늘어날 예정
+  final byproductsCategory = [
+    //전체 품목, 추후 17 종까지 늘어날 예정
     {"name": "배추", "type": "수확"},
     {"name": "사과", "type": "가공"},
     {"name": "사과", "type": "수확"},
@@ -37,7 +38,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
   bool isGridView = true;
   String searchQuery = "";
 
-
   @override
   void initState() {
     super.initState();
@@ -46,30 +46,28 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     });
   }
 
-
   Future<void> init() async {
-    try{
+    try {
       await fetchUserByProduct();
       await updateData(userByproduct);
-    } catch(e){
+    } catch (e) {
       throw Exception("초기화 실패: $e");
     }
 
     //사용자 부산물 데이터(total) 조회
-    try{
+    try {
       await fetchUserByProduct();
-    } catch(e){
+    } catch (e) {
       throw Exception("fetchUserByProduct() failed : $e");
     }
 
     //데이터 시각화
-    try{
+    try {
       await updateData(userByproduct);
-    } catch(e){
+    } catch (e) {
       throw Exception("updateData() failed : $e");
     }
   }
-
 
   /// 현재 사용자에 대한 모든 부산물 데이터를 DB에서 조회해 userByproduct에 저장한다.
   Future<void> fetchUserByProduct() async {
@@ -78,36 +76,31 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
       "Content-Type": "application/x-www-form-urlencoded",
       "Authorization": "Token $token",
     };
-    final response = await http.get(url, headers : headers);
+    final response = await http.get(url, headers: headers);
 
     if (response.statusCode != 200) {
       throw Exception('서버 요청 실패: 상태코드 ${response.statusCode}');
     }
 
-    final Map<String, dynamic> rawData = jsonDecode(utf8.decode(response.bodyBytes));
+    final Map<String, dynamic> rawData = jsonDecode(
+      utf8.decode(response.bodyBytes),
+    );
     if (rawData.isEmpty) {
       throw Exception("데이터 없음");
     }
 
     //json parsing
     userByproduct = rawData.map(
-          (key, value) => MapEntry(key, List<Map<String, dynamic>>.from(value)),
+      (key, value) => MapEntry(key, List<Map<String, dynamic>>.from(value)),
     );
   }
 
-
-
- /// 출력을 편하게하는 helper function
+  /// 출력을 편하게하는 helper function
   void showSnack(String message, {Color color = Colors.green}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
   }
-
-
 
   /// 등록한 무게를 DB에 전달 및 UI 갱신
   Future<bool> addWeight() async {
@@ -137,11 +130,16 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
       return false;
     }
 
-    final response = await http.post(url,
-      headers: headers, body: {"name": name, "weight": weight, "type": type});
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: {"name": name, "weight": weight, "type": type},
+    );
 
     if (response.statusCode != 200) {
-      final err = response.body.isNotEmpty ? jsonDecode(response.body)['error'] ?? '알 수 없는 에러' : '알 수 없는 에러';
+      final err = response.body.isNotEmpty
+          ? jsonDecode(response.body)['error'] ?? '알 수 없는 에러'
+          : '알 수 없는 에러';
       showSnack("실패: $err", color: Colors.red);
       return false;
     }
@@ -155,7 +153,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     showSnack("성공적으로 등록되었습니다!");
     return true;
   }
-
 
   /// (name,type)에 해당하는 부산물 정보를 가져옴 (현재 쓰이지 않으나.. 장래 이용가능성이 있어 남겨둡니다.)
   /*
@@ -197,7 +194,11 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
   */
 
   /// data transform helper function
-  Map<String, dynamic> transformItem(String type, Map<String, dynamic> item, int defaultThreshold) {
+  Map<String, dynamic> transformItem(
+    String type,
+    Map<String, dynamic> item,
+    int defaultThreshold,
+  ) {
     final name = item['name'];
     final threshold = (item["threshold"] ?? defaultThreshold) as num;
     final weight = (item["weight_float"] ?? 0) as num;
@@ -212,15 +213,17 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     };
   }
 
-
   /// 데이터 시각화용 데이터를 갱신하는 함수
-  Future<void> updateData(Map<String, List<Map<String, dynamic>>> byproductList ) async {
-    List<Map<String, dynamic>> tempList = [];// 최종 UI 갱신 데이터
+  Future<void> updateData(
+    Map<String, List<Map<String, dynamic>>> byproductList,
+  ) async {
+    List<Map<String, dynamic>> tempList = []; // 최종 UI 갱신 데이터
     const defaultThreshold = 200; // !! default = 200 (데이터를 기반으로 수정해야함)
 
     for (final byproduct in byproductList.entries) {
       final type = byproduct.key; // "가공", "수확"
-      final products = byproduct.value; // {"name": "사과", "weight_float": 80, "threshold": 200, is_above: false} 추출
+      final products = byproduct
+          .value; // {"name": "사과", "weight_float": 80, "threshold": 200, is_above: false} 추출
 
       for (final item in products) {
         try {
@@ -236,10 +239,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
       donutData = tempList;
     });
   }
-
-
-
-
 
   // 사실 여기서부턴 제 손을 떠났는데.... 노력해보겠습니다.
 
@@ -278,7 +277,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
     if (percent >= 0.5) return 2;
     return 1;
   }
-
 
   /// 필터링 및 정렬된 데이터 반환
   List<Map<String, dynamic>> getFilteredData() {
@@ -368,8 +366,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-
-
             // 상태 아이콘 + 이름 + 유형 (중앙 정렬)
             Icon(getStatusIcon(percent), color: progressColor, size: 16),
             SizedBox(height: 4),
@@ -406,8 +402,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
             ),
             SizedBox(height: 8),
 
-
-
             // 원형 진행률 표시
             CircularPercentIndicator(
               radius: 35.0,
@@ -442,8 +436,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
             ),
             SizedBox(height: 8),
 
-
-
             // 무게 정보
             Text(
               "${item["weight"]}/${item["threshold"]}kg",
@@ -454,8 +446,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
               ),
               textAlign: TextAlign.center,
             ),
-
-
 
             // 위험 상태 표시
             if (percent >= 0.9)
@@ -836,7 +826,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
 
           /// 메인 콘텐츠 (Grid / List 뷰)
           Expanded(
-            child: filteredData.isEmpty //검색결과 없음
+            child:
+                filteredData
+                    .isEmpty //검색결과 없음
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -857,7 +849,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                       ],
                     ),
                   )
-
                 : isGridView // 그리드 뷰
                 ? GridView.builder(
                     padding: EdgeInsets.all(12),
@@ -872,8 +863,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
                       return _buildCompactGridCard(filteredData[index]);
                     },
                   )
-
-                : ListView.builder(// 리스트 뷰
+                : ListView.builder(
+                    // 리스트 뷰
                     padding: EdgeInsets.symmetric(vertical: 8),
                     itemCount: filteredData.length,
                     itemBuilder: (context, index) {
@@ -883,7 +874,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
           ),
         ],
       ),
-
 
       /// 하단 부산물 추가 버튼
       floatingActionButton: FloatingActionButton(

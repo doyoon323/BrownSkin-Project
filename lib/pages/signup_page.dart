@@ -19,17 +19,16 @@ class _SignUpPageState extends State<SignUpPage> {
   final _passwordController = TextEditingController();
   final _password2Controller = TextEditingController();
   final _companyController = TextEditingController();
-  final _addr1Controller = TextEditingController();   // 시도
-  final _addr2Controller = TextEditingController();   // 시군구
-  final _addrDetailController = TextEditingController();  // 상세주소
+  final _addr1Controller = TextEditingController(); // 시도
+  final _addr2Controller = TextEditingController(); // 시군구
+  final _addrDetailController = TextEditingController(); // 상세주소
 
-
-//드롭다운, 비번가리기 등등
+  //드롭다운, 비번가리기 등등
   String? _selectedRole;
   bool _showPassword = false;
   bool _showConfirmPassword = false;
 
-//회원가입 처리 함수
+  //회원가입 처리 함수
   void _register() async {
     if (_passwordController.text != _password2Controller.text) {
       _showMessage('비밀번호가 일치하지 않습니다.');
@@ -39,7 +38,7 @@ class _SignUpPageState extends State<SignUpPage> {
       _showMessage('역할을 선택하세요.');
       return;
     }
-//서버로 데이터 전송
+    //서버로 데이터 전송
     var url = Uri.parse('$BASE_URL/auth/api-register');
 
     try {
@@ -60,7 +59,7 @@ class _SignUpPageState extends State<SignUpPage> {
       );
 
       if (!mounted) return; // context 안전 처리
-//응답 결과 처리
+      //응답 결과 처리
       if (response.statusCode == 201) {
         _showMessage('회원가입 성공');
         Navigator.pushReplacement(
@@ -88,7 +87,8 @@ class _SignUpPageState extends State<SignUpPage> {
       }
     }
   }
-//팝업메시지
+
+  //팝업메시지
   void _showMessage(String msg) {
     showDialog(
       context: context,
@@ -98,12 +98,13 @@ class _SignUpPageState extends State<SignUpPage> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('확인'),
-          )
+          ),
         ],
       ),
     );
   }
-//여기부터는 디자인툴
+
+  //여기부터는 디자인툴
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -132,8 +133,18 @@ class _SignUpPageState extends State<SignUpPage> {
                   children: const [
                     Icon(Icons.person_add, color: Colors.white, size: 32),
                     SizedBox(height: 8),
-                    Text('회원가입', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                    Text('Join BrownSkin', style: TextStyle(color: Colors.white70)),
+                    Text(
+                      '회원가입',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Join BrownSkin',
+                      style: TextStyle(color: Colors.white70),
+                    ),
                   ],
                 ),
               ),
@@ -141,42 +152,92 @@ class _SignUpPageState extends State<SignUpPage> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    _buildLabeledField('아이디', _usernameController, TextInputType.text),
-                    _buildLabeledField('이메일', _emailController, TextInputType.emailAddress),
-                    _buildPasswordField('비밀번호', _passwordController, _showPassword, () {
-                      setState(() => _showPassword = !_showPassword);
-                    }),
-                    _buildPasswordField('비밀번호 확인', _password2Controller, _showConfirmPassword, () {
-                      setState(() => _showConfirmPassword = !_showConfirmPassword);
-                    }),
-                    _buildLabeledField('회사명', _companyController, TextInputType.text),
-                    _buildLabeledField('시도', _addr1Controller, TextInputType.text),
-                    _buildLabeledField('시군구', _addr2Controller, TextInputType.text),
-                    _buildLabeledField('상세 주소', _addrDetailController, TextInputType.text),
+                    _buildLabeledField(
+                      '아이디',
+                      _usernameController,
+                      TextInputType.text,
+                    ),
+                    _buildLabeledField(
+                      '이메일',
+                      _emailController,
+                      TextInputType.emailAddress,
+                    ),
+                    _buildPasswordField(
+                      '비밀번호',
+                      _passwordController,
+                      _showPassword,
+                      () {
+                        setState(() => _showPassword = !_showPassword);
+                      },
+                    ),
+                    _buildPasswordField(
+                      '비밀번호 확인',
+                      _password2Controller,
+                      _showConfirmPassword,
+                      () {
+                        setState(
+                          () => _showConfirmPassword = !_showConfirmPassword,
+                        );
+                      },
+                    ),
+                    _buildLabeledField(
+                      '회사명',
+                      _companyController,
+                      TextInputType.text,
+                    ),
+                    _buildLabeledField(
+                      '시도',
+                      _addr1Controller,
+                      TextInputType.text,
+                    ),
+                    _buildLabeledField(
+                      '시군구',
+                      _addr2Controller,
+                      TextInputType.text,
+                    ),
+                    _buildLabeledField(
+                      '상세 주소',
+                      _addrDetailController,
+                      TextInputType.text,
+                    ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       decoration: InputDecoration(
                         labelText: '역할 선택',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                       value: _selectedRole,
                       items: const [
                         DropdownMenuItem(value: 'disposer', child: Text('배출사')),
-                        DropdownMenuItem(value: 'distributor', child: Text('유통사')),
-                        DropdownMenuItem(value: 'preprocessor', child: Text('전처리사')),
+                        DropdownMenuItem(
+                          value: 'distributor',
+                          child: Text('유통사'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'preprocessor',
+                          child: Text('전처리사'),
+                        ),
                       ],
-                      onChanged: (value) => setState(() => _selectedRole = value),
+                      onChanged: (value) =>
+                          setState(() => _selectedRole = value),
                     ),
                     const SizedBox(height: 20),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.brown,
                         minimumSize: const Size(double.infinity, 48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                       onPressed: _register,
                       icon: const Icon(Icons.person_add, color: Colors.white),
-                      label: const Text('회원가입', style: TextStyle(color: Colors.white)),
+                      label: const Text(
+                        '회원가입',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
@@ -188,7 +249,11 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  Widget _buildLabeledField(String label, TextEditingController controller, TextInputType type) {
+  Widget _buildLabeledField(
+    String label,
+    TextEditingController controller,
+    TextInputType type,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
@@ -202,7 +267,12 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  Widget _buildPasswordField(String label, TextEditingController controller, bool visible, VoidCallback toggle) {
+  Widget _buildPasswordField(
+    String label,
+    TextEditingController controller,
+    bool visible,
+    VoidCallback toggle,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
