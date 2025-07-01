@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:brownskin_app/pages/admin/home_admin.dart';
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/constants.dart';
 import 'package:http/http.dart' as http;
@@ -52,7 +51,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage> {
 
     final request = await http.post(
       Uri.parse(nextUrl),
-      headers: {"Content-Type": "application/json",
+      headers: {
         'Authorization': 'Token ${widget.token}'},
       body: {
         'type': selectedType,
@@ -61,13 +60,11 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage> {
       },
     );
 
-    print(request.body);
-
     if (request.statusCode == 200) {
       final body = jsonDecode(utf8.decode(request.bodyBytes));
+      print(request.body);
       return true;
     }
-
     return false;
   }
 

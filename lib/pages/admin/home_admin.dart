@@ -18,7 +18,6 @@ class AdminHomePage extends StatefulWidget {
   State<AdminHomePage> createState() => _AdminHomePageState();
 }
 
-
 class _AdminHomePageState extends State<AdminHomePage>
     with TickerProviderStateMixin {
 
@@ -26,12 +25,10 @@ class _AdminHomePageState extends State<AdminHomePage>
   List<String> usernames = []; // 사용자 이름 추출
   List<double> weights = []; // 무게 추출
 
-
   String? selectedProvince; // default = 미선택
   String? selectedType = "가공"; // default = 가공
   Map<String, String?>? selectedByproduct = {"name": "사과", "type": "가공"};
   String? selectedByproductName = "사과"; // default = 가공
-
 
   List<Map<String, String?>> byproductsCategory = [
     {"type": "가공", "name": "사과"},
@@ -41,19 +38,18 @@ class _AdminHomePageState extends State<AdminHomePage>
     {"type": "수확", "name": "옥수수"},
   ];
 
-
-
   List<String> provinces = [];
-
   List<RegionWeight>? regionData;
-
   double? totalWeight = 0.0;
 
   //UI 구성
   bool isLoading = true;
   String? errorMessage;
   late AnimationController _animationController;
+  late AnimationController _chartAnimationController;
   late Animation<double> _fadeAnimation;
+  late Animation<double> _slideAnimation;
+  late Animation<double> _chartAnimation;
 
   @override
   void initState() {
@@ -62,24 +58,33 @@ class _AdminHomePageState extends State<AdminHomePage>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
+    _chartAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
+    _slideAnimation = Tween<double>(begin: 50.0, end: 0.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
+    );
 
-    // 최초 페이지 로딩 시 데이터 불러오기
+    _chartAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _chartAnimationController, curve: Curves.elasticOut),
+    );
+
+    // 데이터 로드  (화면에 띄울 데이터 분류, 동적 지역 정보)
     updateInfo();
     getProvinceData();
   }
 
-
   Future<void> getProvinceData() async {
-    print("✅ getProvinceData() 호출됨");
     String? nextUrl = "$BASE_URL/api/byprod-list?page=1";
     List<String> temp = [];
 
     while (nextUrl != null) {
-      print("✅ while 루프 시작: $nextUrl");
       final result = await http.get(
         Uri.parse(nextUrl),
         headers: {'Authorization': 'Token ${widget.token}'},
@@ -87,23 +92,20 @@ class _AdminHomePageState extends State<AdminHomePage>
 
       if (result.statusCode == 200) {
         final body = jsonDecode(utf8.decode(result.bodyBytes));
-        final List<dynamic> results = body['results'];
+        final List<dynamic> results = body['results']; // 관리자가 가진 모든 업체의 데이터를 불러와서
 
-        print("✅$results");
-        // 여기서 addr1만 추출
-        temp.addAll(
-            results.map<String>((item) => item['user']['addr1'] as String)
-        );
+        // addr1 (시,도 정보)만 추출
+        temp.addAll(results.map<String>((item) => item['user']['addr1'] as String));
 
         nextUrl = body['next'] as String?;
       } else {
-        throw Exception('서버 오류: ${result.statusCode}');
+        throw Exception('지역 정보 불러오기 실패 : ${result.statusCode}');
       }
     }
 
     // 중복 제거
     setState(() {
-      provinces = temp.toSet().toList(); // 중복 제거해서 리스트에 담기
+      provinces = temp.toSet().toList();
       provinces = ["전국"] + provinces;
     });
 
@@ -113,12 +115,16 @@ class _AdminHomePageState extends State<AdminHomePage>
   @override
   void dispose() {
     _animationController.dispose();
+    _chartAnimationController.dispose();
     super.dispose();
   }
 
   void updateInfo() async {
-    print("👁️ UPDATA INFO ");
-    String? selectedDistrict = null;
+    setState(() {
+      isLoading = true;
+    });
+
+    String? selectedDistrict = null; // 시도 까지만 구현. 더 자세한 주소는.. (이하생략)
     List<RegionWeight> tempList1 = [];
 
     var sum_data;
@@ -139,8 +145,7 @@ class _AdminHomePageState extends State<AdminHomePage>
       );
     }
 
-    if (sum_data.containsKey("results") &&
-        sum_data["results"] != null) { //전국단위라 모든 시,도를 긁어ㄴ오는ing....
+    if (sum_data.containsKey("results") && sum_data["results"] != null) { //전국단위라 모든 시,도를 긁어ㄴ오는ing....
       final resultsMap = sum_data["results"] as Map<String, dynamic>;
 
       // Map을 entries로 순회해서 RegionWeight 리스트 생성
@@ -155,14 +160,19 @@ class _AdminHomePageState extends State<AdminHomePage>
       setState(() {
         regionData = tempList1;
         totalWeight = (sum_data["total_weight"] as num?)?.toDouble();
+        isLoading = false;
       });
     } else { //하나의 시만 보여주는 ing... 근데 무게만 보이면 심심하니까... 업체도 그냥 전부 보여주자는 스불재..
 
       await getDisposerData(selectedProvince);
       setState(() {
         totalWeight = (sum_data["total_weight"] as num?)?.toDouble();
+        isLoading = false;
       });
     }
+
+    _animationController.forward();
+    _chartAnimationController.forward();
   }
 
   // A안: default를 가공/사과로 설정해두기
@@ -184,7 +194,6 @@ class _AdminHomePageState extends State<AdminHomePage>
       "Authorization": "Token ${widget.token}",
     };
 
-
     final response = await http.get(Uri.parse(url), headers: headers);
 
     if (response.statusCode == 200) {
@@ -197,7 +206,6 @@ class _AdminHomePageState extends State<AdminHomePage>
       throw Exception('Failed to load data');
     }
   }
-
 
   /* 서버에서 데이터를 받아오는 함수 */
   Future<void> getDisposerData(String? addr1) async {
@@ -261,7 +269,6 @@ class _AdminHomePageState extends State<AdminHomePage>
     }
   }
 
-
   Widget buildRegionBarChart(List<RegionWeight> data) {
     final barGroups = data
         .asMap()
@@ -275,9 +282,17 @@ class _AdminHomePageState extends State<AdminHomePage>
           barRods: [
             BarChartRodData(
               toY: item.weight,
-              color: Colors.indigo,
-              width: 20,
-              borderRadius: BorderRadius.circular(4),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.green.shade300,
+                  Colors.green.shade600,
+                  Colors.green.shade800,
+                ],
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
+              width: 24,
+              borderRadius: BorderRadius.circular(8),
             ),
           ],
         );
@@ -285,56 +300,85 @@ class _AdminHomePageState extends State<AdminHomePage>
     )
         .toList();
 
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: data.map((e) => e.weight).reduce((a, b) => a > b ? a : b) + 50,
-        minY: 0,
-        barGroups: barGroups,
-        titlesData: FlTitlesData(
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 40,
-              getTitlesWidget: (value, meta) {
-                return Text(
-                  "${value.toInt()}kg",
-                  style: const TextStyle(fontSize: 10),
-                );
-              },
-            ),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                int idx = value.toInt();
-                return SideTitleWidget(
-                  axisSide: meta.axisSide,
-                  child: Text(
-                    idx >= 0 && idx < data.length ? data[idx].city : "",
-                    style: const TextStyle(fontSize: 10),
+    return AnimatedBuilder(
+      animation: _chartAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _chartAnimation.value,
+          child: BarChart(
+            BarChartData(
+              alignment: BarChartAlignment.spaceAround,
+              maxY: data.map((e) => e.weight).reduce((a, b) => a > b ? a : b) + 50,
+              minY: 0,
+              barGroups: barGroups,
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 50,
+                    getTitlesWidget: (value, meta) {
+                      return Text(
+                        "${value.toInt()}kg",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade600,
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      int idx = value.toInt();
+                      return SideTitleWidget(
+                        axisSide: meta.axisSide,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            idx >= 0 && idx < data.length ? data[idx].city : "",
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                  left: BorderSide(color: Colors.grey.shade300, width: 1),
+                ),
+              ),
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: 50,
+                getDrawingHorizontalLine: (value) {
+                  return FlLine(
+                    color: Colors.grey.shade200,
+                    strokeWidth: 1,
+                  );
+                },
+              ),
             ),
           ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-        ),
-        borderData: FlBorderData(
-          show: true,
-          border: const Border(
-            bottom: BorderSide(),
-            left: BorderSide(),
-          ),
-        ),
-        gridData: FlGridData(show: true),
-      ),
+        );
+      },
     );
   }
 
@@ -363,190 +407,459 @@ class _AdminHomePageState extends State<AdminHomePage>
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('무게 데이터 관리'),
+        title: const Text(
+          '부산물 데이터 관리',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: Colors.green.shade700,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.green.shade600, Colors.green.shade800],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
       ),
-      body: SingleChildScrollView(
+      body: isLoading
+          ? _buildLoadingWidget()
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-
-
-            // 부산물 유형 선택
-            const Text('부산물 유형 선택'),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: selectedType,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Colors.grey[50],
-              ),
-              hint: const Text("유형을 선택해주세요"),
-              items: ["가공", "수확"].map((type) {
-                return DropdownMenuItem(value: type, child: Text(type));
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  selectedType = value;
-                  selectedByproductName = null;
-                  updateInfo(); // 유형 선택 시 갱신
-                });
-              },
-            ),
-
-
-            if (selectedType != null) ...[
-              const SizedBox(height: 16),
-              const Text('품목 선택'),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: selectedByproductName,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                ),
-                hint: const Text("품목을 선택해주세요"),
-                items: byproductsCategory
-                    .where((item) => item['type'] == selectedType)
-                    .map(
-                      (item) =>
-                      DropdownMenuItem<String>(
-                        value: item['name'],
-                        child: Text(item['name']!),
-                      ),
-                ).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedByproductName = value;
-                    print(
-                        "value : $value and selectedByproductName : $selectedByproductName");
-                    updateInfo(); // 품목 선택 시 갱신
-                  });
-                },
-              ),
-
-              const SizedBox(height: 16),
-              const Text('지역 선택'),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: selectedProvince,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                ),
-                hint: const Text("지역을 선택하세요"),
-                items: provinces.map((province) {
-                  return DropdownMenuItem(
-                      value: province, child: Text(province));
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedProvince = value;
-                    updateInfo(); // 지역 선택 시 갱신
-                  });
-                },
-              ),
-            ],
-
-            const SizedBox(height: 24),
-
-            // 무게 설명
-            Text(
-              "${selectedProvince ?? '전국'}의 ${selectedByproductName ??
-                  ''}(${selectedType ?? '전국'}) 부산물의 총 무게",
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.indigo,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // 무게 데이터 표시
-            Text(
-              totalWeight != null
-                  ? "${totalWeight!.toStringAsFixed(1)} kg"
-                  : "데이터 없음",
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.indigo,
-              ),
-            ),
-
-            if (regionData != null && regionData!.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              const Text(
-                "지역별 무게 분포",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+        child: AnimatedBuilder(
+          animation: _fadeAnimation,
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(0, _slideAnimation.value),
+              child: Opacity(
+                opacity: _fadeAnimation.value,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildFilterSection(),
+                    const SizedBox(height: 24),
+                    _buildSummaryCard(),
+                    const SizedBox(height: 24),
+                    _buildChartSection(),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 300,
-                child: buildRegionBarChart(regionData!),
-              ),
-            ]
-            else
-              if (data != null && data!.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                const Text(
-                  "업체별 무게 분포",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 300,
-                  child: buildCompanyBarChart(data!),
-                ),
-              ]
-          ],
+            );
+          },
         ),
       ),
       bottomNavigationBar: buildBottomNavigationBar(context),
     );
   }
 
+  Widget _buildLoadingWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.shade300,
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade600),
+                  strokeWidth: 3,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '데이터를 불러오는 중...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget buildBottomNavigationBar(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: selectedIndex,
-      onTap: (index) => _onItemTapped(context, index),
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: '홈',
+  Widget _buildFilterSection() {
+    return Card(
+      elevation: 4,
+      shadowColor: Colors.grey.shade300,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [Colors.white, Colors.grey.shade50],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.settings),
-          label: '임계 설정',
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.filter_list, color: Colors.green.shade600, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  '필터 설정',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // 부산물 유형 선택
+            _buildDropdownField(
+              label: '부산물 유형',
+              icon: Icons.category,
+              value: selectedType,
+              items: ["가공", "수확"],
+              onChanged: (value) {
+                setState(() {
+                  selectedType = value;
+                  selectedByproductName = null;
+                  _chartAnimationController.reset();
+                  updateInfo();
+                });
+              },
+            ),
+
+            if (selectedType != null) ...[
+              const SizedBox(height: 16),
+              _buildDropdownField(
+                label: '품목',
+                icon: Icons.agriculture,
+                value: selectedByproductName,
+                items: byproductsCategory
+                    .where((item) => item['type'] == selectedType)
+                    .map((item) => item['name']!)
+                    .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedByproductName = value;
+                    _chartAnimationController.reset();
+                    updateInfo();
+                  });
+                },
+              ),
+
+              const SizedBox(height: 16),
+              _buildDropdownField(
+                label: '지역',
+                icon: Icons.location_on,
+                value: selectedProvince,
+                items: provinces,
+                onChanged: (value) {
+                  setState(() {
+                    selectedProvince = value;
+                    _chartAnimationController.reset();
+                    updateInfo();
+                  });
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownField({
+    required String label,
+    required IconData icon,
+    required String? value,
+    required List<String> items,
+    required Function(String?) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: Colors.grey.shade600),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
+            color: Colors.white,
+          ),
+          child: DropdownButtonFormField<String>(
+            value: value,
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              hintText: "$label을 선택해주세요",
+              hintStyle: TextStyle(color: Colors.grey.shade500),
+            ),
+            items: items.map((item) {
+              return DropdownMenuItem(
+                value: item,
+                child: Text(
+                  item,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+              );
+            }).toList(),
+            onChanged: onChanged,
+          ),
         ),
       ],
     );
   }
 
+  Widget _buildSummaryCard() {
+    return Card(
+      elevation: 6,
+      shadowColor: Colors.green.shade200,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            colors: [Colors.green.shade600, Colors.green.shade800],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.scale,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '총 무게',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "${selectedProvince ?? '전국'}의 ${selectedByproductName ?? ''}(${selectedType ?? '전국'}) 부산물",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white60,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              totalWeight != null
+                  ? "${totalWeight!.toStringAsFixed(1)} kg"
+                  : "데이터 없음",
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChartSection() {
+    if (regionData != null && regionData!.isNotEmpty) {
+      return _buildChartCard(
+        title: "지역별 무게 분포",
+        icon: Icons.bar_chart,
+        child: buildRegionBarChart(regionData!),
+      );
+    } else if (data.isNotEmpty) {
+      return _buildChartCard(
+        title: "업체별 무게 분포",
+        icon: Icons.business,
+        child: buildCompanyBarChart(data),
+      );
+    } else {
+      return _buildEmptyDataCard();
+    }
+  }
+
+  Widget _buildChartCard({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Card(
+      elevation: 4,
+      shadowColor: Colors.grey.shade300,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: Colors.green.shade600, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            SizedBox(height: 300, child: child),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyDataCard() {
+    return Card(
+      elevation: 4,
+      shadowColor: Colors.grey.shade300,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+        ),
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          children: [
+            Icon(
+              Icons.inbox,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '표시할 데이터가 없습니다',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '필터를 조정해보세요',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildBottomNavigationBar(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade300,
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: BottomNavigationBar(
+        currentIndex: selectedIndex,
+        onTap: (index) => _onItemTapped(context, index),
+        backgroundColor: Colors.white,
+        selectedItemColor: Colors.green.shade600,
+        unselectedItemColor: Colors.grey.shade500,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: '홈',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_rounded),
+            label: '임계 설정',
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget buildCompanyBarChart(List<ByProduct> data) {
     final barGroups = data
@@ -554,7 +867,6 @@ class _AdminHomePageState extends State<AdminHomePage>
         .entries
         .map(
           (entry) {
-        print("🤢🤢 $entry");
         final index = entry.key;
         final item = entry.value;
         return BarChartGroupData(
@@ -562,9 +874,17 @@ class _AdminHomePageState extends State<AdminHomePage>
           barRods: [
             BarChartRodData(
               toY: item.weight,
-              color: Colors.teal,
-              width: 20,
-              borderRadius: BorderRadius.circular(4),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.teal.shade300,
+                  Colors.teal.shade600,
+                  Colors.teal.shade800,
+                ],
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
+              width: 24,
+              borderRadius: BorderRadius.circular(8),
             ),
           ],
         );
@@ -572,56 +892,85 @@ class _AdminHomePageState extends State<AdminHomePage>
     )
         .toList();
 
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: data.map((e) => e.weight).reduce((a, b) => a > b ? a : b) + 50,
-        minY: 0,
-        barGroups: barGroups,
-        titlesData: FlTitlesData(
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 40,
-              getTitlesWidget: (value, meta) {
-                return Text(
-                  "${value.toInt()}kg",
-                  style: const TextStyle(fontSize: 10),
-                );
-              },
-            ),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                int idx = value.toInt();
-                return SideTitleWidget(
-                  axisSide: meta.axisSide,
-                  child: Text(
-                    idx >= 0 && idx < data.length ? data[idx].company_name : "",
-                    style: const TextStyle(fontSize: 10),
+    return AnimatedBuilder(
+      animation: _chartAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _chartAnimation.value,
+          child: BarChart(
+            BarChartData(
+              alignment: BarChartAlignment.spaceAround,
+              maxY: data.map((e) => e.weight).reduce((a, b) => a > b ? a : b) + 50,
+              minY: 0,
+              barGroups: barGroups,
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 50,
+                    getTitlesWidget: (value, meta) {
+                      return Text(
+                        "${value.toInt()}kg",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade600,
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      int idx = value.toInt();
+                      return SideTitleWidget(
+                        axisSide: meta.axisSide,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            idx >= 0 && idx < data.length ? data[idx].company_name : "",
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                  left: BorderSide(color: Colors.grey.shade300, width: 1),
+                ),
+              ),
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: 50,
+                getDrawingHorizontalLine: (value) {
+                  return FlLine(
+                    color: Colors.grey.shade200,
+                    strokeWidth: 1,
+                  );
+                },
+              ),
             ),
           ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-        ),
-        borderData: FlBorderData(
-          show: true,
-          border: const Border(
-            bottom: BorderSide(),
-            left: BorderSide(),
-          ),
-        ),
-        gridData: FlGridData(show: true),
-      ),
+        );
+      },
     );
   }
 }
