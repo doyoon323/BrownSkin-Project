@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/constants.dart';
 import 'package:percent_indicator/percent_indicator.dart';
-import 'package:brownskin_app/pages/deliveryReq_agriculture.dart';
+import 'package:brownskin_app/pages/agriculture/deliveryReq_agriculture.dart';
 
 class AgriHome extends StatefulWidget {
   final String token;

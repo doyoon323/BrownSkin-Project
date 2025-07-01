@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:brownskin_app/model/ByProduct.dart';
 import 'package:brownskin_app/model/RegionWeight.dart';
 import 'dart:async';
+import 'package:brownskin_app/pages/admin/setThreshold_admin.dart';
 
 //관리자 홈 화면 (부산물 데이터를 시각화하여 보여준다)
 class AdminHomePage extends StatefulWidget {
@@ -16,6 +17,7 @@ class AdminHomePage extends StatefulWidget {
   @override
   State<AdminHomePage> createState() => _AdminHomePageState();
 }
+
 
 class _AdminHomePageState extends State<AdminHomePage>
     with TickerProviderStateMixin {
@@ -30,13 +32,16 @@ class _AdminHomePageState extends State<AdminHomePage>
   Map<String, String?>? selectedByproduct = {"name": "사과", "type": "가공"};
   String? selectedByproductName = "사과"; // default = 가공
 
-  static const List<Map<String, String?>> byproductsCategory = [
+
+  List<Map<String, String?>> byproductsCategory = [
     {"type": "가공", "name": "사과"},
     {"type": "수확", "name": "사과"},
     {"type": "수확", "name": "배추"},
     {"type": "수확", "name": "참깨"},
     {"type": "수확", "name": "옥수수"},
   ];
+
+
 
   List<String> provinces = [];
 
@@ -117,7 +122,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     List<RegionWeight> tempList1 = [];
 
     var sum_data;
-    if (selectedProvince == "전국"){
+    if (selectedProvince == "전국") {
       sum_data = await getData(
         selectedType,
         selectedByproductName,
@@ -134,13 +139,15 @@ class _AdminHomePageState extends State<AdminHomePage>
       );
     }
 
-    if (sum_data.containsKey("results") && sum_data["results"] != null) { //전국단위라 모든 시,도를 긁어ㄴ오는ing....
+    if (sum_data.containsKey("results") &&
+        sum_data["results"] != null) { //전국단위라 모든 시,도를 긁어ㄴ오는ing....
       final resultsMap = sum_data["results"] as Map<String, dynamic>;
 
       // Map을 entries로 순회해서 RegionWeight 리스트 생성
       tempList1 = resultsMap.entries.map(
-            (entry) => RegionWeight(
-          weight: (entry.value as num).toDouble(),
+            (entry) =>
+            RegionWeight(
+              weight: (entry.value as num).toDouble(),
               city: entry.key,
             ),
       ).toList();
@@ -181,8 +188,8 @@ class _AdminHomePageState extends State<AdminHomePage>
     final response = await http.get(Uri.parse(url), headers: headers);
 
     if (response.statusCode == 200) {
-      //전국이면 results, addr1이면 total weight;
       // 현 상황에서는 total_weight 외 필요 하지 않음
+      //전국이면 results, addr1이면 total weight;
       final data = jsonDecode(
         response.body,); //result = weight of type-name fruit in address
       return data;
@@ -190,7 +197,6 @@ class _AdminHomePageState extends State<AdminHomePage>
       throw Exception('Failed to load data');
     }
   }
-
 
 
   /* 서버에서 데이터를 받아오는 함수 */
@@ -203,9 +209,9 @@ class _AdminHomePageState extends State<AdminHomePage>
 
     try {
       /* 첫 페이지 URL */
-
-      String? nextUrl = "$BASE_URL/api/byprod-list?"+"addr1=$addr1&"+"type=$selectedType&"+"name=$selectedByproductName&"
-          +"page=1";
+      String? nextUrl = "$BASE_URL/api/byprod-list?" + "addr1=$addr1&" +
+          "type=$selectedType&" + "name=$selectedByproductName&"
+          + "page=1";
       List<ByProduct> allData = [];
 
       /* 페이지 순회하며 모든 데이터를 받아옴 */
@@ -257,7 +263,10 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
   Widget buildRegionBarChart(List<RegionWeight> data) {
-    final barGroups = data.asMap().entries.map(
+    final barGroups = data
+        .asMap()
+        .entries
+        .map(
           (entry) {
         final index = entry.key;
         final item = entry.value;
@@ -273,7 +282,8 @@ class _AdminHomePageState extends State<AdminHomePage>
           ],
         );
       },
-    ).toList();
+    )
+        .toList();
 
     return BarChart(
       BarChartData(
@@ -326,6 +336,31 @@ class _AdminHomePageState extends State<AdminHomePage>
         gridData: FlGridData(show: true),
       ),
     );
+  }
+
+  int selectedIndex = 0;
+
+  void _onItemTapped(BuildContext context, int index) async {
+    setState(() {
+      selectedIndex = index;
+    });
+
+    if (index == 0) {
+      // 홈
+    } else if (index == 1) {
+      // 임계 설정 페이지로 이동
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => SetThresholdAdminPage(provinces: provinces, token : widget.token)
+        ),
+      ).then ((result) {
+        if (result == true){
+          initState();
+        }
+      }
+      );
+    }
   }
 
 
@@ -394,7 +429,8 @@ class _AdminHomePageState extends State<AdminHomePage>
                 onChanged: (value) {
                   setState(() {
                     selectedByproductName = value;
-                    print("value : $value and selectedByproductName : $selectedByproductName");
+                    print(
+                        "value : $value and selectedByproductName : $selectedByproductName");
                     updateInfo(); // 품목 선택 시 갱신
                   });
                 },
@@ -469,99 +505,123 @@ class _AdminHomePageState extends State<AdminHomePage>
                 child: buildRegionBarChart(regionData!),
               ),
             ]
-            else if (data != null && data!.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              const Text(
-                "업체별 무게 분포",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+            else
+              if (data != null && data!.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                const Text(
+                  "업체별 무게 분포",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 300,
-                child: buildCompanyBarChart(data!),
-              ),
-            ]
-
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 300,
+                  child: buildCompanyBarChart(data!),
+                ),
+              ]
           ],
         ),
       ),
+      bottomNavigationBar: buildBottomNavigationBar(context),
     );
   }
-}
 
-Widget buildCompanyBarChart(List<ByProduct> data) {
-  final barGroups = data.asMap().entries.map(
-        (entry) {
-          print("🤢🤢 $entry");
-      final index = entry.key;
-      final item = entry.value;
-      return BarChartGroupData(
-        x: index,
-        barRods: [
-          BarChartRodData(
-            toY: item.weight,
-            color: Colors.teal,
-            width: 20,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ],
-      );
-    },
-  ).toList();
 
-  return BarChart(
-    BarChartData(
-      alignment: BarChartAlignment.spaceAround,
-      maxY: data.map((e) => e.weight).reduce((a, b) => a > b ? a : b) + 50,
-      minY: 0,
-      barGroups: barGroups,
-      titlesData: FlTitlesData(
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 40,
-            getTitlesWidget: (value, meta) {
-              return Text(
-                "${value.toInt()}kg",
-                style: const TextStyle(fontSize: 10),
-              );
-            },
-          ),
+  Widget buildBottomNavigationBar(BuildContext context) {
+    return BottomNavigationBar(
+      currentIndex: selectedIndex,
+      onTap: (index) => _onItemTapped(context, index),
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home),
+          label: '홈',
         ),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            getTitlesWidget: (value, meta) {
-              int idx = value.toInt();
-              return SideTitleWidget(
-                axisSide: meta.axisSide,
-                child: Text(
-                  idx >= 0 && idx < data.length ? data[idx].company_name : "",
+        BottomNavigationBarItem(
+          icon: Icon(Icons.settings),
+          label: '임계 설정',
+        ),
+      ],
+    );
+  }
+
+
+  Widget buildCompanyBarChart(List<ByProduct> data) {
+    final barGroups = data
+        .asMap()
+        .entries
+        .map(
+          (entry) {
+        print("🤢🤢 $entry");
+        final index = entry.key;
+        final item = entry.value;
+        return BarChartGroupData(
+          x: index,
+          barRods: [
+            BarChartRodData(
+              toY: item.weight,
+              color: Colors.teal,
+              width: 20,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ],
+        );
+      },
+    )
+        .toList();
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: data.map((e) => e.weight).reduce((a, b) => a > b ? a : b) + 50,
+        minY: 0,
+        barGroups: barGroups,
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  "${value.toInt()}kg",
                   style: const TextStyle(fontSize: 10),
-                ),
-              );
-            },
+                );
+              },
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                int idx = value.toInt();
+                return SideTitleWidget(
+                  axisSide: meta.axisSide,
+                  child: Text(
+                    idx >= 0 && idx < data.length ? data[idx].company_name : "",
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                );
+              },
+            ),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
           ),
         ),
-        topTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
+        borderData: FlBorderData(
+          show: true,
+          border: const Border(
+            bottom: BorderSide(),
+            left: BorderSide(),
+          ),
         ),
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
+        gridData: FlGridData(show: true),
       ),
-      borderData: FlBorderData(
-        show: true,
-        border: const Border(
-          bottom: BorderSide(),
-          left: BorderSide(),
-        ),
-      ),
-      gridData: FlGridData(show: true),
-    ),
-  );
+    );
+  }
 }

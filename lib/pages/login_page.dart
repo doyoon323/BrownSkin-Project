@@ -4,8 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:brownskin_app/constants.dart';
 import 'dart:convert';
 import 'signup_page.dart';
-import 'home_agriculture.dart';
-import 'home_admin.dart';
+import 'agriculture/home_agriculture.dart';
+import 'admin/home_admin.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

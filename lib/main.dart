@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/pages/login_page.dart';
-import 'package:brownskin_app/pages/home_admin.dart';
+import 'package:brownskin_app/pages/admin/home_admin.dart';
 
 void main() {
   runApp(const MyApp());
@@ -9,7 +9,7 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  final token = "14259b24626fe1ada57e4aa18aa0de4247610f23";
+  //final token = "14259b24626fe1ada57e4aa18aa0de4247610f23";
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -18,9 +18,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.brown),
       ),
-      home: AdminHomePage(
-        token: token,
-      ), //const LoginPage(), //AdminHomePage(token: token),
+      home: const LoginPage(), //AdminHomePage(token: token),
     );
   }
 }
