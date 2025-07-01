@@ -392,18 +392,25 @@ class _AdminHomePageState extends State<AdminHomePage>
     if (index == 0) {
       // 홈
     } else if (index == 1) {
-      // 임계 설정 페이지로 이동
-      Navigator.push(
+      // 임계 설정 페이지로 이동i
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(
             builder: (context) => SetThresholdAdminPage(provinces: provinces, token : widget.token)
         ),
-      ).then ((result) {
-        if (result == true){
-          initState();
-        }
-      }
       );
+
+        if (result != null){
+          setState(() {
+            selectedIndex = result;
+          });
+          updateInfo();
+          getProvinceData();
+        }else{
+          setState(() {
+            selectedIndex = 0;
+          });
+        }
     }
   }
 
