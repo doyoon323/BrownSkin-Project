@@ -30,13 +30,6 @@ class _AdminHomePageState extends State<AdminHomePage>
   Map<String, String?>? selectedByproduct = {"name": "사과", "type": "가공"};
   String? selectedByproductName = "사과"; // default = 가공
 
-  List<Map<String, String?>> byproductsCategory = [
-    {"type": "가공", "name": "사과"},
-    {"type": "수확", "name": "사과"},
-    {"type": "수확", "name": "배추"},
-    {"type": "수확", "name": "참깨"},
-    {"type": "수확", "name": "옥수수"},
-  ];
 
   List<String> provinces = [];
   List<RegionWeight>? regionData;

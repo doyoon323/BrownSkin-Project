@@ -19,13 +19,6 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   final TextEditingController _targetGoalController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  List<Map<String, String?>> byproductsCategory = [
-    {"type": "가공", "name": "사과"},
-    {"type": "수확", "name": "사과"},
-    {"type": "수확", "name": "배추"},
-    {"type": "수확", "name": "참깨"},
-    {"type": "수확", "name": "옥수수"},
-  ];
 
   String? selectedType;
   String? selectedByproductName;

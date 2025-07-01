@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -15,14 +16,7 @@ class AgriHome extends StatefulWidget {
 }
 
 class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
-  final byproductsCategory = [
-    //전체 품목, 추후 17 종까지 늘어날 예정
-    {"name": "배추", "type": "수확"},
-    {"name": "사과", "type": "가공"},
-    {"name": "사과", "type": "수확"},
-    {"name": "참깨", "type": "수확"},
-    {"name": "옥수수", "type": "수확"},
-  ];
+
 
   Map<String, List<Map<String, dynamic>>> userByproduct = {};
   Map<String, String?>? selectedByproduct;
@@ -38,12 +32,28 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
   bool isGridView = true;
   String searchQuery = "";
 
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
+    _timer = Timer.periodic(
+        Duration(minutes: 15),
+            (timer) {
+              if (!userByproduct.isEmpty) {
+                updateData(userByproduct);
+              }
+        }
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       init();
     });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   Future<void> init() async {
