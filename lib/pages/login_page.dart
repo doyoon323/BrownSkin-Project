@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'signup_page.dart';
 import 'agriculture/home_agriculture.dart';
 import 'admin/home_admin.dart';
+import 'distributor/home_distributor.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -74,6 +75,11 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => AdminHomePage(token: token)),
+          );
+        } else if(role == 'distributor'){
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => DistributorHomePage(token: token)),
           );
         } else {
           Navigator.pushReplacement(
@@ -246,7 +252,7 @@ class _LoginPageState extends State<LoginPage> {
 }
 //여기까지 디자인
 
-//로그인 성공 후 이동하는 Homepage-각 화면 구현되면 없앨 예정
+//로그인 성공 후 이동하는 Homepage- 유통사 구현되면 없앨 예정
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 

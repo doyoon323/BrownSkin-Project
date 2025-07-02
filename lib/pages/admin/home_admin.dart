@@ -117,12 +117,12 @@ class _AdminHomePageState extends State<AdminHomePage>
       isLoading = true;
     });
 
-    String? selectedDistrict = null; // 시도 까지만 구현. 더 자세한 주소는.. (이하생략)
+    String? selectedDistrict; // 시도 까지만 구현. 더 자세한 주소는.. (이하생략)
     List<RegionWeight> tempList1 = [];
 
-    var sum_data;
+    Map<String, dynamic> sumData;
     if (selectedProvince == "전국") {
-      sum_data = await getData(
+      sumData = await getData(
         selectedType,
         selectedByproductName,
         null,
@@ -130,7 +130,7 @@ class _AdminHomePageState extends State<AdminHomePage>
       );
     }
     else {
-      sum_data = await getData(
+      sumData = await getData(
         selectedType,
         selectedByproductName,
         selectedProvince,
@@ -138,8 +138,8 @@ class _AdminHomePageState extends State<AdminHomePage>
       );
     }
 
-    if (sum_data.containsKey("results") && sum_data["results"] != null) { //전국단위라 모든 시,도를 긁어ㄴ오는ing....
-      final resultsMap = sum_data["results"] as Map<String, dynamic>;
+    if (sumData.containsKey("results") && sumData["results"] != null) { //전국단위라 모든 시,도를 긁어ㄴ오는ing....
+      final resultsMap = sumData["results"] as Map<String, dynamic>;
 
       // Map을 entries로 순회해서 RegionWeight 리스트 생성
       tempList1 = resultsMap.entries.map(
@@ -152,14 +152,14 @@ class _AdminHomePageState extends State<AdminHomePage>
 
       setState(() {
         regionData = tempList1;
-        totalWeight = (sum_data["total_weight"] as num?)?.toDouble();
+        totalWeight = (sumData["total_weight"] as num?)?.toDouble();
         isLoading = false;
       });
     } else { //하나의 시만 보여주는 ing... 근데 무게만 보이면 심심하니까... 업체도 그냥 전부 보여주자는 스불재..
 
       await getDisposerData(selectedProvince);
       setState(() {
-        totalWeight = (sum_data["total_weight"] as num?)?.toDouble();
+        totalWeight = (sumData["total_weight"] as num?)?.toDouble();
         isLoading = false;
       });
     }
@@ -172,7 +172,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   Future<Map<String, dynamic>> getData(String? type, String? name,
       String? addr1,
       String? addr2) async {
-    String url = "$BASE_URL/api/sum-byprod?" + "type=$type&" + "name=$name";
+    String url = "$BASE_URL/api/sum-byprod?" "type=$type&" + "name=$name";
 
     if (addr1 != null) { //시도
       url += "&addr1=$addr1";
@@ -210,7 +210,7 @@ class _AdminHomePageState extends State<AdminHomePage>
 
     try {
       /* 첫 페이지 URL */
-      String? nextUrl = "$BASE_URL/api/byprod-list?" + "addr1=$addr1&" +
+      String? nextUrl = "$BASE_URL/api/byprod-list?" "addr1=$addr1&" +
           "type=$selectedType&" + "name=$selectedByproductName&"
           + "page=1";
       List<ByProduct> allData = [];
