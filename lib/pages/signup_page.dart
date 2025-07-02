@@ -14,6 +14,8 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
+
+  //각 입력 필드 컨트롤러(Map으로 관리)
   final _controllers = <String, TextEditingController>{
     'username': TextEditingController(),
     'email': TextEditingController(),
@@ -29,13 +31,15 @@ class _SignUpPageState extends State<SignUpPage> {
   String? _selectedType;
   bool _showPassword = false;
   bool _showConfirmPassword = false;
-  bool _isLoading = false;
+  bool _isLoading = false; //요청 중 로딩 상태
 
+//배송사, 전처리사 세부 타입
   static const Map<String, List<String>> _typeOptions = {
     'distributor': ['clean', 'normal'],
     'preprocessor': ['A', 'B', 'C', 'D'],
   };
 
+//역할 선택 드롭다운 아이템
   static const List<DropdownMenuItem<String>> _roleItems = [
     DropdownMenuItem(value: 'disposer', child: Text('배출사')),
     DropdownMenuItem(value: 'distributor', child: Text('유통사')),
@@ -50,6 +54,7 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
+//회원가입 요청 함수
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_validateForm()) return;
@@ -60,14 +65,14 @@ class _SignUpPageState extends State<SignUpPage> {
       final response = await _submitRegistration();
       if (!mounted) return;
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 201) { //회원가입 성공
         _showMessage('회원가입이 완료되었습니다!', isSuccess: true, onClose: () {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const LoginPage()),
           );
         });
-      } else {
+      } else { //실패처리
         _handleRegistrationError(response);
       }
     } catch (e) {
@@ -77,7 +82,7 @@ class _SignUpPageState extends State<SignUpPage> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
+//추가 폼 검증
   bool _validateForm() {
     if (_controllers['password']!.text != _controllers['password2']!.text) {
       _showMessage('비밀번호가 일치하지 않습니다.');
@@ -94,6 +99,7 @@ class _SignUpPageState extends State<SignUpPage> {
     return true;
   }
 
+//서버에 회원가입 요청 보내기
   Future<http.Response> _submitRegistration() async {
     final body = <String, String>{
       'username': _controllers['username']!.text,
@@ -118,6 +124,7 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
+//서버 에러처리
   void _handleRegistrationError(http.Response response) {
     String errorMsg = '회원가입에 실패했습니다.';
     try {
@@ -129,6 +136,7 @@ class _SignUpPageState extends State<SignUpPage> {
     _showMessage(errorMsg);
   }
 
+//팝업 메시지 표시
   void _showMessage(String message, {bool isSuccess = false, VoidCallback? onClose}) {
     showDialog(
       context: context,
@@ -153,6 +161,8 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
+
+//여기부터는 디자인툴
   @override
   Widget build(BuildContext context) {
     return Scaffold(

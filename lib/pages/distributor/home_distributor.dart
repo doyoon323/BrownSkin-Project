@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart'; // 기본 UI 라이브러리 import
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:brownskin_app/constants.dart';
 
-// 배송사 홈화면 StatefulWidget 정의 (상태 변화 필요)
 class DistributorHomePage extends StatefulWidget {
-  final String token; // 로그인 인증 토큰 (서버 요청시 사용)
+  final String token;
   const DistributorHomePage({required this.token, super.key});
 
   @override
@@ -10,68 +12,143 @@ class DistributorHomePage extends StatefulWidget {
 }
 
 class _DistributorHomePageState extends State<DistributorHomePage> {
-  String currentTab = '수거 요청'; // 현재 선택된 탭 상태 ('수거 요청', '수거 대기' 등)
+  String currentTab = '수거 요청';
+  List<Map<String, dynamic>> allRequests = [];
+  final statusMap = {
+    'pending': '수거 요청',
+    'accepted': '수거 대기',
+    'transit': '배송중',
+    'completed': '배송 완료',
+  };
 
-  // 전체 수거/배송 요청 리스트 (더미데이터, 나중에 서버 데이터로 교체)
-  List<Map<String, dynamic>> allRequests = [
-    {"id": 1, "item": "사과", "status": "수거 요청", "date": ""},
-    {"id": 2, "item": "배추", "status": "수거 대기", "date": "2025-07-01"},
-    {"id": 3, "item": "참깨", "status": "배송중", "date": "2025-07-01"},
-    {"id": 4, "item": "옥수수", "status": "배송 완료", "date": "2025-06-30"},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    fetchMyDeliveries();
+  }
+
+  Future<void> fetchMyDeliveries() async {
+    final url = Uri.parse('$BASE_URL/api/my-delivery');
+    final headers = {"Authorization": "Token ${widget.token}"};
+    try {
+      final response = await http.get(url, headers: headers);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> parsed = jsonDecode(utf8.decode(response.bodyBytes));
+        final List<dynamic> rawList = parsed['results'];
+        setState(() {
+          allRequests = rawList.map<Map<String, dynamic>>((item) {
+            return {
+              'id': item['id'],
+              'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
+              'status': statusMap[item['status']] ?? item['status'],
+              'rawStatus': item['status'],
+              'date': item['req_date'],
+              'addr': "${item['disposer']['addr1']} ${item['disposer']['addr2']} ${item['disposer']['addrDetail'] ?? ''}",
+            };
+          }).toList();
+        });
+      } else {
+        print('서버 응답 오류: ${response.body}');
+      }
+    } catch (e) {
+      print('네트워크 오류: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('배송사 홈'), // 상단 앱바 제목
-        backgroundColor: Colors.blue,  // 앱바 배경 색상
+        title: const Text(
+          '배송사 홈',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: const Color(0xFF8B4513),
+        elevation: 2,
       ),
+      backgroundColor: const Color(0xFFF5F5DC),
       body: Column(
         children: [
-          // 탭 버튼 영역
-          Row(
-            children: [
-              _buildTabButton('수거 요청'),
-              _buildTabButton('수거 대기'),
-              _buildTabButton('배송중'),
-              _buildTabButton('배송 완료'),
-            ],
-          ),
-
-          // 선택된 탭에 해당하는 리스트 출력
-          Expanded(
-            child: ListView(
-              children: allRequests
-                  .where((e) => e['status'] == currentTab) // 현재 탭과 상태가 같은 데이터만 필터링
-                  .map((e) => _buildRequestItem(e))       // 각 데이터를 카드 형태로 변환
-                  .toList(),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-          )
+            child: Row(
+              children: [
+                _buildTabButton('수거 요청'),
+                _buildTabButton('수거 대기'),
+                _buildTabButton('배송중'),
+                _buildTabButton('배송 완료'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: allRequests.where((e) => e['status'] == currentTab).isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.inbox_outlined,
+                          size: 64,
+                          color: Colors.brown[300],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '요청이 없습니다.',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.brown[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.all(8),
+                    children: allRequests
+                        .where((e) => e['status'] == currentTab)
+                        .map(_buildRequestItem)
+                        .toList(),
+                  ),
+          ),
         ],
       ),
     );
   }
 
-  // 탭 버튼 UI 생성 함수
   Widget _buildTabButton(String title) {
-    bool isSelected = currentTab == title; // 현재 선택된 탭인지 확인
+    bool isSelected = currentTab == title;
     return Expanded(
       child: GestureDetector(
-        onTap: () {
-          setState(() {
-            currentTab = title; // 탭 변경
-          });
-        },
+        onTap: () => setState(() => currentTab = title),
         child: Container(
-          padding: const EdgeInsets.all(12),
-          color: isSelected ? Colors.blue[100] : Colors.grey[200], // 선택된 탭만 색상 강조
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFD2B48C) : Colors.white,
+            border: Border(
+              bottom: BorderSide(
+                color: isSelected ? const Color(0xFF8B4513) : Colors.transparent,
+                width: 3,
+              ),
+            ),
+          ),
           child: Center(
             child: Text(
               title,
               style: TextStyle(
-                color: isSelected ? Colors.blue : Colors.black, // 선택 여부에 따라 글자색 다르게
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? const Color(0xFF8B4513) : Colors.brown[400],
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                fontSize: 14,
               ),
             ),
           ),
@@ -80,94 +157,118 @@ class _DistributorHomePageState extends State<DistributorHomePage> {
     );
   }
 
-  // 각 리스트 아이템 UI 생성 함수
   Widget _buildRequestItem(Map<String, dynamic> item) {
     return Card(
-      margin: const EdgeInsets.all(8),
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.brown[100]!, width: 1),
+      ),
+      color: Colors.white,
       child: ListTile(
-        title: Text(item['item']), // 품목명 출력
-        subtitle: Text(
-          '상태: ${item['status']}  ${item['date'] != "" ? _getDateText(item) : ""}', // 상태 및 날짜 출력
+        contentPadding: const EdgeInsets.all(16),
+        title: Text(
+          item['item'],
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Color(0xFF5D4037),
+          ),
         ),
-        trailing: _buildActionButton(item), // 상태에 따라 버튼 다르게 표시
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            "배출사 위치: ${item['addr']}\n상태: ${item['status']}\n요청일: ${item['date']}",
+            style: TextStyle(
+              color: Colors.brown[600],
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+        ),
+        trailing: _buildActionButton(item),
       ),
     );
   }
 
-  // 상태별로 다른 버튼 반환
   Widget _buildActionButton(Map<String, dynamic> item) {
-    if (item['status'] == '수거 요청') {
-      // 수거 요청 상태 → 수락 버튼
+    if (item['rawStatus'] == 'pending') {
       return ElevatedButton(
-        onPressed: () => _showDateInputDialog(item, '수거 대기'), // 수거 대기로 상태 변경
-        child: const Text('수락'),
+        onPressed: () => _acceptDelivery(item['id']),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF8B4513),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          elevation: 2,
+        ),
+        child: const Text('수락', style: TextStyle(fontWeight: FontWeight.bold)),
       );
-    } else if (item['status'] == '수거 대기') {
-      // 수거 대기 상태 → 수거 완료 버튼
+    } else if (item['rawStatus'] == 'accepted') {
       return ElevatedButton(
-        onPressed: () => _showDateInputDialog(item, '배송중'), // 배송중으로 상태 변경
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-        child: const Text('수거 완료'),
+        onPressed: () => _transitDelivery(item['id']),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFA0522D),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          elevation: 2,
+        ),
+        child: const Text('수거 완료', style: TextStyle(fontWeight: FontWeight.bold)),
       );
-    } else if (item['status'] == '배송중') {
-      // 배송중 상태 → 배송 완료 버튼
+    } else if (item['rawStatus'] == 'transit') {
       return ElevatedButton(
-        onPressed: () => _showDateInputDialog(item, '배송 완료'), // 배송 완료로 상태 변경
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-        child: const Text('배송 완료'),
+        onPressed: () {},
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFCD853F),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          elevation: 2,
+        ),
+        child: const Text('배송 완료', style: TextStyle(fontWeight: FontWeight.bold)),
       );
     }
-    // 나머지 상태는 버튼 없음
     return const SizedBox();
   }
 
-  // 날짜 입력 다이얼로그 (공통으로 사용)
-  void _showDateInputDialog(Map<String, dynamic> item, String nextStatus) {
-    final TextEditingController dateController = TextEditingController(); // 날짜 입력용 컨트롤러
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('날짜 입력'),
-        content: TextField(
-          controller: dateController,
-          decoration: const InputDecoration(
-            hintText: '예: 2025-07-01', // 입력 예시
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context), // 취소 시 창 닫기
-            child: const Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (dateController.text.isEmpty) return; // 입력 없으면 아무 동작 안 함
-
-              setState(() {
-                item['status'] = nextStatus;         // 상태 변경
-                item['date'] = dateController.text;  // 날짜 저장
-              });
-              Navigator.pop(context); // 창 닫기
-            },
-            child: const Text('확인'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _acceptDelivery(int id) async {
+    final url = Uri.parse('$BASE_URL/api/accept-delivery');
+    final headers = {
+      "Authorization": "Token ${widget.token}",
+      "Content-Type": "application/x-www-form-urlencoded",
+    };
+    try {
+      final response = await http.post(url, headers: headers, body: {"id": "$id"});
+      if (response.statusCode == 200) {
+        fetchMyDeliveries();
+      } else {
+        print('수락 실패: ${response.body}');
+      }
+    } catch (e) {
+      print('네트워크 오류: $e');
+    }
   }
 
-  // 상태에 따라 날짜 문구 다르게 반환
-  String _getDateText(Map<String, dynamic> item) {
-    switch (item['status']) {
-      case '수거 대기':
-        return "수거 예정 날짜: ${item['date']}";
-      case '배송중':
-        return "수거 완료 날짜: ${item['date']}";
-      case '배송 완료':
-        return "배송 완료 날짜: ${item['date']}";
-      default:
-        return ""; // 기타 상태는 빈 문자열
+  Future<void> _transitDelivery(int id) async {
+    final url = Uri.parse('$BASE_URL/api/transit-delivery');
+    final headers = {
+      "Authorization": "Token ${widget.token}",
+      "Content-Type": "application/x-www-form-urlencoded",
+    };
+    try {
+      final response = await http.post(url, headers: headers, body: {"id": "$id"});
+      if (response.statusCode == 200) {
+        fetchMyDeliveries();
+      } else {
+        print('수거 완료 실패: ${response.body}');
+      }
+    } catch (e) {
+      print('네트워크 오류: $e');
     }
   }
 }

@@ -19,6 +19,7 @@ class _LoginPageState extends State<LoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
+//로그인 버튼 클릭 시 실행되는 함수
   void _login() async {
     var url = Uri.parse('$BASE_URL/auth/api-token');
 
@@ -52,6 +53,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+//토큰으로 유저 정보 조회 후 역할에 따라 화면 이동
   Future<void> _checkRoleAndMove(String token) async {
     var url = Uri.parse('$BASE_URL/auth/api-profile');
     try {
@@ -62,10 +64,11 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
-        String role = data['role'];
+        String role = data['role']; //유저 역할 추출
 
         if (!mounted) return;
 
+      //역할 따라서 각 홈화면으로 이동
         if (role == 'disposer') {
           Navigator.pushReplacement(
             context,
@@ -96,6 +99,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+//팝업 메시지 표시 함수
   void _showMessage(String msg) {
     showDialog(
       context: context,
