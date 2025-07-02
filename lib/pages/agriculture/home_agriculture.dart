@@ -41,6 +41,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
         Duration(minutes: 15),
             (timer) {
               if (!userByproduct.isEmpty) {
+                fetchUserByProduct();
                 updateData(userByproduct);
               }
         }

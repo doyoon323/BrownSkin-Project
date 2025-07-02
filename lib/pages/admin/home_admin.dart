@@ -7,6 +7,7 @@ import 'package:brownskin_app/model/ByProduct.dart';
 import 'package:brownskin_app/model/RegionWeight.dart';
 import 'dart:async';
 import 'package:brownskin_app/pages/admin/setThreshold_admin.dart';
+import 'package:brownskin_app/pages/admin/global.dart';
 
 //관리자 홈 화면 (부산물 데이터를 시각화하여 보여준다)
 class AdminHomePage extends StatefulWidget {
@@ -21,19 +22,24 @@ class AdminHomePage extends StatefulWidget {
 class _AdminHomePageState extends State<AdminHomePage>
     with TickerProviderStateMixin {
 
-  List<ByProduct> data = []; //전체 데이터
-  List<String> usernames = []; // 사용자 이름 추출
-  List<double> weights = []; // 무게 추출
+  // dropdown 저장용 변수
+  String? selectedProvince; // default = 미선택(전국)
+  String? selectedType= "가공"; // default = 가공
+  String? selectedByproductName="사과"; // default = 사과
 
-  String? selectedProvince; // default = 미선택
-  String? selectedType = "가공"; // default = 가공
-  Map<String, String?>? selectedByproduct = {"name": "사과", "type": "가공"};
-  String? selectedByproductName = "사과"; // default = 가공
+  String? selectedDistrict = null; // 현재 미구현 상태
 
 
-  List<String> provinces = [];
-  List<RegionWeight>? regionData;
+
+  // 시각화용 데이터
+  List<Map<String,dynamic>> companyData= []; //업계별 데이터
+  List<String> usernames = []; // 업계별 사용자 이름 추출
+  List<double> weights = []; // 업계별 무게 추출
+
+  List<RegionWeight>? regionData; //시도별 데이터
   double? totalWeight = 0.0;
+
+
 
   //UI 구성
   bool isLoading = true;
@@ -69,10 +75,22 @@ class _AdminHomePageState extends State<AdminHomePage>
     );
 
     // 데이터 로드  (화면에 띄울 데이터 분류, 동적 지역 정보)
-    updateInfo();
-    getProvinceData();
+    initData();
   }
 
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _chartAnimationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> initData() async {
+    await getProvinceData();
+    await updateInfo();
+  }
+
+  //api 수정시 함수 수정해두어야함
   Future<void> getProvinceData() async {
     String? nextUrl = "$BASE_URL/api/byprod-list?page=1";
     List<String> temp = [];
@@ -102,64 +120,95 @@ class _AdminHomePageState extends State<AdminHomePage>
       provinces = ["전국"] + provinces;
     });
 
-    print("================$provinces================");
+    //print("================$provinces================");
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    _chartAnimationController.dispose();
-    super.dispose();
-  }
 
-  void updateInfo() async {
+  Future<void> updateInfo() async {
+    print("✅ updateInfo");
     setState(() {
       isLoading = true;
     });
 
-    String? selectedDistrict = null; // 시도 까지만 구현. 더 자세한 주소는.. (이하생략)
-    List<RegionWeight> tempList1 = [];
+    // 품목이 선택되지 않으면 초기화 후 종료
+    if ( selectedByproductName == null) {
+      setState(() {
+        companyData = [];
+        totalWeight = 0.0;
+        regionData = [];
+        isLoading = false;
+      });
+      return;
+    }
 
-    var sum_data;
-    if (selectedProvince == "전국") {
-      sum_data = await getData(
+    var sumData;
+
+    //데이터 요청
+    if ( selectedProvince == null || selectedProvince == "전국" ) {
+      // 전국 : 시도별 데이터
+      print("✅ 전국 데이터 ");
+      sumData = await getData(
         selectedType,
         selectedByproductName,
         null,
-        selectedDistrict,
+        selectedDistrict, //현재 null
       );
+
+      final resultsMap = sumData["results"] as Map<String, dynamic>? ?? {};
+      print("✅ resultsMap: $resultsMap");
+
+
+
+      final regionList = resultsMap.entries.map(
+            (entry) => RegionWeight(weight: (entry.value as num).toDouble(), city: entry.key,
+        )).toList();
+
+      setState(() {
+        regionData = regionList;
+        companyData = [];
+        totalWeight = (sumData["total_weight"] as num?)?.toDouble() ?? 0.0;
+        isLoading = false;
+      });
+
     }
     else {
-      sum_data = await getData(
+      // 지역 : 지역 내 업체별 데이터
+      sumData = await getData(
         selectedType,
         selectedByproductName,
         selectedProvince,
         selectedDistrict,
       );
-    }
 
-    if (sum_data.containsKey("results") && sum_data["results"] != null) { //전국단위라 모든 시,도를 긁어ㄴ오는ing....
-      final resultsMap = sum_data["results"] as Map<String, dynamic>;
 
-      // Map을 entries로 순회해서 RegionWeight 리스트 생성
-      tempList1 = resultsMap.entries.map(
-            (entry) =>
-            RegionWeight(
-              weight: (entry.value as num).toDouble(),
-              city: entry.key,
-            ),
-      ).toList();
+      final resultsMap = sumData["results"] as Map<String, dynamic>? ?? {};
+      print("✅ resultsMap: $resultsMap");
 
-      setState(() {
-        regionData = tempList1;
-        totalWeight = (sum_data["total_weight"] as num?)?.toDouble();
-        isLoading = false;
-      });
-    } else { //하나의 시만 보여주는 ing... 근데 무게만 보이면 심심하니까... 업체도 그냥 전부 보여주자는 스불재..
+      final hasValidData = resultsMap.entries.any(
+            (entry) {
+          final value = entry.value;
+          if (value == null) return false;
+          if (value is num && value == 0) return false;
+          return true;
+        },
+      );
 
+      if (!hasValidData) {
+        print("🚨 시각화용 데이터 없음 - 상태 초기화");
+        setState(() {
+          regionData = [];
+          companyData = [];
+          totalWeight = 0.0;
+          isLoading = false;
+        });
+        return;
+      }
+
+      // 지역별 업체 데이터 가져오기
       await getDisposerData(selectedProvince);
       setState(() {
-        totalWeight = (sum_data["total_weight"] as num?)?.toDouble();
+        regionData = [];
+        totalWeight = (sumData["total_weight"] as num?)?.toDouble() ?? 0.0;
         isLoading = false;
       });
     }
@@ -168,41 +217,40 @@ class _AdminHomePageState extends State<AdminHomePage>
     _chartAnimationController.forward();
   }
 
-  // A안: default를 가공/사과로 설정해두기
-  Future<Map<String, dynamic>> getData(String? type, String? name,
-      String? addr1,
-      String? addr2) async {
-    String url = "$BASE_URL/api/sum-byprod?" + "type=$type&" + "name=$name";
 
-    if (addr1 != null) { //시도
-      url += "&addr1=$addr1";
-    }
+  Future<Map<String, dynamic>> getData(String? type, String? name, String? addr1, String? addr2) async {
+    final queryParameters = {
+      'type': type,
+      'name': name,
+      if (addr1 != null) 'addr1': addr1,
+      if (addr1 != null && addr2 != null) 'addr2': addr2,
+    };
 
-    if (addr2 != null && addr1 != null) { //구
-      url += "&addr2=$addr2";
-    }
+    final url = Uri.parse('$BASE_URL/api/sum-byprod').replace(
+      queryParameters: queryParameters,
+    );
 
     final headers = {
       "Content-Type": "application/x-www-form-urlencoded",
       "Authorization": "Token ${widget.token}",
     };
 
-    final response = await http.get(Uri.parse(url), headers: headers);
+    final response = await http.get(url, headers: headers);
 
     if (response.statusCode == 200) {
-      // 현 상황에서는 total_weight 외 필요 하지 않음
-      //전국이면 results, addr1이면 total weight;
       final data = jsonDecode(
-        response.body,); //result = weight of type-name fruit in address
+        response.body,);
+      print("😍😍 $data");
       return data;
     } else {
       throw Exception('Failed to load data');
     }
   }
 
+
+
   /* 서버에서 데이터를 받아오는 함수 */
   Future<void> getDisposerData(String? addr1) async {
-    /* 로딩 상태로 UI 갱신 */
     setState(() {
       isLoading = true;
       errorMessage = null;
@@ -210,51 +258,58 @@ class _AdminHomePageState extends State<AdminHomePage>
 
     try {
       /* 첫 페이지 URL */
-      String? nextUrl = "$BASE_URL/api/byprod-list?" + "addr1=$addr1&" +
-          "type=$selectedType&" + "name=$selectedByproductName&"
-          + "page=1";
-      List<ByProduct> allData = [];
+      final queryParameters = {
+        'addr1': addr1 ?? '',
+        'type': selectedType ?? '',
+        'name': selectedByproductName ?? '',
+        'page': '1',
+      };
+      //형식: <도메인>/api/byprod-list?addr1=<지역이름>&type=<부산물타입>&page=<페이지 번호>
+
+      String? nextUrl = Uri.parse("$BASE_URL/api/byprod-list")
+          .replace(queryParameters: queryParameters)
+          .toString();
+
+      List<Map<String,dynamic>> allData = [];
 
       /* 페이지 순회하며 모든 데이터를 받아옴 */
       while (nextUrl != null) {
-        var result = await http.get(
+        final response = await http.get(
           Uri.parse(nextUrl),
           headers: {'Authorization': 'Token ${widget.token}'},
         );
-
-        /* 서버 인증 성공 시 */
-        if (result.statusCode == 200) {
-          final body = jsonDecode(utf8.decode(result.bodyBytes));
-          final List<dynamic> results = body['results'];
-
-          try {
-            /* JSON 데이터를 모델 객체로 변환하여 리스트에 추가 */
-            allData.addAll(results.map((item) => ByProduct.fromJson(item)));
-          } catch (e) {
-            print('파싱 오류: $e');
-            throw Exception('데이터 파싱 중 오류가 발생했습니다.');
-          }
-
-          /* 다음 페이지 URL 설정 (없으면 null) */
-          nextUrl = body['next'] as String?;
-        } else {
-          throw Exception('서버 오류: ${result.statusCode}');
+        if (response.statusCode != 200) {
+          throw Exception('서버 오류 (${response.statusCode})');
         }
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
+        final List<dynamic> results = body['results'];
+
+        allData.addAll(results.cast<Map<String, dynamic>>());
+        nextUrl = body['next'] as String?;
+
       }
 
-      /* 정렬 및 데이터 상태 업데이트 */
-      usernames = allData.map((e) => e.username).toList();
-      weights = allData.map((e) => e.weight).toList();
-      allData.sort((a, b) => a.company_name.compareTo(b.company_name));
+      // 정렬 (회사명 기준)
+      allData.sort((a, b) {
+        final userA = a['user'] as Map<String, dynamic>? ?? {};
+        final userB = b['user'] as Map<String, dynamic>? ?? {};
+        final companyA = userA['company_name'] as String? ?? '';
+        final companyB = userB['company_name'] as String? ?? '';
+        return companyA.compareTo(companyB);
+      });
+
+      print("✅ 가져온 데이터:\n$allData");
 
       setState(() {
-        data = allData;
+        companyData = allData;
+        usernames = allData.map((e) => (e['user']?['company_name'] as String?) ?? '').toList();
+        weights = allData.map((e) => (e['weight_float'] as num?)?.toDouble() ?? 0.0).toList();
         isLoading = false;
       });
 
-      /* UI 실행 */
       _animationController.forward();
-    } catch (e) {
+    } catch (e, stack) {
+      print('getDisposerData 에러: $e\n$stack');
       setState(() {
         isLoading = false;
         errorMessage = e.toString();
@@ -262,150 +317,48 @@ class _AdminHomePageState extends State<AdminHomePage>
     }
   }
 
-  Widget buildRegionBarChart(List<RegionWeight> data) {
-    final barGroups = data
-        .asMap()
-        .entries
-        .map(
-          (entry) {
-        final index = entry.key;
-        final item = entry.value;
-        return BarChartGroupData(
-          x: index,
-          barRods: [
-            BarChartRodData(
-              toY: item.weight,
-              gradient: LinearGradient(
-                colors: [
-                  Colors.green.shade300,
-                  Colors.green.shade600,
-                  Colors.green.shade800,
-                ],
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-              ),
-              width: 24,
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ],
-        );
-      },
-    )
-        .toList();
 
-    return AnimatedBuilder(
-      animation: _chartAnimation,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _chartAnimation.value,
-          child: BarChart(
-            BarChartData(
-              alignment: BarChartAlignment.spaceAround,
-              maxY: data.map((e) => e.weight).reduce((a, b) => a > b ? a : b) + 50,
-              minY: 0,
-              barGroups: barGroups,
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 50,
-                    getTitlesWidget: (value, meta) {
-                      return Text(
-                        "${value.toInt()}kg",
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey.shade600,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    getTitlesWidget: (value, meta) {
-                      int idx = value.toInt();
-                      return SideTitleWidget(
-                        axisSide: meta.axisSide,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            idx >= 0 && idx < data.length ? data[idx].city : "",
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                topTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                rightTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-              ),
-              borderData: FlBorderData(
-                show: true,
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade300, width: 1),
-                  left: BorderSide(color: Colors.grey.shade300, width: 1),
-                ),
-              ),
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-                horizontalInterval: 50,
-                getDrawingHorizontalLine: (value) {
-                  return FlLine(
-                    color: Colors.grey.shade200,
-                    strokeWidth: 1,
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+  /* UI 구현 */
 
   int selectedIndex = 0;
 
-  void _onItemTapped(BuildContext context, int index) async {
+  Future<void> _onItemTapped(BuildContext context, int index) async {
+    // 선택 인덱스 갱신
     setState(() {
       selectedIndex = index;
     });
 
+    // 홈
     if (index == 0) {
-      // 홈
-    } else if (index == 1) {
-      // 임계 설정 페이지로 이동i
-      final result = await Navigator.push(
+      return;
+    }
+
+    // 임계 설정
+    if (index == 1) {
+      final result = await Navigator.push<int>(
         context,
         MaterialPageRoute(
-            builder: (context) => SetThresholdAdminPage(provinces: provinces, token : widget.token)
+            builder: (context) => SetThresholdAdminPage(token : widget.token)
         ),
       );
 
-        if (result != null){
-          setState(() {
-            selectedIndex = result;
-          });
-          updateInfo();
-          getProvinceData();
-        }else{
-          setState(() {
-            selectedIndex = 0;
-          });
-        }
+      // 복귀했울 때 result 없으면 홈으로
+      if (result == null){
+        setState(() {
+          selectedIndex = 0;
+        });
+        return;
+      }
+
+      setState(() {
+        selectedIndex = result;
+      });
+      await getProvinceData();
+      await updateInfo();
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -547,8 +500,8 @@ class _AdminHomePageState extends State<AdminHomePage>
                   selectedType = value;
                   selectedByproductName = null;
                   _chartAnimationController.reset();
-                  updateInfo();
                 });
+                updateInfo();
               },
             ),
 
@@ -566,8 +519,8 @@ class _AdminHomePageState extends State<AdminHomePage>
                   setState(() {
                     selectedByproductName = value;
                     _chartAnimationController.reset();
-                    updateInfo();
                   });
+                  updateInfo();
                 },
               ),
 
@@ -577,12 +530,12 @@ class _AdminHomePageState extends State<AdminHomePage>
                 icon: Icons.location_on,
                 value: selectedProvince,
                 items: provinces,
-                onChanged: (value) {
+                onChanged: (value) async {
                   setState(() {
                     selectedProvince = value;
                     _chartAnimationController.reset();
-                    updateInfo();
                   });
+                  updateInfo();
                 },
               ),
             ],
@@ -591,6 +544,8 @@ class _AdminHomePageState extends State<AdminHomePage>
       ),
     );
   }
+
+
 
   Widget _buildDropdownField({
     required String label,
@@ -646,6 +601,9 @@ class _AdminHomePageState extends State<AdminHomePage>
       ],
     );
   }
+
+
+
 
   Widget _buildSummaryCard() {
     return Card(
@@ -722,6 +680,8 @@ class _AdminHomePageState extends State<AdminHomePage>
     );
   }
 
+
+
   Widget _buildChartSection() {
     if (regionData != null && regionData!.isNotEmpty) {
       return _buildChartCard(
@@ -729,16 +689,18 @@ class _AdminHomePageState extends State<AdminHomePage>
         icon: Icons.bar_chart,
         child: buildRegionBarChart(regionData!),
       );
-    } else if (data.isNotEmpty) {
+    } else if (companyData.isNotEmpty) {
       return _buildChartCard(
         title: "업체별 무게 분포",
         icon: Icons.business,
-        child: buildCompanyBarChart(data),
+        child: buildCompanyBarChart(companyData),
       );
     } else {
       return _buildEmptyDataCard();
     }
   }
+
+
 
   Widget _buildChartCard({
     required String title,
@@ -859,9 +821,24 @@ class _AdminHomePageState extends State<AdminHomePage>
         ],
       ),
     );
-  }
+  }Widget buildCompanyBarChart(List<Map<String, dynamic>> data) {
+    // 데이터 비었을 때
+    if (data.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: Text(
+            "표시할 데이터가 없습니다.",
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade500,
+            ),
+          ),
+        ),
+      );
+    }
 
-  Widget buildCompanyBarChart(List<ByProduct> data) {
+    // BarGroups 생성
     final barGroups = data
         .asMap()
         .entries
@@ -869,11 +846,14 @@ class _AdminHomePageState extends State<AdminHomePage>
           (entry) {
         final index = entry.key;
         final item = entry.value;
+
+        final weight = (item['weight_float'] as num?)?.toDouble() ?? 0.0;
+
         return BarChartGroupData(
           x: index,
           barRods: [
             BarChartRodData(
-              toY: item.weight,
+              toY: weight,
               gradient: LinearGradient(
                 colors: [
                   Colors.teal.shade300,
@@ -891,6 +871,133 @@ class _AdminHomePageState extends State<AdminHomePage>
       },
     )
         .toList();
+
+    return AnimatedBuilder(
+      animation: _chartAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _chartAnimation.value,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 16), // 하단 공간 확보
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: data
+                    .map((e) => (e['weight_float'] as num?)?.toDouble() ?? 0.0)
+                    .reduce((a, b) => a > b ? a : b) +
+                    50,
+                minY: 0,
+                barGroups: barGroups,
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 50,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          "${value.toInt()}kg",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey.shade600,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 48, // 여유 공간 확보
+                      getTitlesWidget: (value, meta) {
+                        int idx = value.toInt();
+                        final companyName = idx >= 0 && idx < data.length
+                            ? (data[idx]['user']?['company_name'] as String?) ?? ''
+                            : '';
+
+                        return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          space: 4,
+                          child: SizedBox(
+                            width: 60, // 폭 제한
+                            child: Text(
+                              companyName,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                    left: BorderSide(color: Colors.grey.shade300, width: 1),
+                  ),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: 50,
+                  getDrawingHorizontalLine: (value) {
+                    return FlLine(
+                      color: Colors.grey.shade200,
+                      strokeWidth: 1,
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget buildRegionBarChart(List<RegionWeight> data) {
+    final barGroups = data
+        .asMap()
+        .entries
+        .map(
+          (entry) {
+        final index = entry.key;
+        final item = entry.value;
+        return BarChartGroupData(
+          x: index,
+          barRods: [
+            BarChartRodData(
+              toY: item.weight,
+              gradient: LinearGradient(
+                colors: [
+                  Colors.green.shade300,
+                  Colors.green.shade600,
+                  Colors.green.shade800,
+                ],
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
+              width: 24,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ],
+        );
+      },
+    ).toList();
 
     return AnimatedBuilder(
       animation: _chartAnimation,
@@ -930,7 +1037,7 @@ class _AdminHomePageState extends State<AdminHomePage>
                         child: Padding(
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
-                            idx >= 0 && idx < data.length ? data[idx].company_name : "",
+                            idx >= 0 && idx < data.length ? data[idx].city : "",
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
@@ -973,4 +1080,6 @@ class _AdminHomePageState extends State<AdminHomePage>
       },
     );
   }
+
+
 }

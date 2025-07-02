@@ -2,12 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/constants.dart';
 import 'package:http/http.dart' as http;
+import 'package:brownskin_app/pages/admin/global.dart';
 
 class SetThresholdAdminPage extends StatefulWidget {
-  List<String> provinces = [];
   String token;
 
-  SetThresholdAdminPage({required this.provinces, required this.token, super.key});
+  SetThresholdAdminPage({required this.token, super.key});
 
   @override
   _SetThresholdAdminPageState createState() => _SetThresholdAdminPageState();
@@ -20,6 +20,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   final _formKey = GlobalKey<FormState>();
 
 
+  // page2 용 변수
   String? selectedType;
   String? selectedByproductName;
   String? selectedProvince;
@@ -40,7 +41,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   @override
   void initState() {
     super.initState();
-    print("✅ initState() 호출됨 ${widget.provinces}");
+    print("✅ initState() 호출됨 ${provinces}");
 
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -101,10 +102,10 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
       );
 
       if (request.statusCode == 200) {
+        await getThreshold(selectedType,selectedByproductName);
         setState(() {
           isLoading = false;
           isSuccess = true;
-          currentThreshold = weight;
         });
         _successAnimationController.forward();
         return true;
@@ -329,18 +330,40 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
                   .map((item) => item['name']!)
                   .toList(),
               icon: Icons.eco,
-              onChanged: (value) {
-                setState(() {
+              onChanged: (value) async {
+                setState(()  {
                   selectedByproductName = value;
                   isSuccess = false;
+                  currentThreshold = null;
                   _successAnimationController.reset();
                 });
+
+                await getThreshold(selectedType, value);
+                setState(() {});
               },
             ),
           ],
+
+
         ],
       ),
     );
+  }
+
+  Future<void> getThreshold(String? type, String? name) async {
+    String url = "$BASE_URL/api/threshold?"+"type=$type&"+"name=$name";
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {'Authorization': 'Token ${widget.token}'},
+    );
+     final raw = json.decode(response.body)["weight_float"];
+
+     if (raw != null){
+       currentThreshold = raw.toString();
+     }
+     else{
+       currentThreshold = null;
+     }
   }
 
   Widget _buildEnhancedDropdown({
@@ -512,7 +535,10 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
                   }
                   return null;
                 },
+
+
                 decoration: InputDecoration(
+
                   hintText: '예: 100',
                   hintStyle: TextStyle(color: Colors.grey.shade400),
                   suffixText: 'kg',
