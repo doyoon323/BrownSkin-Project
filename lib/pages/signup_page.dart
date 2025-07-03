@@ -35,14 +35,14 @@ class _SignUpPageState extends State<SignUpPage> {
 
 //배송사, 전처리사 세부 타입
   static const Map<String, List<String>> _typeOptions = {
-    'distributor': ['clean', 'normal'],
+    'transporter': ['clean', 'normal'],
     'preprocessor': ['A', 'B', 'C', 'D'],
   };
 
 //역할 선택 드롭다운 아이템
   static const List<DropdownMenuItem<String>> _roleItems = [
     DropdownMenuItem(value: 'disposer', child: Text('배출사')),
-    DropdownMenuItem(value: 'distributor', child: Text('유통사')),
+    DropdownMenuItem(value: 'transporter', child: Text('유통사')),
     DropdownMenuItem(value: 'preprocessor', child: Text('전처리사')),
   ];
 

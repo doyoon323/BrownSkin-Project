@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'signup_page.dart';
 import 'agriculture/home_agriculture.dart';
 import 'admin/home_admin.dart';
-import 'distributor/home_distributor.dart';
+import 'transporter/home_transporter.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -79,10 +79,10 @@ class _LoginPageState extends State<LoginPage> {
             context,
             MaterialPageRoute(builder: (_) => AdminHomePage(token: token)),
           );
-        } else if(role == 'distributor'){
+        } else if(role == 'transporter'){
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => DistributorHomePage(token: token)),
+            MaterialPageRoute(builder: (_) => TransporterHomePage(token: token)),
           );
         } else {
           Navigator.pushReplacement(

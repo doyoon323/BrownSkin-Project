@@ -6,6 +6,6 @@ final byproductsCategory = [
   {"name": "배추", "type": "수확"},
   {"name": "사과", "type": "가공"},
   {"name": "사과", "type": "수확"},
-  {"name": "참깨", "type": "수확"},
-  {"name": "옥수수", "type": "수확"},
+  {"name": "배", "type": "수확"},
+  {"name": "무", "type": "수확"},
 ];

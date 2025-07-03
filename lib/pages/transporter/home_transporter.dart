@@ -3,28 +3,32 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:brownskin_app/constants.dart';
 
-class DistributorHomePage extends StatefulWidget {
+class TransporterHomePage extends StatefulWidget {
   final String token;
-  const DistributorHomePage({required this.token, super.key});
+  const TransporterHomePage({required this.token, super.key});
 
   @override
-  State<DistributorHomePage> createState() => _DistributorHomePageState();
+  State<TransporterHomePage> createState() => _TransporterHomePageState();
 }
 
-class _DistributorHomePageState extends State<DistributorHomePage> {
+class _TransporterHomePageState extends State<TransporterHomePage> {
   String currentTab = '수거 요청';
   List<Map<String, dynamic>> allRequests = [];
+  List<Map<String, dynamic>> completedRequests = [];
+
   final statusMap = {
     'pending': '수거 요청',
     'accepted': '수거 대기',
     'transit': '배송중',
     'completed': '배송 완료',
+    'denied': '거절',
   };
 
   @override
   void initState() {
     super.initState();
     fetchMyDeliveries();
+    fetchCompletedDeliveries();
   }
 
   Future<void> fetchMyDeliveries() async {
@@ -33,22 +37,73 @@ class _DistributorHomePageState extends State<DistributorHomePage> {
     try {
       final response = await http.get(url, headers: headers);
       if (response.statusCode == 200) {
-        final Map<String, dynamic> parsed = jsonDecode(utf8.decode(response.bodyBytes));
-        final List<dynamic> rawList = parsed['results'];
+        final parsed = jsonDecode(utf8.decode(response.bodyBytes));
+        final rawList = parsed['results'];
         setState(() {
           allRequests = rawList.map<Map<String, dynamic>>((item) {
+            String dateText = item['req_date'] ?? '';
+            if (item['status'] == 'transit') {
+              dateText = item['transit_date'] ?? '';
+            }
             return {
               'id': item['id'],
               'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
               'status': statusMap[item['status']] ?? item['status'],
               'rawStatus': item['status'],
-              'date': item['req_date'],
+              'date': dateText,
               'addr': "${item['disposer']['addr1']} ${item['disposer']['addr2']} ${item['disposer']['addrDetail'] ?? ''}",
             };
           }).toList();
         });
       } else {
-        print('서버 응답 오류: ${response.body}');
+        print('진행중 데이터 오류: ${response.body}');
+      }
+    } catch (e) {
+      print('네트워크 오류: $e');
+    }
+  }
+
+  Future<void> fetchCompletedDeliveries() async {
+    final url = Uri.parse('$BASE_URL/api/my-history?status=completed');
+    final urlDenied = Uri.parse('$BASE_URL/api/my-history?status=denied');
+    final headers = {"Authorization": "Token ${widget.token}"};
+    try {
+      final responseCompleted = await http.get(url, headers: headers);
+      final responseDenied = await http.get(urlDenied, headers: headers);
+
+      if (responseCompleted.statusCode == 200 && responseDenied.statusCode == 200) {
+        final parsedCompleted = jsonDecode(utf8.decode(responseCompleted.bodyBytes));
+        final parsedDenied = jsonDecode(utf8.decode(responseDenied.bodyBytes));
+
+        final rawListCompleted = parsedCompleted['results'];
+        final rawListDenied = parsedDenied['results'];
+
+        setState(() {
+          completedRequests = [
+            ...rawListCompleted.map<Map<String, dynamic>>((item) {
+              return {
+                'id': item['id'],
+                'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
+                'status': '배송 완료',
+                'rawStatus': 'completed',
+                'date': item['complete_date'] ?? '',
+                'addr': "${item['disposer']['addr1']} ${item['disposer']['addr2']} ${item['disposer']['addrDetail'] ?? ''}",
+              };
+            }),
+            ...rawListDenied.map<Map<String, dynamic>>((item) {
+              return {
+                'id': item['id'],
+                'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
+                'status': '거절',
+                'rawStatus': 'denied',
+                'date': item['complete_date'] ?? '',
+                'addr': "${item['disposer']['addr1']} ${item['disposer']['addr2']} ${item['disposer']['addrDetail'] ?? ''}",
+              };
+            }),
+          ];
+        });
+      } else {
+        print('완료/거절 데이터 오류: ${responseCompleted.body} ${responseDenied.body}');
       }
     } catch (e) {
       print('네트워크 오류: $e');
@@ -86,12 +141,14 @@ class _DistributorHomePageState extends State<DistributorHomePage> {
                 _buildTabButton('수거 요청'),
                 _buildTabButton('수거 대기'),
                 _buildTabButton('배송중'),
-                _buildTabButton('배송 완료'),
+                _buildTabButton('완료'),
               ],
             ),
           ),
           Expanded(
-            child: allRequests.where((e) => e['status'] == currentTab).isEmpty
+            child: (currentTab == '완료'
+                    ? completedRequests
+                    : allRequests.where((e) => e['status'] == currentTab)).isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -115,8 +172,9 @@ class _DistributorHomePageState extends State<DistributorHomePage> {
                   )
                 : ListView(
                     padding: const EdgeInsets.all(8),
-                    children: allRequests
-                        .where((e) => e['status'] == currentTab)
+                    children: (currentTab == '완료'
+                            ? completedRequests
+                            : allRequests.where((e) => e['status'] == currentTab))
                         .map(_buildRequestItem)
                         .toList(),
                   ),
@@ -130,7 +188,14 @@ class _DistributorHomePageState extends State<DistributorHomePage> {
     bool isSelected = currentTab == title;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => currentTab = title),
+        onTap: () async {
+          if (title == '완료') {
+            await fetchCompletedDeliveries();
+          }
+          setState(() {
+            currentTab = title;
+          });
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
           decoration: BoxDecoration(
@@ -179,7 +244,7 @@ class _DistributorHomePageState extends State<DistributorHomePage> {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Text(
-            "배출사 위치: ${item['addr']}\n상태: ${item['status']}\n요청일: ${item['date']}",
+            "배출사 위치: ${item['addr']}\n상태: ${item['status']}\n${_dateLabel(item['rawStatus'])}: ${item['date']}",
             style: TextStyle(
               color: Colors.brown[600],
               fontSize: 13,
@@ -192,19 +257,44 @@ class _DistributorHomePageState extends State<DistributorHomePage> {
     );
   }
 
+  String _dateLabel(String status) {
+    if (status == 'pending' || status == 'accepted') return '요청일';
+    if (status == 'transit') return '배송 시작일';
+    if (status == 'completed' || status == 'denied') return '완료일';
+    return '날짜';
+  }
+
   Widget _buildActionButton(Map<String, dynamic> item) {
     if (item['rawStatus'] == 'pending') {
-      return ElevatedButton(
-        onPressed: () => _acceptDelivery(item['id']),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF8B4513),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ElevatedButton(
+            onPressed: () => _acceptDelivery(item['id']),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8B4513),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 2,
+            ),
+            child: const Text('수락', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
-          elevation: 2,
-        ),
-        child: const Text('수락', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () => _denyDelivery(item['id']),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFA52A2A),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 2,
+            ),
+            child: const Text('거절', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
       );
     } else if (item['rawStatus'] == 'accepted') {
       return ElevatedButton(
@@ -221,7 +311,9 @@ class _DistributorHomePageState extends State<DistributorHomePage> {
       );
     } else if (item['rawStatus'] == 'transit') {
       return ElevatedButton(
-        onPressed: () {},
+        onPressed: () async {
+          await _completeDelivery(item['id']);
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFCD853F),
           foregroundColor: Colors.white,
@@ -254,6 +346,25 @@ class _DistributorHomePageState extends State<DistributorHomePage> {
     }
   }
 
+  Future<void> _denyDelivery(int id) async {
+    final url = Uri.parse('$BASE_URL/api/deny-delivery');
+    final headers = {
+      "Authorization": "Token ${widget.token}",
+      "Content-Type": "application/x-www-form-urlencoded",
+    };
+    try {
+      final response = await http.post(url, headers: headers, body: {"id": "$id"});
+      if (response.statusCode == 200) {
+        await fetchMyDeliveries();
+        await fetchCompletedDeliveries();
+      } else {
+        print('거절 실패: ${response.body}');
+      }
+    } catch (e) {
+      print('네트워크 오류: $e');
+    }
+  }
+
   Future<void> _transitDelivery(int id) async {
     final url = Uri.parse('$BASE_URL/api/transit-delivery');
     final headers = {
@@ -266,6 +377,25 @@ class _DistributorHomePageState extends State<DistributorHomePage> {
         fetchMyDeliveries();
       } else {
         print('수거 완료 실패: ${response.body}');
+      }
+    } catch (e) {
+      print('네트워크 오류: $e');
+    }
+  }
+
+  Future<void> _completeDelivery(int id) async {
+    final url = Uri.parse('$BASE_URL/api/complete-delivery');
+    final headers = {
+      "Authorization": "Token ${widget.token}",
+      "Content-Type": "application/x-www-form-urlencoded",
+    };
+    try {
+      final response = await http.post(url, headers: headers, body: {"id": "$id"});
+      if (response.statusCode == 200) {
+        await fetchMyDeliveries();
+        await fetchCompletedDeliveries();
+      } else {
+        print('배송 완료 실패: ${response.body}');
       }
     } catch (e) {
       print('네트워크 오류: $e');
