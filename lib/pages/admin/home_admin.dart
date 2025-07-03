@@ -30,7 +30,7 @@ class _AdminHomePageState extends State<AdminHomePage>
 
   // dropdown 저장용 변수
 
-  String? selectedType = "수확"; // default = 수확
+  String selectedType = "수확"; // default = 수확
   String? selectedByproductName = "사과"; // default = 사과
 
 
@@ -48,9 +48,6 @@ class _AdminHomePageState extends State<AdminHomePage>
   String? errorMessage;
   late AnimationController _animationController;
   late AnimationController _chartAnimationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _slideAnimation;
-  late Animation<double> _chartAnimation;
 
 
   //Maps
@@ -72,18 +69,6 @@ class _AdminHomePageState extends State<AdminHomePage>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-
-    _slideAnimation = Tween<double>(begin: 50.0, end: 0.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
-    );
-
-    _chartAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-          parent: _chartAnimationController, curve: Curves.elasticOut),
-    );
 
     // 데이터 로드  (화면에 띄울 데이터 분류, 동적 지역 정보)
     initData();
@@ -165,7 +150,7 @@ class _AdminHomePageState extends State<AdminHomePage>
       }
     }
 
-  Future<Map<String, dynamic>> getProvinceWeightData(String type, String byproduct, String? addr1,String? addr2) async {
+  Future<Map<String, dynamic>> getWeightData(String type, String? byproduct, String? addr1,String? addr2) async {
     String url = "$BASE_URL/api/sum-byprod?type=$type&name=$byproduct";
 
     String returnfield = "results";
@@ -285,7 +270,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     print("👉 _generateProvinceMarkers() 시작");
 
     // results Map만 반환하도록 구현했다고 가정
-    Map<String, dynamic> provinceWeightData = await getProvinceWeightData("수확", "사과", null, null);
+    Map<String, dynamic> provinceWeightData = await getWeightData(selectedType, selectedByproductName, null, null);
     print("✅ provinceWeightData: $provinceWeightData");
 
     for (var province in allAreas.keys) {
@@ -347,7 +332,7 @@ class _AdminHomePageState extends State<AdminHomePage>
         }
 
 
-        Map<String, dynamic> provinceWeightData = await getProvinceWeightData("수확", "사과", province , district);
+        Map<String, dynamic> provinceWeightData = await getWeightData(selectedType, selectedByproductName, province , district);
 
         double? weight;
         if (provinceWeightData.containsKey(district)) {
@@ -464,6 +449,100 @@ class _AdminHomePageState extends State<AdminHomePage>
       }
     }
 
+  Future<void> _reloadMarkers() async {
+    print("🔄 마커 리로드 시작");
+
+    _provinceMarkers = await _generateProvinceMarkers();
+    _districtMarkers = await _generateDistrictMarkers();
+
+    // 현재 줌에 맞춰 지도에 새 마커 뿌리기
+    final position = await _controller?.getCameraPosition();
+    if (position != null) {
+      _onZoomChanged(position.zoom);
+    }
+  }
+
+  Widget _buildFilterBar() {
+    final filteredByproducts = byproductsCategory
+        .where((item) => item["type"] == selectedType)
+        .map((item) => item["name"]!)
+        .toSet()
+        .toList();
+
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          // 가공/수확 버튼
+          ToggleButtons(
+            borderRadius: BorderRadius.circular(6),
+            selectedColor: Colors.white,
+            fillColor: Colors.green,
+            color: Colors.black87,
+            isSelected: [
+              selectedType == "가공",
+              selectedType == "수확",
+            ],
+            onPressed: (index) {
+              setState(() {
+                selectedType = index == 0 ? "가공" : "수확";
+                // ✅ 타입 바뀌면 품목을 첫번째로 초기화
+                final filtered = byproductsCategory
+                    .where((item) => item["type"] == selectedType)
+                    .map((item) => item["name"]!)
+                    .toSet()
+                    .toList();
+                selectedByproductName = filtered.isNotEmpty ? filtered.first : null;
+              });
+              _reloadMarkers();
+            },
+            children: const [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text("가공"),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text("수확"),
+              ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          // 품목 드롭다운
+
+          DropdownButton<String>(
+            value: selectedByproductName,
+            items: filteredByproducts.map((name) {
+              return DropdownMenuItem(
+                value: name,
+                child: Text(name),
+              );
+            }).toList(),
+            onChanged: (value) {
+              setState(() {
+                selectedByproductName = value!;
+              });
+              _reloadMarkers();
+            },
+          )
+        ],
+      ),
+    );
+  }
 
     @override
     Widget build(BuildContext context) {
@@ -495,8 +574,15 @@ class _AdminHomePageState extends State<AdminHomePage>
         ),
         body: isLoading
             ? _buildLoadingWidget()
-            : _buildMapSection(),
-
+            :Stack(
+          children: [
+            _buildMapSection(),
+            Align(
+              alignment: Alignment.topCenter,
+              child: _buildFilterBar(),
+            ),
+          ],
+        ),
         bottomNavigationBar: buildBottomNavigationBar(context),
       );
     }
@@ -746,151 +832,4 @@ class _AdminHomePageState extends State<AdminHomePage>
     }
   }
 
-
-  Widget _buildFilterSection() {
-    return Card(
-      elevation: 4,
-      shadowColor: Colors.grey.shade300,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: [Colors.white, Colors.grey.shade50],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.filter_list, color: Colors.green.shade600, size: 24),
-                const SizedBox(width: 8),
-                Text(
-                  '필터 설정',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // 부산물 유형 선택
-            _buildDropdownField(
-              label: '부산물 유형',
-              icon: Icons.category,
-              value: selectedType,
-              items: ["가공", "수확"],
-              onChanged: (value) {
-                setState(() {
-                  selectedType = value;
-                  selectedByproductName = null;
-                  _chartAnimationController.reset();
-                });
-                updateInfo();
-              },
-            ),
-
-            if (selectedType != null) ...[
-              const SizedBox(height: 16),
-              _buildDropdownField(
-                label: '품목',
-                icon: Icons.agriculture,
-                value: selectedByproductName,
-                items: byproductsCategory
-                    .where((item) => item['type'] == selectedType)
-                    .map((item) => item['name']!)
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedByproductName = value;
-                    _chartAnimationController.reset();
-                  });
-                  updateInfo();
-                },
-              ),
-
-              const SizedBox(height: 16),
-              _buildDropdownField(
-                label: '지역',
-                icon: Icons.location_on,
-                value: selectedProvince,
-                items: provinces,
-                onChanged: (value) async {
-                  setState(() {
-                    selectedProvince = value;
-                    _chartAnimationController.reset();
-                  });
-                  updateInfo();
-                },
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-
-
-  Widget _buildDropdownField({
-    required String label,
-    required IconData icon,
-    required String? value,
-    required List<String> items,
-    required Function(String?) onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 16, color: Colors.grey.shade600),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
-            color: Colors.white,
-          ),
-          child: DropdownButtonFormField<String>(
-            value: value,
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              hintText: "$label을 선택해주세요",
-              hintStyle: TextStyle(color: Colors.grey.shade500),
-            ),
-            items: items.map((item) {
-              return DropdownMenuItem(
-                value: item,
-                child: Text(
-                  item,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-              );
-            }).toList(),
-            onChanged: onChanged,
-          ),
-        ),
-      ],
-    );
-  }
-  */
+ */
