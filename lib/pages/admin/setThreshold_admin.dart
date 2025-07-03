@@ -41,7 +41,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   @override
   void initState() {
     super.initState();
-    print("✅ initState() 호출됨 ${provinces}");
+    print("✅ initState() 호출됨 ${allAreas}");
 
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),

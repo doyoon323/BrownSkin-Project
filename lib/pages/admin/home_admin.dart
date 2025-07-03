@@ -1,5 +1,11 @@
+//import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
+
+import 'dart:typed_data'; // ✅ 반드시 있어야 함
+import 'dart:ui' as ui;   // ✅ 반드시 있어야 함
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/constants.dart';
 import 'dart:convert';
@@ -23,22 +29,18 @@ class _AdminHomePageState extends State<AdminHomePage>
     with TickerProviderStateMixin {
 
   // dropdown 저장용 변수
-  String? selectedProvince; // default = 미선택(전국)
-  String? selectedType= "가공"; // default = 가공
-  String? selectedByproductName="사과"; // default = 사과
 
-  String? selectedDistrict = null; // 현재 미구현 상태
-
+  String? selectedType = "가공"; // default = 가공
+  String? selectedByproductName = "사과"; // default = 사과
 
 
   // 시각화용 데이터
-  List<Map<String,dynamic>> companyData= []; //업계별 데이터
-  List<String> usernames = []; // 업계별 사용자 이름 추출
-  List<double> weights = []; // 업계별 무게 추출
+  //List<Map<String,dynamic>> companyData= []; //업계별 데이터
+  //List<String> usernames = []; // 업계별 사용자 이름 추출
+  //List<double> weights = []; // 업계별 무게 추출
 
-  List<RegionWeight>? regionData; //시도별 데이터
-  double? totalWeight = 0.0;
-
+  //List<RegionWeight>? regionData; //시도별 데이터
+  //double? totalWeight = 0.0;
 
 
   //UI 구성
@@ -49,6 +51,14 @@ class _AdminHomePageState extends State<AdminHomePage>
   late Animation<double> _fadeAnimation;
   late Animation<double> _slideAnimation;
   late Animation<double> _chartAnimation;
+
+
+  //Maps
+  bool _isNaverMapInitialized = false;
+  List<NMarker> _provinceMarkers = [];
+  List<NMarker> _districtMarkers = [];
+  NaverMapController? _controller;
+
 
   @override
   void initState() {
@@ -71,7 +81,8 @@ class _AdminHomePageState extends State<AdminHomePage>
     );
 
     _chartAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _chartAnimationController, curve: Curves.elasticOut),
+      CurvedAnimation(
+          parent: _chartAnimationController, curve: Curves.elasticOut),
     );
 
     // 데이터 로드  (화면에 띄울 데이터 분류, 동적 지역 정보)
@@ -85,45 +96,395 @@ class _AdminHomePageState extends State<AdminHomePage>
     super.dispose();
   }
 
-  Future<void> initData() async {
-    await getProvinceData();
-    await updateInfo();
+  Future<void> _initializeNaverMap() async {
+    print("😍😍😍😍😍initNaverMap()");
+    final naverMap = FlutterNaverMap();
+    await naverMap.init(
+      clientId: 'fqc49wyjq4',
+      onAuthFailed: (error) {
+        print("네이버 지도 인증 실패: $error");
+      },
+    );
+    setState(() {
+      _isNaverMapInitialized = true;
+    });
   }
 
-  //api 수정시 함수 수정해두어야함
-  Future<void> getProvinceData() async {
-    String? nextUrl = "$BASE_URL/api/byprod-list?page=1";
-    List<String> temp = [];
+    Future<void> initData() async {
+      print("👉 initData(): START");
 
-    while (nextUrl != null) {
-      final result = await http.get(
-        Uri.parse(nextUrl),
-        headers: {'Authorization': 'Token ${widget.token}'},
-      );
+      await getProvinceData();
+      print("✅ getProvinceData() 완료");
 
-      if (result.statusCode == 200) {
-        final body = jsonDecode(utf8.decode(result.bodyBytes));
-        final List<dynamic> results = body['results']; // 관리자가 가진 모든 업체의 데이터를 불러와서
+      await loadAllDistricts();
+      print("✅ loadAllDistricts() 완료");
 
-        // addr1 (시,도 정보)만 추출
-        temp.addAll(results.map<String>((item) => item['user']['addr1'] as String));
+      await _initializeNaverMap();
+      print("✅ _initializeNaverMap() 완료");
 
-        nextUrl = body['next'] as String?;
-      } else {
-        throw Exception('지역 정보 불러오기 실패 : ${result.statusCode}');
+      print("✅ 전체 데이터 로드 완료: $allAreas");
+
+      _provinceMarkers = await _generateProvinceMarkers();
+      print("✅ _generateProvinceMarkers() 완료 (총 ${_provinceMarkers.length}개)");
+
+      _districtMarkers = await _generateDistrictMarkers();
+      print("✅ _generateDistrictMarkers() 완료 (총 ${_districtMarkers.length}개)");
+
+      setState(() {
+        isLoading = false;
+      });
+
+      print("👉 initData(): END");
+    }
+
+
+    Future<void> getProvinceData() async {
+      String url = "$BASE_URL/api/addr-list";
+
+      try {
+        final response = await http.get(
+          Uri.parse(url),
+          headers: {'Authorization': 'Token ${widget.token}'},
+        );
+
+        if (response.statusCode == 200) {
+          final body = jsonDecode(utf8.decode(response.bodyBytes));
+          final List<dynamic> result = body['addr1_list'];
+
+          // Map으로 초기화
+          setState(() {
+            allAreas = {
+              for (final province in result) province.toString(): []
+            };
+          });
+        } else {
+          throw Exception('지역 정보 불러오기 실패 : ${response.statusCode}');
+        }
+      } catch (e) {
+        print("getProvinceData 예외 발생: $e");
       }
     }
 
-    // 중복 제거
-    setState(() {
-      provinces = temp.toSet().toList();
-      provinces = ["전국"] + provinces;
-    });
 
-    //print("================$provinces================");
+    Future<List<String>> getDistrictData(String province) async {
+      String url = "$BASE_URL/api/addr-list?addr1=$province";
+
+      try {
+        final response = await http.get(
+          Uri.parse(url),
+          headers: {'Authorization': 'Token ${widget.token}'},
+        );
+
+        if (response.statusCode == 200) {
+          final body = jsonDecode(utf8.decode(response.bodyBytes));
+
+          // API 결과 예: {"addr2_list": ["강남구","송파구"]}
+          final List<dynamic> result = body['addr2_list'];
+
+          // List<String>으로 변환해서 반환
+          return result.map((e) => e.toString()).toList();
+        } else {
+          throw Exception('시군구 정보 불러오기 실패 : ${response.statusCode}');
+        }
+      } catch (e) {
+        print("getDistrictData 예외 발생: $e");
+        // 실패 시 빈 리스트 반환
+        return [];
+      }
+    }
+
+    Future<void> loadAllDistricts() async {
+      final provinceList = allAreas.keys.toList();
+
+      final futures = provinceList.map((province) => getDistrictData(province));
+      final results = await Future.wait(futures);
+
+      setState(() {
+        for (int i = 0; i < provinceList.length; i++) {
+          allAreas[provinceList[i]] = results[i];
+        }
+      });
+    }
+
+  Future<NLatLng> getLatLngFromAddress(String addr1, String addr2) async {
+    print("🔍 getLatLngFromAddress(): $addr1 $addr2");
+
+    final url = Uri.parse(
+        'https://dapi.kakao.com/v2/local/search/address.json?query=${addr1 + addr2}'
+    );
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'KakaoAK 75acb2a58d477b9c94d5c3e61790980b'
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      if (body['documents'].isEmpty) {
+        print("⚠️ 주소 결과 없음: $addr1 $addr2");
+        print("⚠️ Province '$addr1 $addr2' 마커 생성 실패");
+        return NLatLng(0, 0);
+      }
+      final doc = body['documents'][0];
+      print("✅ 좌표 결과: ${doc['y']}, ${doc['x']}");
+      return NLatLng(
+        double.parse(doc['y']),
+        double.parse(doc['x']),
+      );
+    } else {
+      print("❌ API 호출 실패: ${response.statusCode}");
+      throw Exception('API 호출 실패: ${response.statusCode}');
+    }
+  }
+
+  Future<List<NMarker>> _generateProvinceMarkers() async {
+    List<NMarker> markers = [];
+    print("👉 _generateProvinceMarkers() 시작");
+
+    for (var province in allAreas.keys) {
+      NLatLng latLng = await getLatLngFromAddress(province, "");
+      print("📍 Province 마커 생성: $province (${latLng.latitude}, ${latLng.longitude})");
+
+      if (latLng.latitude == 0 && latLng.longitude == 0) {
+        continue;
+      }
+
+      NMarker marker = NMarker(
+          id: province,
+          position: latLng
+      );
+      markers.add(marker);
+    }
+
+    return markers;
+  }
+
+  Future<List<NMarker>> _generateDistrictMarkers() async {
+    List<NMarker> markers = [];
+    print("👉 _generateDistrictMarkers() 시작");
+
+    for (var entry in allAreas.entries) {
+      final province = entry.key;
+      final districts = entry.value;
+
+      for (var district in districts) {
+        NLatLng latLng = await getLatLngFromAddress(province, district);
+        print("📍 District 마커 생성: $province $district (${latLng.latitude}, ${latLng.longitude})");
+
+        if (latLng.latitude == 0 && latLng.longitude == 0) {
+          continue;
+        }
+
+        NMarker marker = NMarker(
+            id: "$province $district",
+            position: latLng
+        );
+        markers.add(marker);
+      }
+    }
+
+    return markers;
+  }
+
+    /* UI 구현 */
+    Widget _buildMapSection() {
+      return NaverMap(
+        onMapReady: (controller) {
+          _controller = controller;
+          _onZoomChanged(6);
+        },
+        onCameraIdle: () async {
+          final position = await _controller?.getCameraPosition();
+          _onZoomChanged(position!.zoom);
+        },
+        options: NaverMapViewOptions(
+          initialCameraPosition: NCameraPosition(
+            target: NLatLng(36.5, 127.8), // 초기 중심 좌표
+            zoom: 6,
+          ),
+
+          // 사용자가 스크롤/줌 가능 여부 (기본 true)
+          scrollGesturesEnable: true,
+          stopGesturesEnable: true,
+          tiltGesturesEnable: true,
+          rotationGesturesEnable: true,
+        ),
+      );
+    }
+
+  void _onZoomChanged(double zoom) {
+    print("🔍 _onZoomChanged(): zoom = $zoom");
+    _controller?.clearOverlays();
+
+    if (zoom <= 6) {
+      print("✅ 전국 마커 ${_provinceMarkers.length}개 표시");
+      for (var marker in _provinceMarkers) {
+        _controller?.addOverlay(marker);
+      }
+    } else {
+      print("✅ 시군구 마커 ${_districtMarkers.length}개 표시");
+      for (var marker in _districtMarkers) {
+        _controller?.addOverlay(marker);
+      }
+    }
   }
 
 
+
+    int selectedIndex = 0;
+    Future<void> _onItemTapped(BuildContext context, int index) async {
+      // 선택 인덱스 갱신
+      setState(() {
+        selectedIndex = index;
+      });
+
+      // 홈
+      if (index == 0) {
+        return;
+      }
+
+      // 임계 설정
+      if (index == 1) {
+        final result = await Navigator.push<int>(
+          context,
+          MaterialPageRoute(
+              builder: (context) => SetThresholdAdminPage(token: widget.token)
+          ),
+        );
+
+        // 복귀했울 때 result 없으면 홈으로
+        if (result == null) {
+          setState(() {
+            selectedIndex = 0;
+          });
+          return;
+        }
+
+        setState(() {
+          selectedIndex = result;
+        });
+        //await updateInfo();
+      }
+    }
+
+
+    @override
+    Widget build(BuildContext context) {
+      if (!_isNaverMapInitialized) {
+        return Center(child: CircularProgressIndicator());
+      }
+
+      return Scaffold(
+        backgroundColor: Colors.grey.shade50,
+        appBar: AppBar(
+          title: const Text(
+            '부산물 데이터 관리',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: Colors.green.shade700,
+          elevation: 0,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.green.shade600, Colors.green.shade800],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+        ),
+        body: isLoading
+            ? _buildLoadingWidget()
+            : _buildMapSection(),
+
+        bottomNavigationBar: buildBottomNavigationBar(context),
+      );
+    }
+
+    Widget _buildLoadingWidget() {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.shade300,
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.green.shade600),
+                    strokeWidth: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '데이터를 불러오는 중...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+
+    Widget buildBottomNavigationBar(BuildContext context) {
+      return Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade300,
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: selectedIndex,
+          onTap: (index) => _onItemTapped(context, index),
+          backgroundColor: Colors.white,
+          selectedItemColor: Colors.green.shade600,
+          unselectedItemColor: Colors.grey.shade500,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_rounded),
+              label: '홈',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings_rounded),
+              label: '임계 설정',
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+
+/*
   Future<void> updateInfo() async {
     print("✅ updateInfo");
     setState(() {
@@ -318,143 +679,6 @@ class _AdminHomePageState extends State<AdminHomePage>
   }
 
 
-  /* UI 구현 */
-
-  int selectedIndex = 0;
-
-  Future<void> _onItemTapped(BuildContext context, int index) async {
-    // 선택 인덱스 갱신
-    setState(() {
-      selectedIndex = index;
-    });
-
-    // 홈
-    if (index == 0) {
-      return;
-    }
-
-    // 임계 설정
-    if (index == 1) {
-      final result = await Navigator.push<int>(
-        context,
-        MaterialPageRoute(
-            builder: (context) => SetThresholdAdminPage(token : widget.token)
-        ),
-      );
-
-      // 복귀했울 때 result 없으면 홈으로
-      if (result == null){
-        setState(() {
-          selectedIndex = 0;
-        });
-        return;
-      }
-
-      setState(() {
-        selectedIndex = result;
-      });
-      await getProvinceData();
-      await updateInfo();
-    }
-  }
-
-
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        title: const Text(
-          '부산물 데이터 관리',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: Colors.green.shade700,
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.green.shade600, Colors.green.shade800],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-      ),
-      body: isLoading
-          ? _buildLoadingWidget()
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: AnimatedBuilder(
-          animation: _fadeAnimation,
-          builder: (context, child) {
-            return Transform.translate(
-              offset: Offset(0, _slideAnimation.value),
-              child: Opacity(
-                opacity: _fadeAnimation.value,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildFilterSection(),
-                    const SizedBox(height: 24),
-                    _buildSummaryCard(),
-                    const SizedBox(height: 24),
-                    _buildChartSection(),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-      bottomNavigationBar: buildBottomNavigationBar(context),
-    );
-  }
-
-  Widget _buildLoadingWidget() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.shade300,
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade600),
-                  strokeWidth: 3,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '데이터를 불러오는 중...',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildFilterSection() {
     return Card(
       elevation: 4,
@@ -601,485 +825,4 @@ class _AdminHomePageState extends State<AdminHomePage>
       ],
     );
   }
-
-
-
-
-  Widget _buildSummaryCard() {
-    return Card(
-      elevation: 6,
-      shadowColor: Colors.green.shade200,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            colors: [Colors.green.shade600, Colors.green.shade800],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.scale,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '총 무게',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white70,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "${selectedProvince ?? '전국'}의 ${selectedByproductName ?? ''}(${selectedType ?? '전국'}) 부산물",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white60,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(
-              totalWeight != null
-                  ? "${totalWeight!.toStringAsFixed(1)} kg"
-                  : "데이터 없음",
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-
-  Widget _buildChartSection() {
-    if (regionData != null && regionData!.isNotEmpty) {
-      return _buildChartCard(
-        title: "지역별 무게 분포",
-        icon: Icons.bar_chart,
-        child: buildRegionBarChart(regionData!),
-      );
-    } else if (companyData.isNotEmpty) {
-      return _buildChartCard(
-        title: "업체별 무게 분포",
-        icon: Icons.business,
-        child: buildCompanyBarChart(companyData),
-      );
-    } else {
-      return _buildEmptyDataCard();
-    }
-  }
-
-
-
-  Widget _buildChartCard({
-    required String title,
-    required IconData icon,
-    required Widget child,
-  }) {
-    return Card(
-      elevation: 4,
-      shadowColor: Colors.grey.shade300,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: Colors.white,
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: Colors.green.shade600, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            SizedBox(height: 300, child: child),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyDataCard() {
-    return Card(
-      elevation: 4,
-      shadowColor: Colors.grey.shade300,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: Colors.white,
-        ),
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          children: [
-            Icon(
-              Icons.inbox,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '표시할 데이터가 없습니다',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '필터를 조정해보세요',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildBottomNavigationBar(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade300,
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        currentIndex: selectedIndex,
-        onTap: (index) => _onItemTapped(context, index),
-        backgroundColor: Colors.white,
-        selectedItemColor: Colors.green.shade600,
-        unselectedItemColor: Colors.grey.shade500,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: '홈',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_rounded),
-            label: '임계 설정',
-          ),
-        ],
-      ),
-    );
-  }Widget buildCompanyBarChart(List<Map<String, dynamic>> data) {
-    // 데이터 비었을 때
-    if (data.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 24),
-          child: Text(
-            "표시할 데이터가 없습니다.",
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade500,
-            ),
-          ),
-        ),
-      );
-    }
-
-    // BarGroups 생성
-    final barGroups = data
-        .asMap()
-        .entries
-        .map(
-          (entry) {
-        final index = entry.key;
-        final item = entry.value;
-
-        final weight = (item['weight_float'] as num?)?.toDouble() ?? 0.0;
-
-        return BarChartGroupData(
-          x: index,
-          barRods: [
-            BarChartRodData(
-              toY: weight,
-              gradient: LinearGradient(
-                colors: [
-                  Colors.teal.shade300,
-                  Colors.teal.shade600,
-                  Colors.teal.shade800,
-                ],
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-              ),
-              width: 24,
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ],
-        );
-      },
-    )
-        .toList();
-
-    return AnimatedBuilder(
-      animation: _chartAnimation,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _chartAnimation.value,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 16), // 하단 공간 확보
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: data
-                    .map((e) => (e['weight_float'] as num?)?.toDouble() ?? 0.0)
-                    .reduce((a, b) => a > b ? a : b) +
-                    50,
-                minY: 0,
-                barGroups: barGroups,
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 50,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          "${value.toInt()}kg",
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey.shade600,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 48, // 여유 공간 확보
-                      getTitlesWidget: (value, meta) {
-                        int idx = value.toInt();
-                        final companyName = idx >= 0 && idx < data.length
-                            ? (data[idx]['user']?['company_name'] as String?) ?? ''
-                            : '';
-
-                        return SideTitleWidget(
-                          axisSide: meta.axisSide,
-                          space: 4,
-                          child: SizedBox(
-                            width: 60, // 폭 제한
-                            child: Text(
-                              companyName,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade300, width: 1),
-                    left: BorderSide(color: Colors.grey.shade300, width: 1),
-                  ),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 50,
-                  getDrawingHorizontalLine: (value) {
-                    return FlLine(
-                      color: Colors.grey.shade200,
-                      strokeWidth: 1,
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget buildRegionBarChart(List<RegionWeight> data) {
-    final barGroups = data
-        .asMap()
-        .entries
-        .map(
-          (entry) {
-        final index = entry.key;
-        final item = entry.value;
-        return BarChartGroupData(
-          x: index,
-          barRods: [
-            BarChartRodData(
-              toY: item.weight,
-              gradient: LinearGradient(
-                colors: [
-                  Colors.green.shade300,
-                  Colors.green.shade600,
-                  Colors.green.shade800,
-                ],
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-              ),
-              width: 24,
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ],
-        );
-      },
-    ).toList();
-
-    return AnimatedBuilder(
-      animation: _chartAnimation,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _chartAnimation.value,
-          child: BarChart(
-            BarChartData(
-              alignment: BarChartAlignment.spaceAround,
-              maxY: data.map((e) => e.weight).reduce((a, b) => a > b ? a : b) + 50,
-              minY: 0,
-              barGroups: barGroups,
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 50,
-                    getTitlesWidget: (value, meta) {
-                      return Text(
-                        "${value.toInt()}kg",
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey.shade600,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    getTitlesWidget: (value, meta) {
-                      int idx = value.toInt();
-                      return SideTitleWidget(
-                        axisSide: meta.axisSide,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            idx >= 0 && idx < data.length ? data[idx].city : "",
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                topTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                rightTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-              ),
-              borderData: FlBorderData(
-                show: true,
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade300, width: 1),
-                  left: BorderSide(color: Colors.grey.shade300, width: 1),
-                ),
-              ),
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-                horizontalInterval: 50,
-                getDrawingHorizontalLine: (value) {
-                  return FlLine(
-                    color: Colors.grey.shade200,
-                    strokeWidth: 1,
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-
-}
+  */

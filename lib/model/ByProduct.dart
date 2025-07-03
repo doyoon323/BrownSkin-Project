@@ -40,5 +40,4 @@ class ByProduct {
   String toString() {
     return 'ByProduct(username: $id, addr1: $weight, address: $address, company: $company_name)';
   }
-
 }

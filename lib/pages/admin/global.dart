@@ -1,3 +1,4 @@
-List<String> provinces = []; //admin이 가진 지역정보(업체를 가진)를 dynamic하게 저장한다.
+Map<String, List<String>> allAreas = {}; //admin이 가진 addr1,addr2(시,도)을 저장한다.
+
 
 
