@@ -30,7 +30,7 @@ class _AdminHomePageState extends State<AdminHomePage>
 
   // dropdown 저장용 변수
 
-  String? selectedType = "가공"; // default = 가공
+  String? selectedType = "수확"; // default = 수확
   String? selectedByproductName = "사과"; // default = 사과
 
 
@@ -165,6 +165,45 @@ class _AdminHomePageState extends State<AdminHomePage>
       }
     }
 
+  Future<Map<String, dynamic>> getProvinceWeightData(String type, String byproduct, String? addr1,String? addr2) async {
+    String url = "$BASE_URL/api/sum-byprod?type=$type&name=$byproduct";
+
+    String returnfield = "results";
+    if (addr1 != null){
+      url += "&addr1=$addr1";
+    }
+    if (addr2 != null){
+      url += "&addr2=$addr2";
+    }
+
+    print("🔍 provinceWeightData 요청: $url");
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Authorization': 'Token ${widget.token}'},
+      );
+
+      print("📨 응답 상태 코드: ${response.statusCode}");
+      print("📨 응답 바디: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
+        if (addr2 != null){
+          return body as Map<String, dynamic>;
+        }
+        return body[returnfield] as Map<String, dynamic>;
+
+
+      } else {
+        throw Exception("API 실패: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("getProvinceWeightData() 예외: $e");
+      // **빈 Map을 반환해 null이 안 되도록**
+      return {};
+    }
+  }
 
     Future<List<String>> getDistrictData(String province) async {
       String url = "$BASE_URL/api/addr-list?addr1=$province";
@@ -239,9 +278,15 @@ class _AdminHomePageState extends State<AdminHomePage>
     }
   }
 
+
+
   Future<List<NMarker>> _generateProvinceMarkers() async {
     List<NMarker> markers = [];
     print("👉 _generateProvinceMarkers() 시작");
+
+    // results Map만 반환하도록 구현했다고 가정
+    Map<String, dynamic> provinceWeightData = await getProvinceWeightData("수확", "사과", null, null);
+    print("✅ provinceWeightData: $provinceWeightData");
 
     for (var province in allAreas.keys) {
       NLatLng latLng = await getLatLngFromAddress(province, "");
@@ -251,36 +296,86 @@ class _AdminHomePageState extends State<AdminHomePage>
         continue;
       }
 
+      double? weight;
+      if (provinceWeightData.containsKey(province)) {
+        weight = (provinceWeightData[province] as num).toDouble();
+      }
+
+      print("weight: $weight");
       NMarker marker = NMarker(
-          id: province,
-          position: latLng
+        id: province,
+        position: latLng,
+        caption: weight != null
+            ? NOverlayCaption(
+          text: weight.toString(),
+          color: Colors.deepOrange, // 글자색
+          haloColor: Colors.white, // 테두리 색
+          textSize: 25, // 글자 크기
+        )
+            : NOverlayCaption(text: "0",
+          color: Colors.deepOrange, // 글자색
+          haloColor: Colors.white, // 테두리 색
+          textSize: 25
+        ),
+          isForceShowCaption: true
       );
       markers.add(marker);
     }
-
     return markers;
   }
+
+
 
   Future<List<NMarker>> _generateDistrictMarkers() async {
     List<NMarker> markers = [];
     print("👉 _generateDistrictMarkers() 시작");
 
+
     for (var entry in allAreas.entries) {
       final province = entry.key;
       final districts = entry.value;
+
+
 
       for (var district in districts) {
         NLatLng latLng = await getLatLngFromAddress(province, district);
         print("📍 District 마커 생성: $province $district (${latLng.latitude}, ${latLng.longitude})");
 
+
         if (latLng.latitude == 0 && latLng.longitude == 0) {
           continue;
         }
 
+
+        Map<String, dynamic> provinceWeightData = await getProvinceWeightData("수확", "사과", province , district);
+
+        double? weight;
+        if (provinceWeightData.containsKey(district)) {
+          weight = (provinceWeightData[district] as num).toDouble();
+        } else if (provinceWeightData["total_weight"] != null) {
+          weight = (provinceWeightData["total_weight"] as num).toDouble();
+        }
+
+        print("$province $district weight: $weight");
+
         NMarker marker = NMarker(
             id: "$province $district",
-            position: latLng
+            position: latLng,
+            caption: weight != null
+                ? NOverlayCaption(
+              text: weight.toString(),
+              color: Colors.deepOrange, // 글자색
+              haloColor: Colors.white, // 테두리 색
+              textSize: 25, // 글자 크기
+            )
+                : NOverlayCaption(text: "0",
+                color: Colors.deepOrange, // 글자색
+                haloColor: Colors.white, // 테두리 색
+                textSize: 25
+            ),
+            isForceShowCaption: true
         );
+
         markers.add(marker);
       }
     }
@@ -318,7 +413,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     print("🔍 _onZoomChanged(): zoom = $zoom");
     _controller?.clearOverlays();
 
-    if (zoom <= 6) {
+    if (zoom <= 7) {
       print("✅ 전국 마커 ${_provinceMarkers.length}개 표시");
       for (var marker in _provinceMarkers) {
         _controller?.addOverlay(marker);
@@ -579,34 +674,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   }
 
 
-  Future<Map<String, dynamic>> getData(String? type, String? name, String? addr1, String? addr2) async {
-    final queryParameters = {
-      'type': type,
-      'name': name,
-      if (addr1 != null) 'addr1': addr1,
-      if (addr1 != null && addr2 != null) 'addr2': addr2,
-    };
 
-    final url = Uri.parse('$BASE_URL/api/sum-byprod').replace(
-      queryParameters: queryParameters,
-    );
-
-    final headers = {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Authorization": "Token ${widget.token}",
-    };
-
-    final response = await http.get(url, headers: headers);
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(
-        response.body,);
-      print("😍😍 $data");
-      return data;
-    } else {
-      throw Exception('Failed to load data');
-    }
-  }
 
 
 
