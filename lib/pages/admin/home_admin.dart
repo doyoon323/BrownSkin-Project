@@ -1,16 +1,8 @@
-//import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
-
-import 'dart:typed_data'; // ✅ 반드시 있어야 함
-import 'dart:ui' as ui;   // ✅ 반드시 있어야 함
-
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/constants.dart';
 import 'dart:convert';
-import 'package:brownskin_app/model/ByProduct.dart';
-import 'package:brownskin_app/model/RegionWeight.dart';
 import 'dart:async';
 import 'package:brownskin_app/pages/admin/setThreshold_admin.dart';
 import 'package:brownskin_app/pages/admin/global.dart';
@@ -33,14 +25,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   String selectedType = "수확"; // default = 수확
   String? selectedByproductName = "사과"; // default = 사과
 
-
-  // 시각화용 데이터
-  //List<Map<String,dynamic>> companyData= []; //업계별 데이터
-  //List<String> usernames = []; // 업계별 사용자 이름 추출
-  //List<double> weights = []; // 업계별 무게 추출
-
-  //List<RegionWeight>? regionData; //시도별 데이터
-  //double? totalWeight = 0.0;
+  double threshold = 1;
 
 
   //UI 구성
@@ -109,11 +94,16 @@ class _AdminHomePageState extends State<AdminHomePage>
 
       print("✅ 전체 데이터 로드 완료: $allAreas");
 
+      threshold = await getThreshold(selectedType, selectedByproductName);
+      print("✅ getThreshold 완료  & $selectedType $selectedByproductName의 threshold: $threshold");
+
+
       _provinceMarkers = await _generateProvinceMarkers();
       print("✅ _generateProvinceMarkers() 완료 (총 ${_provinceMarkers.length}개)");
 
       _districtMarkers = await _generateDistrictMarkers();
       print("✅ _generateDistrictMarkers() 완료 (총 ${_districtMarkers.length}개)");
+
 
       setState(() {
         isLoading = false;
@@ -187,6 +177,25 @@ class _AdminHomePageState extends State<AdminHomePage>
       print("getProvinceWeightData() 예외: $e");
       // **빈 Map을 반환해 null이 안 되도록**
       return {};
+    }
+  }
+
+
+  Future<double> getThreshold (String type, String? byproduct) async {
+    String url = "$BASE_URL/api/threshold?type=$type&name=$byproduct";
+
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {'Authorization': 'Token ${widget.token}'},
+    );
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      print("☎️😋😋😋😋$body");
+      return body['weight_float'] == null ? -1 : body['weight_float'] as double;
+    }
+    else {
+      throw Exception("get Threshold() 실패: ${response.statusCode}");
     }
   }
 
@@ -269,9 +278,11 @@ class _AdminHomePageState extends State<AdminHomePage>
     List<NMarker> markers = [];
     print("👉 _generateProvinceMarkers() 시작");
 
+
     // results Map만 반환하도록 구현했다고 가정
     Map<String, dynamic> provinceWeightData = await getWeightData(selectedType, selectedByproductName, null, null);
     print("✅ provinceWeightData: $provinceWeightData");
+
 
     for (var province in allAreas.keys) {
       NLatLng latLng = await getLatLngFromAddress(province, "");
@@ -281,24 +292,43 @@ class _AdminHomePageState extends State<AdminHomePage>
         continue;
       }
 
-      double? weight;
+
+
+
+      double? weight = 0.0;
       if (provinceWeightData.containsKey(province)) {
         weight = (provinceWeightData[province] as num).toDouble();
       }
 
-      print("weight: $weight");
+
+
+      final percent = (weight! / threshold).clamp(0.0, 1.0);
+
+
+      Color color;
+      if (percent >= 0.9) {
+        color = Colors.red.shade600;
+      } else if (percent >= 0.7) {
+        color = Colors.orange.shade600;
+      } else if (percent >= 0.5) {
+        color = Colors.yellow.shade700;
+      } else {
+        color = Colors.green;
+      }
+
+      print("$province weight: $weight and threshold : $threshold, so percent is $percent\n Color is ${color.toString()}");
       NMarker marker = NMarker(
         id: province,
         position: latLng,
         caption: weight != null
             ? NOverlayCaption(
           text: weight.toString(),
-          color: Colors.deepOrange, // 글자색
+          color: color, // 글자색
           haloColor: Colors.white, // 테두리 색
           textSize: 25, // 글자 크기
         )
             : NOverlayCaption(text: "0",
-          color: Colors.deepOrange, // 글자색
+          color: Colors.green, // 글자색
           haloColor: Colors.white, // 테두리 색
           textSize: 25
         ),
@@ -315,6 +345,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     List<NMarker> markers = [];
     print("👉 _generateDistrictMarkers() 시작");
 
+    double percent = 0.0;
 
     for (var entry in allAreas.entries) {
       final province = entry.key;
@@ -343,28 +374,41 @@ class _AdminHomePageState extends State<AdminHomePage>
 
         print("$province $district weight: $weight");
 
+        final percent = (weight! / threshold).clamp(0.0, 1.0);
+
+        Color color;
+        if (percent >= 0.9) {
+          color = Colors.red.shade600;
+        } else if (percent >= 0.7) {
+          color = Colors.orange.shade600;
+        } else if (percent >= 0.5) {
+          color = Colors.yellow.shade700;
+        } else {
+          color = Colors.green;
+        }
+
+        print("$province $district weight: $weight and threshold : $threshold, so percent is $percent\n Color is ${color.toString()}");
+
         NMarker marker = NMarker(
             id: "$province $district",
             position: latLng,
             caption: weight != null
                 ? NOverlayCaption(
               text: weight.toString(),
-              color: Colors.deepOrange, // 글자색
-              haloColor: Colors.white, // 테두리 색
+              color: color, // 글자색
+              haloColor: color, // 테두리 색
               textSize: 25, // 글자 크기
             )
                 : NOverlayCaption(text: "0",
-                color: Colors.deepOrange, // 글자색
+                color: Colors.green, // 글자색
                 haloColor: Colors.white, // 테두리 색
                 textSize: 25
             ),
             isForceShowCaption: true
         );
-
         markers.add(marker);
       }
     }
-
     return markers;
   }
 
@@ -415,6 +459,10 @@ class _AdminHomePageState extends State<AdminHomePage>
 
     int selectedIndex = 0;
     Future<void> _onItemTapped(BuildContext context, int index) async {
+
+      print("😍😍😍😍😍😍before Thresholde: $threshold");
+
+
       // 선택 인덱스 갱신
       setState(() {
         selectedIndex = index;
@@ -436,6 +484,7 @@ class _AdminHomePageState extends State<AdminHomePage>
 
         // 복귀했울 때 result 없으면 홈으로
         if (result == null) {
+          print("result is null || after Thresholde: $threshold");
           setState(() {
             selectedIndex = 0;
           });
@@ -445,7 +494,10 @@ class _AdminHomePageState extends State<AdminHomePage>
         setState(() {
           selectedIndex = result;
         });
-        //await updateInfo();
+        threshold = await getThreshold(selectedType, selectedByproductName);
+        await _reloadMarkers();
+
+        print("after Thresholde: $threshold");
       }
     }
 
@@ -497,7 +549,7 @@ class _AdminHomePageState extends State<AdminHomePage>
               selectedType == "가공",
               selectedType == "수확",
             ],
-            onPressed: (index) {
+            onPressed: (index) async {
               setState(() {
                 selectedType = index == 0 ? "가공" : "수확";
                 // ✅ 타입 바뀌면 품목을 첫번째로 초기화
@@ -508,6 +560,7 @@ class _AdminHomePageState extends State<AdminHomePage>
                     .toList();
                 selectedByproductName = filtered.isNotEmpty ? filtered.first : null;
               });
+              threshold = await getThreshold(selectedType, selectedByproductName);
               _reloadMarkers();
             },
             children: const [
@@ -532,10 +585,11 @@ class _AdminHomePageState extends State<AdminHomePage>
                 child: Text(name),
               );
             }).toList(),
-            onChanged: (value) {
+            onChanged: (value) async {
               setState(() {
                 selectedByproductName = value!;
               });
+              threshold = await getThreshold(selectedType, selectedByproductName);
               _reloadMarkers();
             },
           )
@@ -663,173 +717,3 @@ class _AdminHomePageState extends State<AdminHomePage>
       );
     }
   }
-
-
-/*
-  Future<void> updateInfo() async {
-    print("✅ updateInfo");
-    setState(() {
-      isLoading = true;
-    });
-
-    // 품목이 선택되지 않으면 초기화 후 종료
-    if ( selectedByproductName == null) {
-      setState(() {
-        companyData = [];
-        totalWeight = 0.0;
-        regionData = [];
-        isLoading = false;
-      });
-      return;
-    }
-
-    var sumData;
-
-    //데이터 요청
-    if ( selectedProvince == null || selectedProvince == "전국" ) {
-      // 전국 : 시도별 데이터
-      print("✅ 전국 데이터 ");
-      sumData = await getData(
-        selectedType,
-        selectedByproductName,
-        null,
-        selectedDistrict, //현재 null
-      );
-
-      final resultsMap = sumData["results"] as Map<String, dynamic>? ?? {};
-      print("✅ resultsMap: $resultsMap");
-
-
-
-      final regionList = resultsMap.entries.map(
-            (entry) => RegionWeight(weight: (entry.value as num).toDouble(), city: entry.key,
-        )).toList();
-
-      setState(() {
-        regionData = regionList;
-        companyData = [];
-        totalWeight = (sumData["total_weight"] as num?)?.toDouble() ?? 0.0;
-        isLoading = false;
-      });
-
-    }
-    else {
-      // 지역 : 지역 내 업체별 데이터
-      sumData = await getData(
-        selectedType,
-        selectedByproductName,
-        selectedProvince,
-        selectedDistrict,
-      );
-
-
-      final resultsMap = sumData["results"] as Map<String, dynamic>? ?? {};
-      print("✅ resultsMap: $resultsMap");
-
-      final hasValidData = resultsMap.entries.any(
-            (entry) {
-          final value = entry.value;
-          if (value == null) return false;
-          if (value is num && value == 0) return false;
-          return true;
-        },
-      );
-
-      if (!hasValidData) {
-        print("🚨 시각화용 데이터 없음 - 상태 초기화");
-        setState(() {
-          regionData = [];
-          companyData = [];
-          totalWeight = 0.0;
-          isLoading = false;
-        });
-        return;
-      }
-
-      // 지역별 업체 데이터 가져오기
-      await getDisposerData(selectedProvince);
-      setState(() {
-        regionData = [];
-        totalWeight = (sumData["total_weight"] as num?)?.toDouble() ?? 0.0;
-        isLoading = false;
-      });
-    }
-
-    _animationController.forward();
-    _chartAnimationController.forward();
-  }
-
-
-
-
-
-
-  /* 서버에서 데이터를 받아오는 함수 */
-  Future<void> getDisposerData(String? addr1) async {
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
-
-    try {
-      /* 첫 페이지 URL */
-      final queryParameters = {
-        'addr1': addr1 ?? '',
-        'type': selectedType ?? '',
-        'name': selectedByproductName ?? '',
-        'page': '1',
-      };
-      //형식: <도메인>/api/byprod-list?addr1=<지역이름>&type=<부산물타입>&page=<페이지 번호>
-
-      String? nextUrl = Uri.parse("$BASE_URL/api/byprod-list")
-          .replace(queryParameters: queryParameters)
-          .toString();
-
-      List<Map<String,dynamic>> allData = [];
-
-      /* 페이지 순회하며 모든 데이터를 받아옴 */
-      while (nextUrl != null) {
-        final response = await http.get(
-          Uri.parse(nextUrl),
-          headers: {'Authorization': 'Token ${widget.token}'},
-        );
-        if (response.statusCode != 200) {
-          throw Exception('서버 오류 (${response.statusCode})');
-        }
-        final body = jsonDecode(utf8.decode(response.bodyBytes));
-        final List<dynamic> results = body['results'];
-
-        allData.addAll(results.cast<Map<String, dynamic>>());
-        nextUrl = body['next'] as String?;
-
-      }
-
-      // 정렬 (회사명 기준)
-      allData.sort((a, b) {
-        final userA = a['user'] as Map<String, dynamic>? ?? {};
-        final userB = b['user'] as Map<String, dynamic>? ?? {};
-        final companyA = userA['company_name'] as String? ?? '';
-        final companyB = userB['company_name'] as String? ?? '';
-        return companyA.compareTo(companyB);
-      });
-
-      print("✅ 가져온 데이터:\n$allData");
-
-      setState(() {
-        companyData = allData;
-        usernames = allData.map((e) => (e['user']?['company_name'] as String?) ?? '').toList();
-        weights = allData.map((e) => (e['weight_float'] as num?)?.toDouble() ?? 0.0).toList();
-        isLoading = false;
-      });
-
-      _animationController.forward();
-    } catch (e, stack) {
-      print('getDisposerData 에러: $e\n$stack');
-      setState(() {
-        isLoading = false;
-        errorMessage = e.toString();
-      });
-    }
-  }
-
- */
