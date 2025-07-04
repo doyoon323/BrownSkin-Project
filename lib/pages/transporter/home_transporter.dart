@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:brownskin_app/constants.dart';
 
+//배송사 홈페이지 
 class TransporterHomePage extends StatefulWidget {
   final String token;
   const TransporterHomePage({required this.token, super.key});
@@ -51,7 +52,8 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
               'status': statusMap[item['status']] ?? item['status'],
               'rawStatus': item['status'],
               'date': dateText,
-              'addr': "${item['disposer']['addr1']} ${item['disposer']['addr2']} ${item['disposer']['addrDetail'] ?? ''}",
+              'disposer': item['disposer'],
+              'preprocessor': item['preprocessor'],
             };
           }).toList();
         });
@@ -87,7 +89,8 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
                 'status': '배송 완료',
                 'rawStatus': 'completed',
                 'date': item['complete_date'] ?? '',
-                'addr': "${item['disposer']['addr1']} ${item['disposer']['addr2']} ${item['disposer']['addrDetail'] ?? ''}",
+                'disposer': item['disposer'],
+                'preprocessor': item['preprocessor'],
               };
             }),
             ...rawListDenied.map<Map<String, dynamic>>((item) {
@@ -97,7 +100,8 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
                 'status': '거절',
                 'rawStatus': 'denied',
                 'date': item['complete_date'] ?? '',
-                'addr': "${item['disposer']['addr1']} ${item['disposer']['addr2']} ${item['disposer']['addrDetail'] ?? ''}",
+                'disposer': item['disposer'],
+                'preprocessor': item['preprocessor'],
               };
             }),
           ];
@@ -110,14 +114,19 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
     }
   }
 
+  String _dateLabel(String status) {
+    if (status == 'pending' || status == 'accepted') return '수거 요청일';
+    if (status == 'transit') return '배송 시작일';
+    if (status == 'completed') return '배송 완료일';
+    if (status == 'denied') return '거절일';
+    return '날짜';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          '배송사 홈',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        title: const Text('배송사 홈', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF8B4513),
         elevation: 2,
       ),
@@ -128,12 +137,7 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: const Offset(0, 2),
-                ),
+                BoxShadow(color: Colors.grey.withOpacity(0.2), spreadRadius: 1, blurRadius: 3, offset: const Offset(0, 2)),
               ],
             ),
             child: Row(
@@ -146,35 +150,20 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
             ),
           ),
           Expanded(
-            child: (currentTab == '완료'
-                    ? completedRequests
-                    : allRequests.where((e) => e['status'] == currentTab)).isEmpty
+            child: (currentTab == '완료' ? completedRequests : allRequests.where((e) => e['status'] == currentTab)).isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.inbox_outlined,
-                          size: 64,
-                          color: Colors.brown[300],
-                        ),
+                        Icon(Icons.inbox_outlined, size: 64, color: Colors.brown[300]),
                         const SizedBox(height: 16),
-                        Text(
-                          '요청이 없습니다.',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.brown[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                        Text('요청이 없습니다.', style: TextStyle(fontSize: 18, color: Colors.brown[600], fontWeight: FontWeight.w500)),
                       ],
                     ),
                   )
                 : ListView(
                     padding: const EdgeInsets.all(8),
-                    children: (currentTab == '완료'
-                            ? completedRequests
-                            : allRequests.where((e) => e['status'] == currentTab))
+                    children: (currentTab == '완료' ? completedRequests : allRequests.where((e) => e['status'] == currentTab))
                         .map(_buildRequestItem)
                         .toList(),
                   ),
@@ -189,8 +178,15 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
     return Expanded(
       child: GestureDetector(
         onTap: () async {
-          if (title == '완료') {
-            await fetchCompletedDeliveries();
+          switch (title) {
+            case '수거 요청':
+            case '수거 대기':
+            case '배송중':
+              await fetchMyDeliveries();
+              break;
+            case '완료':
+              await fetchCompletedDeliveries();
+              break;
           }
           setState(() {
             currentTab = title;
@@ -201,10 +197,7 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFFD2B48C) : Colors.white,
             border: Border(
-              bottom: BorderSide(
-                color: isSelected ? const Color(0xFF8B4513) : Colors.transparent,
-                width: 3,
-              ),
+              bottom: BorderSide(color: isSelected ? const Color(0xFF8B4513) : Colors.transparent, width: 3),
             ),
           ),
           child: Center(
@@ -224,44 +217,26 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
 
   Widget _buildRequestItem(Map<String, dynamic> item) {
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+      margin: const EdgeInsets.symmetric(vertical: 4),
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.brown[100]!, width: 1),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.brown[100]!, width: 1)),
       color: Colors.white,
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        title: Text(
-          item['item'],
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: Color(0xFF5D4037),
-          ),
-        ),
+        title: Text(item['item'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF5D4037))),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Text(
-            "배출사 위치: ${item['addr']}\n상태: ${item['status']}\n${_dateLabel(item['rawStatus'])}: ${item['date']}",
-            style: TextStyle(
-              color: Colors.brown[600],
-              fontSize: 13,
-              height: 1.4,
-            ),
+            "배출사: ${item['disposer']['company_name']} (${item['disposer']['addr1']} ${item['disposer']['addr2']} ${item['disposer']['addrDetail']})\n"
+            "전처리사: ${item['preprocessor']['company_name']} (${item['preprocessor']['addr1']} ${item['preprocessor']['addr2']} ${item['preprocessor']['addrDetail']})\n"
+            "상태: ${item['status']}\n"
+            "${_dateLabel(item['rawStatus'])}: ${item['date']}",
+            style: TextStyle(color: Colors.brown[600], fontSize: 13, height: 1.4),
           ),
         ),
         trailing: _buildActionButton(item),
       ),
     );
-  }
-
-  String _dateLabel(String status) {
-    if (status == 'pending' || status == 'accepted') return '요청일';
-    if (status == 'transit') return '배송 시작일';
-    if (status == 'completed' || status == 'denied') return '완료일';
-    return '날짜';
   }
 
   Widget _buildActionButton(Map<String, dynamic> item) {
@@ -271,27 +246,13 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
         children: [
           ElevatedButton(
             onPressed: () => _acceptDelivery(item['id']),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF8B4513),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 2,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B4513), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 2),
             child: const Text('수락', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           const SizedBox(width: 8),
           ElevatedButton(
             onPressed: () => _denyDelivery(item['id']),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFA52A2A),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 2,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFA52A2A), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 2),
             child: const Text('거절', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
@@ -299,35 +260,20 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
     } else if (item['rawStatus'] == 'accepted') {
       return ElevatedButton(
         onPressed: () => _transitDelivery(item['id']),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFA0522D),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          elevation: 2,
-        ),
+        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFA0522D), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 2),
         child: const Text('수거 완료', style: TextStyle(fontWeight: FontWeight.bold)),
       );
     } else if (item['rawStatus'] == 'transit') {
       return ElevatedButton(
-        onPressed: () async {
-          await _completeDelivery(item['id']);
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFCD853F),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          elevation: 2,
-        ),
+        onPressed: () => _completeDelivery(item['id']),
+        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFCD853F), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 2),
         child: const Text('배송 완료', style: TextStyle(fontWeight: FontWeight.bold)),
       );
     }
     return const SizedBox();
   }
 
+//수락 API 호출
   Future<void> _acceptDelivery(int id) async {
     final url = Uri.parse('$BASE_URL/api/accept-delivery');
     final headers = {
@@ -346,6 +292,7 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
     }
   }
 
+//거절 API 호출
   Future<void> _denyDelivery(int id) async {
     final url = Uri.parse('$BASE_URL/api/deny-delivery');
     final headers = {
@@ -365,6 +312,7 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
     }
   }
 
+//수거 완료 API 호출
   Future<void> _transitDelivery(int id) async {
     final url = Uri.parse('$BASE_URL/api/transit-delivery');
     final headers = {
@@ -383,6 +331,7 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
     }
   }
 
+//배송 완료 API 호출
   Future<void> _completeDelivery(int id) async {
     final url = Uri.parse('$BASE_URL/api/complete-delivery');
     final headers = {

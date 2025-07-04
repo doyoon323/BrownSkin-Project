@@ -38,13 +38,17 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
   }
 
   Future<void> fetchMyRequests() async {
+    if (!mounted) return;
     final url = Uri.parse('$BASE_URL/api/my-delivery');
     final headers = {"Authorization": "Token ${widget.token}"};
     try {
       final response = await http.get(url, headers: headers);
+      if (!mounted) return;  // 중간 해체 방어
+
       if (response.statusCode == 200) {
         final parsed = jsonDecode(utf8.decode(response.bodyBytes));
         final rawList = parsed['results'];
+        if (!mounted) return;
         setState(() {
           myRequests = rawList.map<Map<String, dynamic>>((item) {
             String dateText = item['req_date'] ?? '';
@@ -56,6 +60,8 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
               'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
               'status': item['status'],
               'date': dateText,
+              'transporter': item['transporter'],
+              'preprocessor': item['preprocessor'],
             };
           }).toList();
         });
@@ -82,6 +88,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
         final rawListCompleted = parsedCompleted['results'];
         final rawListDenied = parsedDenied['results'];
 
+        if (!mounted) return;
         setState(() {
           completedRequests = [
             ...rawListCompleted.map<Map<String, dynamic>>((item) {
@@ -90,6 +97,8 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
                 'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
                 'status': 'completed',
                 'date': item['complete_date'] ?? '',
+                'transporter': item['transporter'],
+                'preprocessor': item['preprocessor'],
               };
             }),
             ...rawListDenied.map<Map<String, dynamic>>((item) {
@@ -98,6 +107,8 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
                 'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
                 'status': 'denied',
                 'date': item['complete_date'] ?? '',
+                'transporter': item['transporter'],
+                'preprocessor': item['preprocessor'],
               };
             }),
           ];
@@ -110,39 +121,61 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     }
   }
 
+  String _dateLabel(String status) {
+    if (status == 'pending' || status == 'accepted') return '수거 요청일';
+    if (status == 'transit') return '배송 시작일';
+    if (status == 'completed') return '배송 완료일';
+    if (status == 'denied') return '거절일';
+    return '날짜';
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        backgroundColor: Colors.brown[50],
-        appBar: AppBar(
-          title: const Text(
-            '수거 요청 관리',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: Colors.brown[700],
-          elevation: 0,
-          iconTheme: const IconThemeData(color: Colors.white),
-          bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            indicatorColor: Colors.white,
-            tabs: [
-              Tab(text: '수거 요청 보내기'),
-              Tab(text: '나의 요청 이력'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            _buildRequestForm(),
-            _buildMyRequestList(),
-          ],
-        ),
+      child: Builder(
+        builder: (context) {
+          final TabController tabController = DefaultTabController.of(context);
+          tabController.addListener(() {
+            if (tabController.indexIsChanging) return;
+            if (tabController.index == 1) {
+              fetchMyRequests();
+              fetchCompletedRequests();
+            }
+          });
+
+          return Scaffold(
+            backgroundColor: Colors.brown[50],
+            appBar: AppBar(
+              title: const Text(
+                '수거 요청 관리',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              backgroundColor: Colors.brown[700],
+              elevation: 0,
+              iconTheme: const IconThemeData(color: Colors.white),
+              bottom: const TabBar(
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                indicatorColor: Colors.white,
+                tabs: [
+                  Tab(text: '수거 요청 보내기'),
+                  Tab(text: '나의 요청 이력'),
+                ],
+              ),
+            ),
+            body: TabBarView(
+              children: [
+                _buildRequestForm(),
+                _buildMyRequestList(),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
+
 
   Widget _buildRequestForm() {
     return Padding(
@@ -283,17 +316,40 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
       itemCount: allList.length,
       itemBuilder: (context, index) {
         final item = allList[index];
-        String dateLabel = '요청일';
-        if (item['status'] == 'transit') dateLabel = '배송 시작일';
-        if (item['status'] == 'completed' || item['status'] == 'denied') dateLabel = '완료일';
+        String dateLabel = _dateLabel(item['status']);
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 6),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.brown[100]!, width: 1),
+          ),
+          color: Colors.white,
           child: ListTile(
-            title: Text(item['item'], style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text("상태: ${statusMap[item['status']] ?? item['status']}\n${dateLabel}: ${item['date']}"),
+            contentPadding: const EdgeInsets.all(16),
+            title: Text(
+              item['item'],
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Color(0xFF5D4037),
+              ),
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                "배송사: ${item['transporter']['company_name']} (${item['transporter']['addr1']} ${item['transporter']['addr2']} ${item['transporter']['addrDetail']})\n"
+                "전처리사: ${item['preprocessor']['company_name']} (${item['preprocessor']['addr1']} ${item['preprocessor']['addr2']} ${item['preprocessor']['addrDetail']})\n"
+                "상태: ${statusMap[item['status']] ?? item['status']}\n"
+                "${dateLabel}: ${item['date']}",
+                style: TextStyle(
+                  color: Colors.brown[600],
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+            ),
           ),
         );
       },
@@ -327,11 +383,18 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     });
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("요청이 성공적으로 전송되었습니다")),
       );
-      fetchMyRequests();
-      fetchCompletedRequests();
+
+      if (!mounted) return;
+      await fetchMyRequests();
+      await fetchCompletedRequests();
+
+      if (!mounted) return;
+
       setState(() {
         selectedType = null;
         selectedByproduct = null;

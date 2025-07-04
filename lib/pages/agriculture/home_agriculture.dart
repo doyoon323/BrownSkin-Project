@@ -14,7 +14,7 @@ class AgriHome extends StatefulWidget {
   AgriHomeState createState() => AgriHomeState();
 }
 
-class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
+class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, WidgetsBindingObserver {
 
 
   Map<String, List<Map<String, dynamic>>> userByproduct = {};
@@ -36,6 +36,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);  // 앱 상태 관찰 등록
+
     _timer = Timer.periodic(
         Duration(minutes: 15),
             (timer) {
@@ -52,6 +54,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
   @override
   void dispose() {
     _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);  // 앱 상태 관찰 해제
     super.dispose();
   }
 
@@ -75,6 +78,13 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
       await updateData(userByproduct);
     } catch (e) {
       throw Exception("updateData() failed : $e");
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      fetchUserByProduct().then((_) => updateData(userByproduct));
     }
   }
 
