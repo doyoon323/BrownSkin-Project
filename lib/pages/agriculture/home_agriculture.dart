@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/constants.dart';
@@ -15,7 +14,7 @@ class AgriHome extends StatefulWidget {
   AgriHomeState createState() => AgriHomeState();
 }
 
-class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
+class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, WidgetsBindingObserver {
 
 
   Map<String, List<Map<String, dynamic>>> userByproduct = {};
@@ -37,6 +36,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);  // 앱 상태 관찰 등록
+
     _timer = Timer.periodic(
         Duration(minutes: 15),
             (timer) {
@@ -54,6 +55,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
   @override
   void dispose() {
     _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);  // 앱 상태 관찰 해제
     super.dispose();
   }
 
@@ -77,6 +79,13 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
       await updateData(userByproduct);
     } catch (e) {
       throw Exception("updateData() failed : $e");
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      fetchUserByProduct().then((_) => updateData(userByproduct));
     }
   }
 
@@ -325,12 +334,14 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
 
   /// 요약 정보 계산
   Map<String, dynamic> getSummaryData() {
-    if (donutData.isEmpty)
+    if (donutData.isEmpty) {
       return {"total": 0, "average": 0, "danger": 0, "warning": 0};
+    }
 
     List<Map<String, dynamic>> filtered = getFilteredData();
-    if (filtered.isEmpty)
+    if (filtered.isEmpty) {
       return {"total": 0, "average": 0, "danger": 0, "warning": 0};
+    }
 
     double totalWeight = filtered.fold(0, (sum, item) => sum + item["weight"]);
     double averagePercent =
@@ -503,7 +514,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
       ),
       child: ListTile(
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
+        leading: SizedBox(
           width: 50,
           height: 50,
           child: CircularPercentIndicator(
@@ -1071,9 +1082,16 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const DeliveryReqAgriculturePage(),
+                builder: (context) => DeliveryReqAgriculturePage(
+                  token: token,
+                  userByproduct: userByproduct,
               ),
-            );
+            ),
+            ).then((result){
+              if(result ==true) {
+                fetchUserByProduct().then((_)=> updateData(userByproduct));
+              }
+            });
           }
           // index == 0 일 때는 홈이므로 아무 동작 안 함
         },

@@ -1,6 +1,5 @@
-
-//const String BASE_URL = 'http://127.0.0.1:8000';
-const String BASE_URL = 'http://10.0.2.2:8000'; //맥북 로컬
+const String BASE_URL = 'http://127.0.0.1:8000';
+//const String BASE_URL = 'http://10.0.2.2:8000'; //맥북 로컬
 //const String BASE_URL = "https://961d-203-252-33-1.ngrok-free.app"; //핸드폰
 
 final byproductsCategory = [
@@ -8,6 +7,7 @@ final byproductsCategory = [
   {"name": "사과", "type": "가공"},
   {"name": "사과", "type": "수확"},
   {"name": "배추", "type": "수확"},
-  {"name": "무", "type": "수확"},
   {"name": "배", "type": "수확"},
+  {"name": "무", "type": "수확"},
 ];
+

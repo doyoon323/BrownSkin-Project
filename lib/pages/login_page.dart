@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'signup_page.dart';
 import 'agriculture/home_agriculture.dart';
 import 'admin/home_admin.dart';
+import 'transporter/home_transporter.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -18,10 +19,11 @@ class _LoginPageState extends State<LoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  //로그인 버튼 클릭 시 실행되는 함수
   void _login() async {
     var url = Uri.parse('$BASE_URL/auth/api-token');
 
-    //서버로 아이디비번 전송하고 post  요청
+    //서버로 아이디비번 전송하고 post 요청
     try {
       var response = await http.post(
         url,
@@ -51,6 +53,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  //토큰으로 유저 정보 조회 후 역할에 따라 화면 이동
   Future<void> _checkRoleAndMove(String token) async {
     var url = Uri.parse('$BASE_URL/auth/api-profile');
     try {
@@ -61,14 +64,20 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
-        String role = data['role'];
+        String role = data['role']; //유저 역할 추출
 
         if (!mounted) return;
 
+        //역할 따라서 각 홈화면으로 이동
         if (role == 'disposer') {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => AgriHome(token: token)),
+          );
+        } else if (role == 'transporter') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => TransporterHomePage(token: token)),
           );
         } else if (role == 'other') {
           Navigator.pushReplacement(
@@ -90,6 +99,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  //팝업 메시지 표시 함수
   void _showMessage(String msg) {
     showDialog(
       context: context,
@@ -243,10 +253,10 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+  //여기까지 디자인
 }
-//여기까지 디자인
 
-//로그인 성공 후 이동하는 Homepage-각 화면 구현되면 없앨 예정
+//로그인 성공 후 이동하는 Homepage - 유통사 구현되면 없앨 예정
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
