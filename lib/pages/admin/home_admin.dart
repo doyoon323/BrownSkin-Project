@@ -1,11 +1,15 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
 import 'package:brownskin_app/constants.dart';
 import 'dart:convert';
+
+import 'dart:ui' as ui;
+
 import 'dart:async';
 import 'package:brownskin_app/pages/admin/setThreshold_admin.dart';
 import 'package:brownskin_app/pages/admin/global.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+
 
 //관리자 홈 화면 (부산물 데이터를 시각화하여 보여준다)
 class AdminHomePage extends StatefulWidget {
@@ -36,10 +40,11 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
   //Maps
-  bool _isNaverMapInitialized = false;
-  List<NMarker> _provinceMarkers = [];
-  List<NMarker> _districtMarkers = [];
-  NaverMapController? _controller;
+  Set<Marker> _provinceMarkers = {};
+  Set<Marker> _districtMarkers = {};
+  Set<Marker> currentMarkers = {};
+  GoogleMapController? _controller;
+  final LatLng _center = const LatLng(36.5,127.8);
 
 
   @override
@@ -66,19 +71,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     super.dispose();
   }
 
-  Future<void> _initializeNaverMap() async {
-    print("😍😍😍😍😍initNaverMap()");
-    final naverMap = FlutterNaverMap();
-    await naverMap.init(
-      clientId: 'fqc49wyjq4',
-      onAuthFailed: (error) {
-        print("네이버 지도 인증 실패: $error");
-      },
-    );
-    setState(() {
-      _isNaverMapInitialized = true;
-    });
-  }
+
 
     Future<void> initData() async {
       print("👉 initData(): START");
@@ -89,8 +82,8 @@ class _AdminHomePageState extends State<AdminHomePage>
       await loadAllDistricts();
       print("✅ loadAllDistricts() 완료");
 
-      await _initializeNaverMap();
-      print("✅ _initializeNaverMap() 완료");
+      //await _initializeNaverMap();
+      //print("✅ _initializeNaverMap() 완료");
 
       print("✅ 전체 데이터 로드 완료: $allAreas");
 
@@ -104,6 +97,7 @@ class _AdminHomePageState extends State<AdminHomePage>
       _districtMarkers = await _generateDistrictMarkers();
       print("✅ _generateDistrictMarkers() 완료 (총 ${_districtMarkers.length}개)");
 
+      currentMarkers = _provinceMarkers;
 
       setState(() {
         isLoading = false;
@@ -239,7 +233,7 @@ class _AdminHomePageState extends State<AdminHomePage>
       });
     }
 
-  Future<NLatLng> getLatLngFromAddress(String addr1, String addr2) async {
+  Future<LatLng> getLatLngFromAddress(String addr1, String addr2) async {
     print("🔍 getLatLngFromAddress(): $addr1 $addr2");
 
     final url = Uri.parse(
@@ -258,11 +252,11 @@ class _AdminHomePageState extends State<AdminHomePage>
       if (body['documents'].isEmpty) {
         print("⚠️ 주소 결과 없음: $addr1 $addr2");
         print("⚠️ Province '$addr1 $addr2' 마커 생성 실패");
-        return NLatLng(0, 0);
+        return LatLng(0, 0);
       }
       final doc = body['documents'][0];
       print("✅ 좌표 결과: ${doc['y']}, ${doc['x']}");
-      return NLatLng(
+      return LatLng(
         double.parse(doc['y']),
         double.parse(doc['x']),
       );
@@ -274,8 +268,9 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
 
-  Future<List<NMarker>> _generateProvinceMarkers() async {
-    List<NMarker> markers = [];
+  // Stack overlay로 바꾸길 요망
+  Future<Set<Marker>> _generateProvinceMarkers() async {
+    Set<Marker> markers = {};
     print("👉 _generateProvinceMarkers() 시작");
 
 
@@ -285,7 +280,7 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
     for (var province in allAreas.keys) {
-      NLatLng latLng = await getLatLngFromAddress(province, "");
+      LatLng latLng = await getLatLngFromAddress(province, "");
       print("📍 Province 마커 생성: $province (${latLng.latitude}, ${latLng.longitude})");
 
       if (latLng.latitude == 0 && latLng.longitude == 0) {
@@ -293,46 +288,49 @@ class _AdminHomePageState extends State<AdminHomePage>
       }
 
 
-
-
       double? weight = 0.0;
       if (provinceWeightData.containsKey(province)) {
         weight = (provinceWeightData[province] as num).toDouble();
       }
-
-
-
       final percent = (weight! / threshold).clamp(0.0, 1.0);
+      Color color = _getColorByPercentage(percent);
 
 
-      Color color;
-      if (percent >= 0.9) {
-        color = Colors.red.shade600;
-      } else if (percent >= 0.7) {
-        color = Colors.orange.shade600;
-      } else if (percent >= 0.5) {
-        color = Colors.yellow.shade700;
-      } else {
-        color = Colors.green;
+      if (threshold <= 0) {
+        print("⚠️ 임계치 값이 유효하지 않아 색상 계산을 건너뜁니다.");
+        color = Colors.grey;
       }
 
+
       print("$province weight: $weight and threshold : $threshold, so percent is $percent\n Color is ${color.toString()}");
-      NMarker marker = NMarker(
-        id: province,
-        position: latLng,
-        caption: weight != null
-            ? NOverlayCaption(
-          text: weight.toString(),
-          color: color, // 글자색
-          haloColor: Colors.white, // 테두리 색
-          textSize: 25, // 글자 크기
-        )
-            : NOverlayCaption(text: "0",
-          color: Colors.green, // 글자색
-          haloColor: Colors.white, // 테두리 색
-          textSize: 25
+
+      Widget markerWidget = Container(
+        padding: EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color : color,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color),
         ),
-          isForceShowCaption: true
+        child: Text(
+          weight.toString(),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+        ))
+      );
+
+      final BitmapDescriptor icon = await createCustomMarkerBitmap(
+        label: "${weight.toInt()}",
+        color: color,
+        percentage: percent,
+      );
+
+
+      Marker marker = Marker(
+        markerId: MarkerId(province),
+        position: latLng,
+        icon: icon,
       );
       markers.add(marker);
     }
@@ -341,8 +339,25 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
 
-  Future<List<NMarker>> _generateDistrictMarkers() async {
-    List<NMarker> markers = [];
+  Color _getColorByPercentage(double percent) {
+    if (percent <= 0.5) {
+      return Color.lerp(
+        Color(0xFF5CC97B), // 초록
+        Color(0xFFF9D933), // 노랑
+        percent / 0.5,
+      )!;
+    } else {
+      return Color.lerp(
+        Color(0xFFF9D933), // 노랑
+        Color(0xFFF44444), // 빨강
+        (percent - 0.5) / 0.5,
+      )!;
+    }
+  }
+
+
+  Future<Set<Marker>> _generateDistrictMarkers() async {
+    Set<Marker> markers = {};
     print("👉 _generateDistrictMarkers() 시작");
 
     double percent = 0.0;
@@ -352,10 +367,11 @@ class _AdminHomePageState extends State<AdminHomePage>
       final districts = entry.value;
 
 
-
       for (var district in districts) {
-        NLatLng latLng = await getLatLngFromAddress(province, district);
-        print("📍 District 마커 생성: $province $district (${latLng.latitude}, ${latLng.longitude})");
+        LatLng latLng = await getLatLngFromAddress(province, district);
+        print(
+            "📍 District 마커 생성: $province $district (${latLng.latitude}, ${latLng
+                .longitude})");
 
 
         if (latLng.latitude == 0 && latLng.longitude == 0) {
@@ -363,7 +379,8 @@ class _AdminHomePageState extends State<AdminHomePage>
         }
 
 
-        Map<String, dynamic> provinceWeightData = await getWeightData(selectedType, selectedByproductName, province , district);
+        Map<String, dynamic> provinceWeightData = await getWeightData(
+            selectedType, selectedByproductName, province, district);
 
         double? weight;
         if (provinceWeightData.containsKey(district)) {
@@ -376,35 +393,29 @@ class _AdminHomePageState extends State<AdminHomePage>
 
         final percent = (weight! / threshold).clamp(0.0, 1.0);
 
-        Color color;
-        if (percent >= 0.9) {
-          color = Colors.red.shade600;
-        } else if (percent >= 0.7) {
-          color = Colors.orange.shade600;
-        } else if (percent >= 0.5) {
-          color = Colors.yellow.shade700;
-        } else {
-          color = Colors.green;
+
+        Color color = _getColorByPercentage(percent);
+
+        if (threshold <= 0) {
+          print("⚠️ 임계치 값이 유효하지 않아 색상 계산을 건너뜁니다.");
+          color = Colors.grey;
         }
 
-        print("$province $district weight: $weight and threshold : $threshold, so percent is $percent\n Color is ${color.toString()}");
+        print(
+            "$province $district weight: $weight and threshold : $threshold, so percent is $percent\n Color is ${color
+                .toString()}");
 
-        NMarker marker = NMarker(
-            id: "$province $district",
-            position: latLng,
-            caption: weight != null
-                ? NOverlayCaption(
-              text: weight.toString(),
-              color: color, // 글자색
-              haloColor: color, // 테두리 색
-              textSize: 25, // 글자 크기
-            )
-                : NOverlayCaption(text: "0",
-                color: Colors.green, // 글자색
-                haloColor: Colors.white, // 테두리 색
-                textSize: 25
-            ),
-            isForceShowCaption: true
+        final BitmapDescriptor icon = await createCustomMarkerBitmap(
+          label: "${weight.toInt()}",
+          color: color,
+          percentage: percent
+        );
+
+
+        Marker marker = Marker(
+          markerId: MarkerId("$province $district"),
+          position: latLng,
+          icon: icon,
         );
         markers.add(marker);
       }
@@ -412,57 +423,116 @@ class _AdminHomePageState extends State<AdminHomePage>
     return markers;
   }
 
+  Future<BitmapDescriptor> createCustomMarkerBitmap({
+    required String label,
+    required Color color,
+    required double percentage
+  }) async {
+    // 마커 크기 범위
+    const double minSize = 120;
+    const double maxSize = 140;
+
+    // 퍼센트 계산 (0.0 ~ 1.0)
+
+    // 비율에 따라 크기 결정
+    final double size = minSize + percentage * (maxSize - minSize);
+
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    final Paint backgroundPaint = Paint()..color = color.withOpacity(1);
+
+    // 동적으로 크기 계산된 원
+    canvas.drawCircle(
+      Offset(size / 2, size / 2),
+      size / 2,
+      backgroundPaint,
+    );
+
+    // 텍스트
+    final textPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+    );
+
+    textPainter.text = TextSpan(
+      text: label,
+      style: TextStyle(
+        fontSize: size / 4, // 크기에 맞게 폰트 조정
+        color: const Color(0xFFF2F2F2),
+        fontWeight: FontWeight.w900,
+      ),
+    );
+
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        (size - textPainter.width) / 2,
+        (size - textPainter.height) / 2,
+      ),
+    );
+
+    // 이미지 변환
+    final img = await pictureRecorder.endRecording().toImage(
+      size.toInt(),
+      size.toInt(),
+    );
+    final data = await img.toByteData(format: ui.ImageByteFormat.png);
+
+    return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
+  }
+
+
     /* UI 구현 */
     Widget _buildMapSection() {
-      return NaverMap(
-        onMapReady: (controller) {
-          _controller = controller;
-          _onZoomChanged(6);
-        },
-        onCameraIdle: () async {
-          final position = await _controller?.getCameraPosition();
-          _onZoomChanged(position!.zoom);
-        },
-        options: NaverMapViewOptions(
-          initialCameraPosition: NCameraPosition(
-            target: NLatLng(36.5, 127.8), // 초기 중심 좌표
-            zoom: 6,
-          ),
-
-          // 사용자가 스크롤/줌 가능 여부 (기본 true)
-          scrollGesturesEnable: true,
-          stopGesturesEnable: true,
-          tiltGesturesEnable: true,
-          rotationGesturesEnable: true,
+      return GoogleMap(
+        mapType: MapType.normal,
+        initialCameraPosition: CameraPosition(
+          target : _center,
+          zoom:7
         ),
+        onMapCreated: (controller) async {
+          _controller = controller;
+
+          // map_style.json 읽어오기
+          final String style = await DefaultAssetBundle.of(context)
+              .loadString('assets/map_style.json');
+
+          // 스타일 적용
+          _controller?.setMapStyle(style);
+
+          _drawZoomMarker(7);
+        },
+
+        onCameraIdle : () async {
+          final position = await _controller?.getZoomLevel();
+          _drawZoomMarker(position!);
+        },
+        markers: currentMarkers,
+        zoomControlsEnabled: true,
       );
     }
 
-  void _onZoomChanged(double zoom) {
-    print("🔍 _onZoomChanged(): zoom = $zoom");
-    _controller?.clearOverlays();
 
-    if (zoom <= 7) {
-      print("✅ 전국 마커 ${_provinceMarkers.length}개 표시");
-      for (var marker in _provinceMarkers) {
-        _controller?.addOverlay(marker);
+
+
+  void _drawZoomMarker(double zoom) {
+    print("🔍 _drawZoomMarker(): zoom = $zoom");
+    setState(() {
+      if (zoom <= 7) {
+        print("✅ 전국 마커 ${_provinceMarkers.length}개 표시");
+        currentMarkers = _provinceMarkers;
+      } else {
+        print("✅ 시군구 마커 ${_districtMarkers.length}개 표시");
+        currentMarkers = _districtMarkers;
       }
-    } else {
-      print("✅ 시군구 마커 ${_districtMarkers.length}개 표시");
-      for (var marker in _districtMarkers) {
-        _controller?.addOverlay(marker);
-      }
-    }
+    });
   }
 
 
 
     int selectedIndex = 0;
     Future<void> _onItemTapped(BuildContext context, int index) async {
-
       print("😍😍😍😍😍😍before Thresholde: $threshold");
-
-
       // 선택 인덱스 갱신
       setState(() {
         selectedIndex = index;
@@ -501,6 +571,8 @@ class _AdminHomePageState extends State<AdminHomePage>
       }
     }
 
+
+
   Future<void> _reloadMarkers() async {
     print("🔄 마커 리로드 시작");
 
@@ -508,11 +580,13 @@ class _AdminHomePageState extends State<AdminHomePage>
     _districtMarkers = await _generateDistrictMarkers();
 
     // 현재 줌에 맞춰 지도에 새 마커 뿌리기
-    final position = await _controller?.getCameraPosition();
+    final position = await _controller?.getZoomLevel();
     if (position != null) {
-      _onZoomChanged(position.zoom);
+      _drawZoomMarker(position);
     }
   }
+
+
 
   Widget _buildFilterBar() {
     final filteredByproducts = byproductsCategory
@@ -520,7 +594,6 @@ class _AdminHomePageState extends State<AdminHomePage>
         .map((item) => item["name"]!)
         .toSet()
         .toList();
-
     return Container(
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -598,11 +671,15 @@ class _AdminHomePageState extends State<AdminHomePage>
     );
   }
 
+
+
+
+  // 실행
     @override
     Widget build(BuildContext context) {
-      if (!_isNaverMapInitialized) {
-        return Center(child: CircularProgressIndicator());
-      }
+      //if (!_isNaverMapInitialized) {
+      //  return Center(child: CircularProgressIndicator());
+     // }
 
       return Scaffold(
         backgroundColor: Colors.grey.shade50,

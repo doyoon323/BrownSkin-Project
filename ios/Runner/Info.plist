@@ -41,15 +41,18 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
 	<key>io.flutter.embedded_views_preview</key>
-	<true/>
+    <true/>
+    <key>GMSApiKey</key>
+    <string>AIzaSyAA-Ku8_oZxvhr3GUN5CMKqJEtohEsAjZo</string>
+
+
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
-	<key>NMFClientId</key>
-	<string>fqc49wyjq4</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>앱에서 지도를 표시하기 위해 위치 정보가 필요합니다.</string>
 </dict>
