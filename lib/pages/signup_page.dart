@@ -12,7 +12,7 @@ class SignUpPage extends StatefulWidget {
   State<SignUpPage> createState() => _SignUpPageState();
 }
 
-<<<<<<< HEAD
+//입력창
 class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
 
@@ -29,8 +29,8 @@ class _SignUpPageState extends State<SignUpPage> {
 
   String? _selectedRole;
   String? _selectedType;
-  final bool _showPassword = false;
-  final bool _showConfirmPassword = false;
+  bool _showPassword = false;
+  bool _showConfirmPassword = false;
   bool _isLoading = false; //요청 중 로딩 상태
 
 //배송사, 전처리사 세부 타입
@@ -156,20 +156,15 @@ class _SignUpPageState extends State<SignUpPage> {
             },
             child: const Text('확인'),
           ),
-=======
-//입력창
-class _SignUpPageState extends State<SignUpPage> {
-  final _usernameController = TextEditingController();
-<<<<<<< HEAD
+        ],
+      ),
+    );
+  }
 
-
-=======
->>>>>>> develop
 //여기부터는 디자인툴
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-<<<<<<< HEAD
       backgroundColor: Colors.grey[100],
       body: Center(
         child: SingleChildScrollView(
@@ -194,90 +189,12 @@ class _SignUpPageState extends State<SignUpPage> {
                 _buildForm(),
               ],
             ),
-=======
-      backgroundColor: Colors.white54,
-      body: Center(
-        child: Container(
-          width: 400,
-          margin: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white.withAlpha(242), // withOpacity 대체
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withAlpha(25), blurRadius: 20),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: Colors.brown,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-                ),
-                child: Column(
-                  children: const [
-                    Icon(Icons.person_add, color: Colors.white, size: 32),
-                    SizedBox(height: 8),
-                    Text('회원가입', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                    Text('Join BrownSkin', style: TextStyle(color: Colors.white70)),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _buildLabeledField('아이디', _usernameController, TextInputType.text),
-                    _buildLabeledField('이메일', _emailController, TextInputType.emailAddress),
-                    _buildPasswordField('비밀번호', _passwordController, _showPassword, () {
-                      setState(() => _showPassword = !_showPassword);
-                    }),
-                    _buildPasswordField('비밀번호 확인', _password2Controller, _showConfirmPassword, () {
-                      setState(() => _showConfirmPassword = !_showConfirmPassword);
-                    }),
-                    _buildLabeledField('회사명', _companyController, TextInputType.text),
-                    _buildLabeledField('시도', _addr1Controller, TextInputType.text),
-                    _buildLabeledField('시군구', _addr2Controller, TextInputType.text),
-                    _buildLabeledField('상세 주소', _addrDetailController, TextInputType.text),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        labelText: '역할 선택',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      value: _selectedRole,
-                      items: const [
-                        DropdownMenuItem(value: 'disposer', child: Text('배출사')),
-                        DropdownMenuItem(value: 'distributor', child: Text('유통사')),
-                        DropdownMenuItem(value: 'preprocessor', child: Text('전처리사')),
-                      ],
-                      onChanged: (value) => setState(() => _selectedRole = value),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.brown,
-                        minimumSize: const Size(double.infinity, 48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      onPressed: _register,
-                      icon: const Icon(Icons.person_add, color: Colors.white),
-                      label: const Text('회원가입', style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
->>>>>>> develop
           ),
         ),
       ),
     );
   }
 
-<<<<<<< HEAD
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -347,28 +264,15 @@ class _SignUpPageState extends State<SignUpPage> {
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return '$label을(를) 입력하세요.';
-          if (key == 'email' && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+          if (key == 'email' && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}\$').hasMatch(value)) {
             return '올바른 이메일 형식을 입력하세요.';
           }
           return null;
         },
-=======
-  Widget _buildLabeledField(String label, TextEditingController controller, TextInputType type) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        keyboardType: type,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        ),
->>>>>>> develop
       ),
     );
   }
 
-<<<<<<< HEAD
   Widget _buildPasswordField(String label, String key, bool visible, VoidCallback toggle) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -382,23 +286,11 @@ class _SignUpPageState extends State<SignUpPage> {
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Colors.brown, width: 2),
           ),
-=======
-  Widget _buildPasswordField(String label, TextEditingController controller, bool visible, VoidCallback toggle) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        obscureText: !visible,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
->>>>>>> develop
           suffixIcon: IconButton(
             icon: Icon(visible ? Icons.visibility_off : Icons.visibility),
             onPressed: toggle,
           ),
         ),
-<<<<<<< HEAD
         validator: (value) {
           if (value == null || value.isEmpty) return '$label을(를) 입력하세요.';
           if (key == 'password' && value.length < 6) {
@@ -469,7 +361,8 @@ class _SignUpPageState extends State<SignUpPage> {
         onPressed: _isLoading ? null : _register,
         child: _isLoading
             ? const SizedBox(
-                width: 20, height: 20,
+                width: 20,
+                height: 20,
                 child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
               )
             : Row(
@@ -480,8 +373,6 @@ class _SignUpPageState extends State<SignUpPage> {
                   Text('회원가입', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 ],
               ),
-=======
->>>>>>> develop
       ),
     );
   }

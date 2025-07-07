@@ -13,7 +13,7 @@ class DeliveryReqAgriculturePage extends StatefulWidget {
   State<DeliveryReqAgriculturePage> createState() => _DeliveryReqAgriculturePageState();
 }
 
-//State 클래서 변수 선언
+//State 클래스 변수 선언
 class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage> { 
   String currentTab = '수거 요청'; //현재 선택 탭(수거 요청 or 나의 요청 이력)
   String? selectedType; //선택된 부산물 유형
@@ -350,7 +350,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
                 "배송사: ${item['transporter']['company_name']} (${item['transporter']['addr1']} ${item['transporter']['addr2']} ${item['transporter']['addrDetail']})\n"
                 "전처리사: ${item['preprocessor']['company_name']} (${item['preprocessor']['addr1']} ${item['preprocessor']['addr2']} ${item['preprocessor']['addrDetail']})\n"
                 "상태: ${statusMap[item['status']] ?? item['status']}\n"
-                "${dateLabel}: ${item['date']}",
+                "$dateLabel: ${item['date']}",
                 style: TextStyle(
                   color: Colors.brown[600],
                   fontSize: 13,

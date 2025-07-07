@@ -211,7 +211,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     try {
       /* 첫 페이지 URL */
       String? nextUrl = "$BASE_URL/api/byprod-list?" "addr1=$addr1&" "type=$selectedType&" "name=$selectedByproductName&"
-          + "page=1";
+          "page=1";
       List<ByProduct> allData = [];
 
       /* 페이지 순회하며 모든 데이터를 받아옴 */
