@@ -8,7 +8,6 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  //final token = "14259b24626fe1ada57e4aa18aa0de4247610f23";
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {

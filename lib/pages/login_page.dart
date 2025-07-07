@@ -25,11 +25,7 @@ class _LoginPageState extends State<LoginPage> {
 
     //서버로 아이디비번 전송하고 post  요청
     try {
-      var response = await http.post(
         url,
-        headers: {"Content-Type": "application/x-www-form-urlencoded"},
-        body: {
-          'username': _usernameController.text,
           'password': _passwordController.text,
         },
       );
