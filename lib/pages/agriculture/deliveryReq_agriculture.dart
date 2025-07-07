@@ -4,25 +4,26 @@ import 'dart:convert';
 import 'package:brownskin_app/constants.dart';
 
 class DeliveryReqAgriculturePage extends StatefulWidget {
-  final String token;
-  final Map<String, List<Map<String, dynamic>>> userByproduct;
+  final String token; //로그인 토큰, API 호출에 사용
+  final Map<String, List<Map<String, dynamic>>> userByproduct; //농가가 보유한 부산물정보(유형별 분류)
 
   const DeliveryReqAgriculturePage({required this.token, required this.userByproduct, super.key});
 
-  @override
+  @override //상태 위젯 생성
   State<DeliveryReqAgriculturePage> createState() => _DeliveryReqAgriculturePageState();
 }
 
-class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage> {
-  String currentTab = '수거 요청';
-  String? selectedType;
-  Map<String, dynamic>? selectedByproduct;
-  final TextEditingController weightController = TextEditingController();
+//State 클래서 변수 선언
+class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage> { 
+  String currentTab = '수거 요청'; //현재 선택 탭(수거 요청 or 나의 요청 이력)
+  String? selectedType; //선택된 부산물 유형
+  Map<String, dynamic>? selectedByproduct; //선택된 개별 품목
+  final TextEditingController weightController = TextEditingController(); //무게 입력 필드 제어
 
-  List<Map<String, dynamic>> myRequests = [];
-  List<Map<String, dynamic>> completedRequests = [];
+  List<Map<String, dynamic>> myRequests = []; //진행중 요청 목록
+  List<Map<String, dynamic>> completedRequests = []; //완료 및 거절 목록
 
-  final statusMap = {
+  final statusMap = { //서버 상태 코드 -> 한글 변환 
     'pending': '수거 요청',
     'accepted': '요청 수락',
     'transit': '배송중',
@@ -30,32 +31,33 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     'denied': '거절',
   };
 
-  @override
+  @override //초기 데이터 로딩(화면 생성 시, 내역 조회)
   void initState() {
     super.initState();
     fetchMyRequests();
     fetchCompletedRequests();
   }
 
+//진행중 요청 조회
   Future<void> fetchMyRequests() async {
     if (!mounted) return;
-    final url = Uri.parse('$BASE_URL/api/my-delivery');
+    final url = Uri.parse('$BASE_URL/api/my-delivery'); //API 호출
     final headers = {"Authorization": "Token ${widget.token}"};
-    try {
+    try { //응답 처리
       final response = await http.get(url, headers: headers);
       if (!mounted) return;  // 중간 해체 방어
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200) { //정상 응답
         final parsed = jsonDecode(utf8.decode(response.bodyBytes));
         final rawList = parsed['results'];
         if (!mounted) return;
-        setState(() {
+        setState(() { //상태 저장
           myRequests = rawList.map<Map<String, dynamic>>((item) {
             String dateText = item['req_date'] ?? '';
             if (item['status'] == 'transit') {
               dateText = item['transit_date'] ?? '';
             }
-            return {
+            return { //리스트 변환
               'id': item['id'],
               'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
               'status': item['status'],
@@ -65,7 +67,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
             };
           }).toList();
         });
-      } else {
+      } else { //에러, 예외
         print('이력 조회 실패: ${response.body}');
       }
     } catch (e) {
@@ -73,6 +75,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     }
   }
 
+  //완료 및 거절 요청 조회
   Future<void> fetchCompletedRequests() async {
     final urlCompleted = Uri.parse('$BASE_URL/api/my-history?status=completed');
     final urlDenied = Uri.parse('$BASE_URL/api/my-history?status=denied');
@@ -89,9 +92,9 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
         final rawListDenied = parsedDenied['results'];
 
         if (!mounted) return;
-        setState(() {
+        setState(() { 
           completedRequests = [
-            ...rawListCompleted.map<Map<String, dynamic>>((item) {
+            ...rawListCompleted.map<Map<String, dynamic>>((item) { //응답 파싱 후 리스트 변환_배송완료
               return {
                 'id': item['id'],
                 'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
@@ -101,8 +104,8 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
                 'preprocessor': item['preprocessor'],
               };
             }),
-            ...rawListDenied.map<Map<String, dynamic>>((item) {
-              return {
+            ...rawListDenied.map<Map<String, dynamic>>((item) { //응답 파싱 후 리스트 변환_거절
+              return { 
                 'id': item['id'],
                 'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
                 'status': 'denied',
@@ -121,6 +124,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     }
   }
 
+  //상태별 날짜 라벨
   String _dateLabel(String status) {
     if (status == 'pending' || status == 'accepted') return '수거 요청일';
     if (status == 'transit') return '배송 시작일';
@@ -129,12 +133,15 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     return '날짜';
   }
 
+//전체UI 구성
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
+    return DefaultTabController( //탭구조
       length: 2,
       child: Builder(
         builder: (context) {
+
+          //탭 변경 감지
           final TabController tabController = DefaultTabController.of(context);
           tabController.addListener(() {
             if (tabController.indexIsChanging) return;
@@ -176,22 +183,22 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     );
   }
 
-
+  //수거요청 UI
   Widget _buildRequestForm() {
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildDropdownSection(),
+          _buildDropdownSection(), //유형 선택
           const SizedBox(height: 20),
-          if (selectedType != null) _buildProductSection(),
+          if (selectedType != null) _buildProductSection(), //품목 및 무게 입력
         ],
       ),
     );
   }
 
-  Widget _buildDropdownSection() {
+  Widget _buildDropdownSection() { //유형선택 드롭다운(수확, 가공)
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -206,7 +213,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
           ),
         ],
       ),
-      child: DropdownButtonFormField<String>(
+      child: DropdownButtonFormField<String>( 
         value: selectedType,
         hint: const Text("부산물 유형 선택"),
         isExpanded: true,
@@ -224,7 +231,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     );
   }
 
-  Widget _buildProductSection() {
+  Widget _buildProductSection() { //품목+무게입력
     return Column(
       children: [
         Container(
@@ -306,12 +313,13 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     );
   }
 
-  Widget _buildMyRequestList() {
-    final allList = [...myRequests, ...completedRequests];
+  //나의 요청 이력 
+  Widget _buildMyRequestList() { 
+    final allList = [...myRequests, ...completedRequests]; //진행중+완료/거절 내역 모두 합침
     if (allList.isEmpty) {
       return const Center(child: Text('요청 이력이 없습니다.'));
     }
-    return ListView.builder(
+    return ListView.builder( //카드 형태 리스트
       padding: const EdgeInsets.all(12),
       itemCount: allList.length,
       itemBuilder: (context, index) {
@@ -338,7 +346,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(
+              child: Text( //배송사, 전처리사, 상태, 날짜 표시
                 "배송사: ${item['transporter']['company_name']} (${item['transporter']['addr1']} ${item['transporter']['addr2']} ${item['transporter']['addrDetail']})\n"
                 "전처리사: ${item['preprocessor']['company_name']} (${item['preprocessor']['addr1']} ${item['preprocessor']['addr2']} ${item['preprocessor']['addrDetail']})\n"
                 "상태: ${statusMap[item['status']] ?? item['status']}\n"
@@ -356,7 +364,10 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     );
   }
 
+  //수거 요청 전송 로직
   Future<void> sendDeliveryRequest() async {
+
+    //유효성 검사
     if (selectedType == null || selectedByproduct == null || weightController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("모든 정보를 입력하세요")),
@@ -372,6 +383,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
       return;
     }
 
+    //API 요청
     final url = Uri.parse('$BASE_URL/api/dispose-req');
     final response = await http.post(url, headers: {
       "Authorization": "Token ${widget.token}",
@@ -382,6 +394,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
       "weight": weightController.text.trim(),
     });
 
+    //정상 처리
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (!mounted) return;
 
@@ -400,7 +413,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
         selectedByproduct = null;
         weightController.clear();
       });
-    } else {
+    } else {//에러처리
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("요청 실패: ${response.body}")),
       );
