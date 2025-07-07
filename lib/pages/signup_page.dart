@@ -264,7 +264,7 @@ class _SignUpPageState extends State<SignUpPage> {
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return '$label을(를) 입력하세요.';
-          if (key == 'email' && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}\$').hasMatch(value)) {
+          if (key == 'email' && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w]{2,}$').hasMatch(value)) {
             return '올바른 이메일 형식을 입력하세요.';
           }
           return null;

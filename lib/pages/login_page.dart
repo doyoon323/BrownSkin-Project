@@ -74,15 +74,15 @@ class _LoginPageState extends State<LoginPage> {
             context,
             MaterialPageRoute(builder: (_) => AgriHome(token: token)),
           );
-        } else if (role == 'preprocessor') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => AdminHomePage(token: token)),
-          );
         } else if (role == 'transporter') {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => TransporterHomePage(token: token)),
+          );
+        } else if (role == 'other') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => AdminHomePage(token: token)),
           );
         } else {
           Navigator.pushReplacement(
