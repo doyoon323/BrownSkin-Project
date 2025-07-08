@@ -190,7 +190,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
       elevation: 0,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-        onPressed: () => Navigator.pop(context, true),
+        onPressed: () => Navigator.pop(context, 0),
       ),
       flexibleSpace: Container(
         decoration: const BoxDecoration(

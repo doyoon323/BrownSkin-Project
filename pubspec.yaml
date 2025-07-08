@@ -32,9 +32,13 @@ dependencies:
     sdk: flutter
 
 
+  firebase_core: any
+  firebase_auth: any
+  cloud_firestore: any
+
   http: ^0.13.5
 
-  fl_chart: ^0.63.0
+  #fl_chart: ^0.63.0
 
   #flutter_naver_map: ^1.0.0
   google_maps_flutter: ^2.12.3

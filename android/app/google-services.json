@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "618527170852",
+    "project_id": "brownskin-6a03a",
+    "storage_bucket": "brownskin-6a03a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:618527170852:android:0b88b6625f435c6c2fd3b1",
+        "android_client_info": {
+          "package_name": "com.example.brownskin_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjS0POlTIX0hIoc2nX8riWueB4qFxdqME"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
