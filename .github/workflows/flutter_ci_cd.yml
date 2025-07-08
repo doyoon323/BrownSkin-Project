@@ -25,25 +25,26 @@ jobs:
         run: flutter pub get
 
       - name: Cache Gradle packages
-  	uses: actions/cache@v4
- 	with:
-	  path: |
+        uses: actions/cache@v4
+        with:
+          path: |
             ~/.gradle/caches
-      	    ~/.gradle/wrapper
-   	  key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-	  restore-keys: ${{ runner.os }}-gradle
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle
 
       - name: Build APK
         run: flutter build apk --release
-	env:
-	  GRADLE_USER_HOME: /tmp/.gradle
+        env:
+          GRADLE_USER_HOME: /tmp/.gradle
           FLUTTER_SUPPRESS_ANALYTICS: true
-	  ORG_GRADLE_PROJECT_org_gradle_caching: false
+          ORG_GRADLE_PROJECT_org_gradle_caching: false
 
       - name: Upload to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID }}
           token: ${{ secrets.FIREBASE_TOKEN }}
-          groups: testers
+          testers: condes@g.skku.edu,dyn323@naver.com,kshilovuweeknd@gmail.com
           file: build/app/outputs/flutter-apk/app-release.apk
