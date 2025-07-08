@@ -24,8 +24,21 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Cache Gradle packages
+  	uses: actions/cache@v4
+ 	with:
+	  path: |
+            ~/.gradle/caches
+      	    ~/.gradle/wrapper
+   	  key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+	  restore-keys: ${{ runner.os }}-gradle
+
       - name: Build APK
         run: flutter build apk --release
+	env:
+	  GRADLE_USER_HOME: /tmp/.gradle
+          FLUTTER_SUPPRESS_ANALYTICS: true
+	  ORG_GRADLE_PROJECT_org_gradle_caching: false
 
       - name: Upload to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
