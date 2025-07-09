@@ -1,3 +1,4 @@
+import 'package:brownskin_app/pages/agriculture/delivery_tracking.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -358,6 +359,27 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
                 ),
               ),
             ),
+            trailing: item['status']=='accepted' || item['status']=='transit'
+                ? ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DeliveryTrackingPage(
+                      token: widget.token,
+                      deliveryId: item['id'],
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.brown[400],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              child: const Text('배송 조회', style: TextStyle(fontSize: 13)),
+            )
+                : null,
           ),
         );
       },
