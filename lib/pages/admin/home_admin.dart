@@ -295,6 +295,7 @@ class _AdminHomePageState extends State<AdminHomePage>
       );
 
       final BitmapDescriptor icon = await createCustomMarkerBitmap(
+        province: province,
         label: "${weight.toInt()}",
         color: color,
         percentage: percent,
@@ -380,6 +381,7 @@ class _AdminHomePageState extends State<AdminHomePage>
                 .toString()}");
 
         final BitmapDescriptor icon = await createCustomMarkerBitmap(
+          province: district,
           label: "${weight.toInt()}",
           color: color,
           percentage: percent
@@ -398,64 +400,93 @@ class _AdminHomePageState extends State<AdminHomePage>
   }
 
   Future<BitmapDescriptor> createCustomMarkerBitmap({
+    required String province,
     required String label,
     required Color color,
-    required double percentage
+    required double percentage,
   }) async {
     // 마커 크기 범위
     const double minSize = 120;
     const double maxSize = 140;
-
-    // 퍼센트 계산 (0.0 ~ 1.0)
 
     // 비율에 따라 크기 결정
     final double size = minSize + percentage * (maxSize - minSize);
 
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
+
     final Paint backgroundPaint = Paint()..color = color.withOpacity(1);
 
-    // 동적으로 크기 계산된 원
+    final Offset center = Offset(size / 2, size / 2);
+    final double radius = size / 2;
+
+    // 동그란 원 그리기
     canvas.drawCircle(
-      Offset(size / 2, size / 2),
-      size / 2,
+      center,
+      radius,
       backgroundPaint,
     );
+
+
+    final String shortProvince =
+    province.length > 2 ? province.substring(0, 2) : province;
+
+    // 폰트 크기
+    final double baseFontSize = size / 4.2;
+    final double provinceFontSize = shortProvince.length >= 5
+        ? baseFontSize * 0.8
+        : baseFontSize;
 
     // 텍스트
     final textPainter = TextPainter(
       textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
     );
 
     textPainter.text = TextSpan(
-      text: label,
-      style: TextStyle(
-        fontSize: size / 4, // 크기에 맞게 폰트 조정
-        color: const Color(0xFFF2F2F2),
-        fontWeight: FontWeight.w900,
-      ),
+      children: [
+        TextSpan(
+          text: "$shortProvince\n",
+          style: TextStyle(
+            fontSize: provinceFontSize,
+            color: const Color(0xFFF2F2F2),
+            fontWeight: FontWeight.w400,
+            height: 1.2,
+          ),
+        ),
+        TextSpan(
+          text: "$label",
+          style: TextStyle(
+            fontSize: baseFontSize,
+            color: const Color(0xFFF2F2F2),
+            fontWeight: FontWeight.w900,
+            height: 1.2,
+          ),
+        ),
+      ],
     );
 
-    textPainter.layout();
+    textPainter.layout(
+      minWidth: 0,
+      maxWidth: size * 0.85,
+    );
+
+    // 중앙에 여백 확보
     textPainter.paint(
       canvas,
       Offset(
-        (size - textPainter.width) / 2,
-        (size - textPainter.height) / 2,
+        center.dx - textPainter.width / 2,
+        center.dy - textPainter.height / 2 + 4,
       ),
     );
 
-    // 이미지 변환
-    final img = await pictureRecorder.endRecording().toImage(
-      size.toInt(),
-      size.toInt(),
-    );
+    final img = await pictureRecorder
+        .endRecording()
+        .toImage(size.toInt(), size.toInt());
     final data = await img.toByteData(format: ui.ImageByteFormat.png);
 
     return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
   }
-
-
     /* UI 구현 */
     Widget _buildMapSection() {
       return GoogleMap(
