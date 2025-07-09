@@ -82,36 +82,17 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
     Future<void> initData() async {
-      print("👉 initData(): START");
-
       await getProvinceData();
-      print("✅ getProvinceData() 완료");
-
       await loadAllDistricts();
-      print("✅ loadAllDistricts() 완료");
-
-      //await _initializeNaverMap();
-      //print("✅ _initializeNaverMap() 완료");
-
       print("✅ 전체 데이터 로드 완료: $allAreas");
-
       threshold = await getThreshold(selectedType, selectedByproductName);
-      print("✅ getThreshold 완료  & $selectedType $selectedByproductName의 threshold: $threshold");
-
-
       _provinceMarkers = await _generateProvinceMarkers();
-      print("✅ _generateProvinceMarkers() 완료 (총 ${_provinceMarkers.length}개)");
-
       _districtMarkers = await _generateDistrictMarkers();
-      print("✅ _generateDistrictMarkers() 완료 (총 ${_districtMarkers.length}개)");
-
       currentMarkers = _provinceMarkers;
 
       setState(() {
         isLoading = false;
       });
-
-      print("👉 initData(): END");
     }
 
 
@@ -153,15 +134,11 @@ class _AdminHomePageState extends State<AdminHomePage>
       url += "&addr2=$addr2";
     }
 
-    print("🔍 provinceWeightData 요청: $url");
-
     try {
       final response = await http.get(
         Uri.parse(url),
         headers: {'Authorization': 'Token ${widget.token}'},
       );
-
-      print("📨 응답 상태 코드: ${response.statusCode}");
       print("📨 응답 바디: ${response.body}");
 
       if (response.statusCode == 200) {
@@ -245,45 +222,50 @@ class _AdminHomePageState extends State<AdminHomePage>
   // Stack overlay로 바꾸길 요망
   Future<Set<Marker>> _generateProvinceMarkers() async {
     Set<Marker> markers = {};
-    print("👉 _generateProvinceMarkers() 시작");
-
 
     // results Map만 반환하도록 구현했다고 가정
-    Map<String, dynamic> provinceWeightData = await getWeightData(selectedType, selectedByproductName, null, null);
-    print("✅ provinceWeightData: $provinceWeightData");
-
+    Map<String, dynamic> provinceWeightData = await getWeightData(
+        selectedType, selectedByproductName, null, null);
 
     for (var province in allAreas.keys) {
       LatLng latLng = await getLatLngFromAddress(province, "");
-      print("📍 Province 마커 생성: $province (${latLng.latitude}, ${latLng.longitude})");
 
       if (latLng.latitude == 0 && latLng.longitude == 0) {
         continue;
       }
 
-
-      double? weight = 0.0;
+      double weight = 0.0;
       if (provinceWeightData.containsKey(province)) {
         weight = (provinceWeightData[province] as num).toDouble();
       }
-      final percent = (weight! / threshold).clamp(0.0, 1.0);
-      Color color = _getColorByPercentage(percent);
 
-
+// threshold 유효성 체크
+      double percent;
       if (threshold <= 0) {
         print("⚠️ 임계치 값이 유효하지 않아 색상 계산을 건너뜁니다.");
-        color = Colors.grey;
+        percent = 0.0;
+      } else {
+        percent = (weight / threshold).clamp(0.0, 1.0);
       }
 
+// 색상 결정
+      List<Color> color;
+      if (threshold <= 0) {
+        color = [Colors.grey, Colors.grey];
+      } else {
+        color = getGradientColorsByPercentage(percent);
+      }
 
-      print("$province weight: $weight and threshold : $threshold, so percent is $percent\n Color is ${color.toString()}");
+      print("$province weight: $weight and threshold: $threshold, so percent is $percent\n Color is ${color
+              .toString()}");
 
+// ✅ Marker Widget
       Widget markerWidget = Container(
         padding: EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color : color,
+          color: color[0], // 단일 색상만 허용
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color),
+          border: Border.all(color: color[0]),
         ),
         child: Text(
           weight.toString(),
@@ -291,16 +273,17 @@ class _AdminHomePageState extends State<AdminHomePage>
             color: Colors.white,
             fontSize: 16,
             fontWeight: FontWeight.bold,
-        ))
+          ),
+        ),
       );
 
       final BitmapDescriptor icon = await createCustomMarkerBitmap(
         province: province,
         label: "${weight.toInt()}",
-        color: color,
+        colorStart: color[0],
+        colorEnd: color[1],
         percentage: percent,
       );
-
 
       Marker marker = Marker(
         markerId: MarkerId(province),
@@ -313,30 +296,49 @@ class _AdminHomePageState extends State<AdminHomePage>
   }
 
 
+  List<Color> getGradientColorsByPercentage(double percent) {
+    int r, g, b;
 
-  Color _getColorByPercentage(double percent) {
     if (percent <= 0.5) {
-      return Color.lerp(
-        Color(0xFF5CC97B), // 초록
-        Color(0xFFF9D933), // 노랑
-        percent / 0.5,
-      )!;
+      final ratio = percent / 0.5;
+      r = (0 + (249 - 0) * ratio).round();        // R: 0 → 249
+      g = (208 + (217 - 208) * ratio).round();    // G: 208 → 217
+      b = (98 + (51 - 98) * ratio).round();       // B: 98 → 51
+
+      // 중심색
+      final baseColor = Color.fromARGB(255, r, g, b);
+
+      // 테두리색: 중심색보다 약간 밝음
+      final lighterR = (r + 10).clamp(0, 255).toInt();
+      final lighterG = (g + 10).clamp(0, 255).toInt();
+      final lighterB = (b + 10).clamp(0, 255).toInt();
+
+      return [
+        baseColor,
+        Color.fromARGB(255, lighterR, lighterG, lighterB),
+      ];
     } else {
-      return Color.lerp(
-        Color(0xFFF9D933), // 노랑
-        Color(0xFFF44444), // 빨강
-        (percent - 0.5) / 0.5,
-      )!;
+      final ratio = (percent - 0.5) / 0.5;
+      r = (249 + (244 - 249) * ratio).round();    // R: 249 → 244
+      g = (217 + (68 - 217) * ratio).round();     // G: 217 → 68
+      b = (51 + (68 - 51) * ratio).round();       // B: 51 → 68
+
+      final baseColor = Color.fromARGB(255, r, g, b);
+
+      final lighterR = (r + 10).clamp(0, 255).toInt();
+      final lighterG = (g + 10).clamp(0, 255).toInt();
+      final lighterB = (b + 10).clamp(0, 255).toInt();
+
+      return [
+        baseColor,
+        Color.fromARGB(255, lighterR, lighterG, lighterB),
+      ];
     }
   }
 
 
   Future<Set<Marker>> _generateDistrictMarkers() async {
     Set<Marker> markers = {};
-    print("👉 _generateDistrictMarkers() 시작");
-
-    double percent = 0.0;
-
     for (var entry in allAreas.entries) {
       final province = entry.key;
       final districts = entry.value;
@@ -344,11 +346,6 @@ class _AdminHomePageState extends State<AdminHomePage>
 
       for (var district in districts) {
         LatLng latLng = await getLatLngFromAddress(province, district);
-        print(
-            "📍 District 마커 생성: $province $district (${latLng.latitude}, ${latLng
-                .longitude})");
-
-
         if (latLng.latitude == 0 && latLng.longitude == 0) {
           continue;
         }
@@ -369,11 +366,12 @@ class _AdminHomePageState extends State<AdminHomePage>
         final percent = (weight! / threshold).clamp(0.0, 1.0);
 
 
-        Color color = _getColorByPercentage(percent);
+        List<Color> color = getGradientColorsByPercentage(percent);
 
         if (threshold <= 0) {
           print("⚠️ 임계치 값이 유효하지 않아 색상 계산을 건너뜁니다.");
-          color = Colors.grey;
+          color[0] = Colors.grey;
+          color[1] = Colors.grey;
         }
 
         print(
@@ -383,7 +381,8 @@ class _AdminHomePageState extends State<AdminHomePage>
         final BitmapDescriptor icon = await createCustomMarkerBitmap(
           province: district,
           label: "${weight.toInt()}",
-          color: color,
+          colorStart: color[0],
+          colorEnd: color[1],
           percentage: percent
         );
 
@@ -402,7 +401,8 @@ class _AdminHomePageState extends State<AdminHomePage>
   Future<BitmapDescriptor> createCustomMarkerBitmap({
     required String province,
     required String label,
-    required Color color,
+    required Color colorStart,
+    required Color colorEnd,
     required double percentage,
   }) async {
     // 마커 크기 범위
@@ -415,10 +415,21 @@ class _AdminHomePageState extends State<AdminHomePage>
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
 
-    final Paint backgroundPaint = Paint()..color = color.withOpacity(1);
 
     final Offset center = Offset(size / 2, size / 2);
     final double radius = size / 2;
+
+    final Paint backgroundPaint = Paint()
+      ..shader = ui.Gradient.radial(
+        center,
+        radius,
+        [
+          colorStart.withOpacity(1.0),    // 바깥 색
+          colorEnd.withOpacity(1.0), // 중심 색
+        ],
+        [0.0, 1.0],
+      );
+
 
     // 동그란 원 그리기
     canvas.drawCircle(
