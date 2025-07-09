@@ -259,24 +259,6 @@ class _AdminHomePageState extends State<AdminHomePage>
       print("$province weight: $weight and threshold: $threshold, so percent is $percent\n Color is ${color
               .toString()}");
 
-// ✅ Marker Widget
-      Widget markerWidget = Container(
-        padding: EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: color[0], // 단일 색상만 허용
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color[0]),
-        ),
-        child: Text(
-          weight.toString(),
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
-
       final BitmapDescriptor icon = await createCustomMarkerBitmap(
         province: province,
         label: "${weight.toInt()}",
@@ -289,7 +271,22 @@ class _AdminHomePageState extends State<AdminHomePage>
         markerId: MarkerId(province),
         position: latLng,
         icon: icon,
+        onTap: () async {
+          // 원하는 줌 레벨
+          const double targetZoom = 8.0;
+
+          // 카메라 이동 + 줌인
+          await _controller?.animateCamera(
+            CameraUpdate.newCameraPosition(
+              CameraPosition(
+                target: latLng,
+                zoom: targetZoom,
+              ),
+            ),
+          );
+        },
       );
+
       markers.add(marker);
     }
     return markers;
@@ -391,6 +388,20 @@ class _AdminHomePageState extends State<AdminHomePage>
           markerId: MarkerId("$province $district"),
           position: latLng,
           icon: icon,
+          onTap: () async {
+            // 원하는 줌 레벨
+            const double targetZoom = 10.0;
+
+            // 카메라 이동 + 줌인
+            await _controller?.animateCamera(
+              CameraUpdate.newCameraPosition(
+                CameraPosition(
+                  target: latLng,
+                  zoom: targetZoom,
+                ),
+              ),
+            );
+          },
         );
         markers.add(marker);
       }
@@ -533,13 +544,10 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
   void _drawZoomMarker(double zoom) {
-    print("🔍 _drawZoomMarker(): zoom = $zoom");
     setState(() {
       if (zoom <= 7) {
-        print("✅ 전국 마커 ${_provinceMarkers.length}개 표시");
         currentMarkers = _provinceMarkers;
       } else {
-        print("✅ 시군구 마커 ${_districtMarkers.length}개 표시");
         currentMarkers = _districtMarkers;
       }
     });
@@ -549,7 +557,6 @@ class _AdminHomePageState extends State<AdminHomePage>
 
     int selectedIndex = 0;
     Future<void> _onItemTapped(BuildContext context, int index) async {
-      print("😍😍😍😍😍😍before Thresholde: $threshold");
       // 선택 인덱스 갱신
       setState(() {
         selectedIndex = index;
@@ -571,7 +578,6 @@ class _AdminHomePageState extends State<AdminHomePage>
 
         // 복귀했울 때 result 없으면 홈으로
         if (result == null) {
-          print("result is null || after Thresholde: $threshold");
           setState(() {
             selectedIndex = 0;
           });
@@ -583,16 +589,12 @@ class _AdminHomePageState extends State<AdminHomePage>
         });
         threshold = await getThreshold(selectedType, selectedByproductName);
         await _reloadMarkers();
-
-        print("after Thresholde: $threshold");
       }
     }
 
 
 
   Future<void> _reloadMarkers() async {
-    print("🔄 마커 리로드 시작");
-
     _provinceMarkers = await _generateProvinceMarkers();
     _districtMarkers = await _generateDistrictMarkers();
 
@@ -665,8 +667,6 @@ class _AdminHomePageState extends State<AdminHomePage>
             ],
           ),
           const SizedBox(width: 12),
-          // 품목 드롭다운
-
           DropdownButton<String>(
             value: selectedByproductName,
             items: filteredByproducts.map((name) {
@@ -694,10 +694,6 @@ class _AdminHomePageState extends State<AdminHomePage>
   // 실행
     @override
     Widget build(BuildContext context) {
-      //if (!_isNaverMapInitialized) {
-      //  return Center(child: CircularProgressIndicator());
-     // }
-
       return Scaffold(
         backgroundColor: Colors.grey.shade50,
         appBar: AppBar(
