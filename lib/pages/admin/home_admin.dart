@@ -1,8 +1,11 @@
+import 'dart:collection';
+import 'package:brownskin_app/model/polygon_data.dart';
+import 'package:brownskin_app/service/location_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/constants.dart';
 import 'dart:convert';
-
+import 'package:brownskin_app/model/polygon_data.dart';
 import 'dart:ui' as ui;
 
 import 'dart:async';
@@ -46,7 +49,8 @@ class _AdminHomePageState extends State<AdminHomePage>
   GoogleMapController? _controller;
   final LatLng _center = const LatLng(36.5,127.8);
 
-
+  final polygonService = PolygonService();
+  
   @override
   void initState() {
     super.initState();
@@ -62,6 +66,10 @@ class _AdminHomePageState extends State<AdminHomePage>
 
     // 데이터 로드  (화면에 띄울 데이터 분류, 동적 지역 정보)
     initData();
+
+    polygonService.createPolygonsFromGeoJson().then((_){
+      setState(() {});
+    });
   }
 
   @override
@@ -232,40 +240,6 @@ class _AdminHomePageState extends State<AdminHomePage>
         }
       });
     }
-
-  Future<LatLng> getLatLngFromAddress(String addr1, String addr2) async {
-    print("🔍 getLatLngFromAddress(): $addr1 $addr2");
-
-    final url = Uri.parse(
-        'https://dapi.kakao.com/v2/local/search/address.json?query=${addr1 + addr2}'
-    );
-
-    final response = await http.get(
-      url,
-      headers: {
-        'Authorization': 'KakaoAK 75acb2a58d477b9c94d5c3e61790980b'
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final body = jsonDecode(utf8.decode(response.bodyBytes));
-      if (body['documents'].isEmpty) {
-        print("⚠️ 주소 결과 없음: $addr1 $addr2");
-        print("⚠️ Province '$addr1 $addr2' 마커 생성 실패");
-        return LatLng(0, 0);
-      }
-      final doc = body['documents'][0];
-      print("✅ 좌표 결과: ${doc['y']}, ${doc['x']}");
-      return LatLng(
-        double.parse(doc['y']),
-        double.parse(doc['x']),
-      );
-    } else {
-      print("❌ API 호출 실패: ${response.statusCode}");
-      throw Exception('API 호출 실패: ${response.statusCode}');
-    }
-  }
-
 
 
   // Stack overlay로 바꾸길 요망
@@ -485,6 +459,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     /* UI 구현 */
     Widget _buildMapSection() {
       return GoogleMap(
+        polygons: polygonService.getPolygons(),
         mapType: MapType.normal,
         initialCameraPosition: CameraPosition(
           target : _center,

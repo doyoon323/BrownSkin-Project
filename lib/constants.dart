@@ -1,7 +1,7 @@
 //const String BASE_URL = 'http://127.0.0.1:8000';
 //const String BASE_URL = 'http://10.0.2.2:8000'; //맥북 로컬
 
-const String BASE_URL = 'http://13.209.43.158:8000'; //클라우드 서버(ec2)
+const String BASE_URL = 'http://52.78.74.77:8000'; //클라우드 서버(ec2)
 
 
 final byproductsCategory = [
