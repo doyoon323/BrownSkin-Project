@@ -63,7 +63,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     // 데이터 로드  (화면에 띄울 데이터 분류, 동적 지역 정보)
     initData();
 
-    polygonService.createPolygonsFromGeoJson().then((_){
+    polygonService.createPolygonsFromConsts().then((_){
       setState(() {});
     });
   }
