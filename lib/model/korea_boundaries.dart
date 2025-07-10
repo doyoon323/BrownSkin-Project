@@ -1,5 +1,8 @@
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+
+
+/// 경계점을 하드코딩한 데이터로, (4천줄이 넘어가기도 하고) 거의 변경되지 않을 것이므로 load or api 를 사용하기보다는 하드코딩으로 두었습니다.
 const Map<String, List<LatLng>> polygonCoords = {
   '서울특별시': [
     LatLng(37.6997208220174, 127.02214829071995),
