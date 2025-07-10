@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:brownskin_app/constants.dart';
+import 'package:brownskin_app/common/constants.dart';
+import 'package:brownskin_app/common/api_service.dart';
+import 'package:brownskin_app/common/status_utils.dart';
+
+
 
 //StatefulWidget: 배송사 홈화면 위젯
 class TransporterHomePage extends StatefulWidget {
@@ -19,14 +22,8 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
   List<Map<String, dynamic>> allRequests = []; //진행중 요청들
   List<Map<String, dynamic>> completedRequests = []; //완료,거절 요청들
 
-//상태맵: 서버에서 내려오는 상태코드를 한글로 변환
-  final statusMap = {
-    'pending': '수거 요청',
-    'accepted': '수거 대기',
-    'transit': '배송중',
-    'completed': '배송 완료',
-    'denied': '거절',
-  };
+final String role = 'transporter';
+
 
 //초기 데이터 로딩
   @override
@@ -38,108 +35,69 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
 
 //진행중 요청 불러오기
   Future<void> fetchMyDeliveries() async {
-    final url = Uri.parse('$BASE_URL/api/my-delivery'); //API요청
-    final headers = {"Authorization": "Token ${widget.token}"};
-    try { //안전한 통신 위해서 try-catch 씀
-      final response = await http.get(url, headers: headers);
-      
-      //정상 응답 처리
-      if (response.statusCode == 200) { //
-        final parsed = jsonDecode(utf8.decode(response.bodyBytes));
-        final rawList = parsed['results'];
-        setState(() { //데이터 변환 및 상태 저장
-          allRequests = rawList.map<Map<String, dynamic>>((item) {
-            
-            //날짜 설정 로직
-            String dateText = item['req_date'] ?? '';
-            if (item['status'] == 'transit') {
-              dateText = item['transit_date'] ?? '';
-            }
+  final rawList = await ApiService.fetchList(
+    url: '$BASE_URL/api/my-delivery',
+    token: widget.token,
+  );
 
-            //맵 변환
-            return {
-              'id': item['id'],
-              'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
-              'status': statusMap[item['status']] ?? item['status'],
-              'rawStatus': item['status'],
-              'date': dateText,
-              'disposer': item['disposer'],
-              'preprocessor': item['preprocessor'],
-            };
-          }).toList();
-        });
+  if (!mounted) return;
 
-        //에러처리
-      } else {
-        print('진행중 데이터 오류: ${response.body}');
+  setState(() {
+    allRequests = rawList.map<Map<String, dynamic>>((item) {
+      String dateText = item['req_date'] ?? '';
+      if (item['status'] == 'transit') {
+        dateText = item['transit_date'] ?? '';
       }
-    } catch (e) {
-      print('네트워크 오류: $e');
-    }
-  }
+
+      return {
+        'id': item['id'],
+        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
+        'status': getStatusLabelForRole(role, item['status']),
+        'rawStatus': item['status'],
+        'date': dateText,
+        'disposer': item['disposer'],
+        'preprocessor': item['preprocessor'],
+      };
+    }).toList();
+  });
+}
 
 //완료, 거절 요청 불러오기
   Future<void> fetchCompletedDeliveries() async {
-    //완료, 거절 각각 다른 상태 API로 호출
-    final url = Uri.parse('$BASE_URL/api/my-history?status=completed');
-    final urlDenied = Uri.parse('$BASE_URL/api/my-history?status=denied');
-    final headers = {"Authorization": "Token ${widget.token}"};
-    try {
-      final responseCompleted = await http.get(url, headers: headers);
-      final responseDenied = await http.get(urlDenied, headers: headers);
+  final completedList = await ApiService.fetchList(
+    url: '$BASE_URL/api/my-history?status=completed',
+    token: widget.token,
+  );
+  final deniedList = await ApiService.fetchList(
+    url: '$BASE_URL/api/my-history?status=denied',
+    token: widget.token,
+  );
 
-    //정상처리
-      if (responseCompleted.statusCode == 200 && responseDenied.statusCode == 200) {
-        final parsedCompleted = jsonDecode(utf8.decode(responseCompleted.bodyBytes));
-        final parsedDenied = jsonDecode(utf8.decode(responseDenied.bodyBytes));
+  if (!mounted) return;
 
-        final rawListCompleted = parsedCompleted['results'];
-        final rawListDenied = parsedDenied['results'];
-
-        //맵변환_완료&거절
-        setState(() {
-          completedRequests = [
-            ...rawListCompleted.map<Map<String, dynamic>>((item) {
-              return {
-                'id': item['id'],
-                'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
-                'status': '배송 완료',
-                'rawStatus': 'completed',
-                'date': item['complete_date'] ?? '',
-                'disposer': item['disposer'],
-                'preprocessor': item['preprocessor'],
-              };
-            }),
-            ...rawListDenied.map<Map<String, dynamic>>((item) {
-              return {
-                'id': item['id'],
-                'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
-                'status': '거절',
-                'rawStatus': 'denied',
-                'date': item['complete_date'] ?? '',
-                'disposer': item['disposer'],
-                'preprocessor': item['preprocessor'],
-              };
-            }),
-          ];
-        });
-        //통신 실패 시 에러&예외처리
-      } else {
-        print('완료/거절 데이터 오류: ${responseCompleted.body} ${responseDenied.body}');
-      }
-    } catch (e) {
-      print('네트워크 오류: $e');
-    }
-  }
-
-  //상태에 따른 날짜 라벨
-  String _dateLabel(String status) {
-    if (status == 'pending' || status == 'accepted') return '수거 요청일';
-    if (status == 'transit') return '배송 시작일';
-    if (status == 'completed') return '배송 완료일';
-    if (status == 'denied') return '거절일';
-    return '날짜';
-  }
+  setState(() {
+    completedRequests = [
+      ...completedList.map<Map<String, dynamic>>((item) => {
+        'id': item['id'],
+        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
+        'status': '배송 완료',
+        'rawStatus': 'completed',
+        'date': item['complete_date'] ?? '',
+        'disposer': item['disposer'],
+        'preprocessor': item['preprocessor'],
+      }),
+      ...deniedList.map<Map<String, dynamic>>((item) => {
+        'id': item['id'],
+        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
+        'status': '거절',
+        'rawStatus': 'denied',
+        'date': item['complete_date'] ?? '',
+        'disposer': item['disposer'],
+        'preprocessor': item['preprocessor'],
+      }),
+    ];
+  });
+}
 
 //여기부터는 UI
   @override
@@ -245,13 +203,13 @@ class _TransporterHomePageState extends State<TransporterHomePage> {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         title: Text(item['item'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF5D4037))), //제목: 품목명, 타입, 무게
-        subtitle: Padding( 
+        subtitle: Padding(
           padding: const EdgeInsets.only(top: 8),
-          child: Text( //작은 글씨: 배출사+전처리사 정보, 상태, 날짜
+          child: Text(
             "배출사: ${item['disposer']['company_name']} (${item['disposer']['addr1']} ${item['disposer']['addr2']} ${item['disposer']['addrDetail']})\n"
             "전처리사: ${item['preprocessor']['company_name']} (${item['preprocessor']['addr1']} ${item['preprocessor']['addr2']} ${item['preprocessor']['addrDetail']})\n"
-            "상태: ${item['status']}\n"
-            "${_dateLabel(item['rawStatus'])}: ${item['date']}",
+            "상태: ${getStatusLabelForRole(role, item['rawStatus'])}\n"
+            "${getDateLabelForRole(role, item['rawStatus'])}: ${item['date']}",
             style: TextStyle(color: Colors.brown[600], fontSize: 13, height: 1.4),
           ),
         ),

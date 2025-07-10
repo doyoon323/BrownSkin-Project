@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:intl/intl.dart';
-import 'package:brownskin_app/constants.dart';
+import 'package:brownskin_app/common/constants.dart';
 import 'package:percent_indicator/percent_indicator.dart';
+import 'package:brownskin_app/common/api_service.dart';
+
 
 class PreprocessorHomePage extends StatefulWidget {
   final String token;
@@ -33,37 +34,29 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
   }
 
   Future<void> fetchPreprocessItems() async {
-    final headers = {"Authorization": "Token ${widget.token}"};
-    try {
-      final pendingRes = await http.get(
-        Uri.parse('$BASE_URL/api/my-preprocess?status=pending'),
-        headers: headers,
-      );
-      final acceptedRes = await http.get(
-        Uri.parse('$BASE_URL/api/my-preprocess?status=accepted'),
-        headers: headers,
-      );
-      final completedRes = await http.get(
-        Uri.parse('$BASE_URL/api/my-preprocess?status=completed'),
-        headers: headers,
-      );
+  final pendingList = await ApiService.fetchList(
+    url: '$BASE_URL/api/my-preprocess?status=pending',
+    token: widget.token,
+  );
 
-      if (pendingRes.statusCode == 200 &&
-          acceptedRes.statusCode == 200 &&
-          completedRes.statusCode == 200) {
-        setState(() {
-          receivedItems =
-              (jsonDecode(pendingRes.body)['results'] as List).cast<Map<String, dynamic>>();
-          processingItems =
-              (jsonDecode(acceptedRes.body)['results'] as List).cast<Map<String, dynamic>>();
-          completedItems =
-              (jsonDecode(completedRes.body)['results'] as List).cast<Map<String, dynamic>>();
-        });
-      }
-    } catch (e) {
-      // 필요시 예외 처리
-    }
-  }
+  final acceptedList = await ApiService.fetchList(
+    url: '$BASE_URL/api/my-preprocess?status=accepted',
+    token: widget.token,
+  );
+
+  final completedList = await ApiService.fetchList(
+    url: '$BASE_URL/api/my-preprocess?status=completed',
+    token: widget.token,
+  );
+
+  if (!mounted) return;
+
+  setState(() {
+    receivedItems = pendingList;
+    processingItems = acceptedList;
+    completedItems = completedList;
+  });
+}
 
   Future<void> _startProcessing(Map<String, dynamic> item) async {
     final pickedDate = await showDatePicker(

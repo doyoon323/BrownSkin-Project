@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; //이거 두 개 경로 그대로 가능. 내장 라이브러리
 import 'package:http/http.dart' as http;
-import 'package:brownskin_app/constants.dart';
+import 'package:brownskin_app/common/constants.dart';
 import 'dart:convert';
 import 'signup_page.dart';
 import 'agriculture/home_agriculture.dart';

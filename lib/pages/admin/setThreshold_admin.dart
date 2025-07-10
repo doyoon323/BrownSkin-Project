@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:brownskin_app/constants.dart';
+import 'package:brownskin_app/common/constants.dart';
 import 'package:http/http.dart' as http;
 
 class SetThresholdAdminPage extends StatefulWidget {
