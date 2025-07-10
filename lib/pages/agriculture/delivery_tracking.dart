@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:brownskin_app/constants.dart';
 
 class DeliveryTrackingPage extends StatefulWidget {
   final String token;
@@ -25,7 +26,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   // 배송 상태
   DeliveryStatus _currentStatus = DeliveryStatus.accepted;
   bool _isExpanded = false;
-  
+
+  // 배송 위치 리스트
+  List<LatLng> _sortedLocations = [];
+
   // 지도 관련
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
@@ -53,17 +57,26 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
 
   // 배송 정보 초기 로드
   Future<void> _fetchDeliveryInfo() async {
-    /*
+    String url = "$BASE_URL/api/track-delivery?id=${widget.deliveryId}";
     try {
       final response = await http.get(
-        Uri.parse('https://your-api.com/delivery/${widget.deliveryId}'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse(url),
+        headers: {'Authorization': 'Token ${widget.token}'},
       );
-      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        DeliveryInfo tempDeliveryInfo = await DeliveryInfo.fromJson(data);
+        // `locations`를 timestamp 순으로 정렬
+        List<LatLng> sortedLocations = sortLocationsByTimestamp(data['locations']);
+
+        // 마지막 위치를 tempDeliveryInfo의 location으로 설정
+        if (sortedLocations.isNotEmpty) {
+          tempDeliveryInfo.transporterLocation = sortedLocations.last;
+        }
+
         setState(() {
-          _deliveryInfo = DeliveryInfo.fromJson(data);
+          _deliveryInfo = tempDeliveryInfo;
+          _sortedLocations = sortedLocations;
           _currentStatus = _deliveryInfo!.status;
           _isLoading = false;
         });
@@ -72,21 +85,6 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       print('배송 정보 로드 실패: $e');
       setState(() => _isLoading = false);
     }
-    */
-    setState(() {
-      _deliveryInfo = DeliveryInfo(
-        id: widget.deliveryId,
-        disposerAddress: '서울시 강남구 테헤란로 123',
-        preprocessorAddress: '서울시 서초구 반포대로 456',
-        disposerLocation: const LatLng(37.5665, 126.9780),
-        transporterLocation: const LatLng(37.5500, 126.9900),
-        preprocessorLocation: const LatLng(37.5700, 126.9900),
-        transporterName: '홍길동',
-        status: DeliveryStatus.accepted,
-      );
-      _currentStatus = _deliveryInfo!.status;
-      _isLoading = false;
-    });
   }
 
   // 주기적으로 배송 위치 업데이트
@@ -170,17 +168,25 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
 
   void _updatePolylines() {
     final polyline = Polyline(
-      polylineId: PolylineId('route_line'),
+      polylineId: PolylineId('previous_route'),
+      color: Colors.orange,
+      width: 5,
+      points: _sortedLocations,
+    );
+    final polyline2 = Polyline(
+      polylineId: PolylineId('expected_route'),
       color: Colors.blue,
       width: 5,
       points: [
         _deliveryInfo!.transporterLocation,  // 출발지
-        _deliveryInfo!.disposerLocation,  // 도착지 (나중에 상태에 따라 배춠사 위치 또는 전처리사 위치로 변경)
+        _currentStatus==DeliveryStatus.transit
+            ? _deliveryInfo!.preprocessorLocation  // 전처리사 이동 중
+            : _deliveryInfo!.disposerLocation,  // 배출사 이동 중
       ],
     );
 
     setState(() {
-      _polylines = {polyline};
+      _polylines = {polyline, polyline2};
     });
   }
 
@@ -188,7 +194,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('배송 추적 - ID #${widget.deliveryId}'),
+        title: Text('실시간 추적 - 배송 번호 #${widget.deliveryId}'),
         backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
       ),
@@ -357,7 +363,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     return Column(
       children: [
         const Divider(),
-        _buildInfoRow('배송 번호', widget.deliveryId.toString()),
+        _buildInfoRow('타입/이름', "${_deliveryInfo!.byprodType} / ${_deliveryInfo!.byprodName}"),
+        _buildInfoRow('무게', "${_deliveryInfo!.byprodWeight} kg"),
+        _buildInfoRow('요청 날짜', _deliveryInfo!.reqDate),
         _buildInfoRow('수거지', _deliveryInfo!.disposerAddress),
         _buildInfoRow('배송지', _deliveryInfo!.preprocessorAddress),
         _buildInfoRow('배송 업체', _deliveryInfo!.transporterName),
@@ -395,9 +403,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
 
 // 배송 상태 enum
 enum DeliveryStatus {
-  accepted('수락됨', '배송 요청이 수락되었습니다', Colors.blue),
-  //pickupInProgress('수거 이동 중', '수거지로 이동 중입니다', Colors.orange),
-  transit('전처리사 이동 중', '전처리사로 이동 중입니다', Colors.purple),
+  accepted('수락됨', '배송 요청이 수락되었습니다', Colors.orange),
+  //pickupInProgress('수거 이동 중', '수거지로 이동 중입니다', Colors.purple),
+  transit('전처리사 이동 중', '전처리사로 이동 중입니다', Colors.blue),
   //outForDelivery('배송 중', '최종 배송지로 이동 중입니다', Colors.teal),
   delivered('배송 완료', '배송이 완료되었습니다', Colors.green);
 
@@ -408,16 +416,75 @@ enum DeliveryStatus {
   final Color color;
 }
 
+// 주소로부터 위도/경도를 가져오는 함수
+Future<LatLng> getLatLngFromAddress(String addr1, String addr2) async {
+  print("🔍 getLatLngFromAddress(): $addr1 $addr2");
+
+  final url = Uri.parse(
+      'https://dapi.kakao.com/v2/local/search/address.json?query=${addr1 + addr2}'
+  );
+
+  final response = await http.get(
+    url,
+    headers: {
+      'Authorization': 'KakaoAK 75acb2a58d477b9c94d5c3e61790980b'
+    },
+  );
+
+  if (response.statusCode == 200) {
+    final body = jsonDecode(utf8.decode(response.bodyBytes));
+    if (body['documents'].isEmpty) {
+      print("⚠️ 주소 결과 없음: $addr1 $addr2");
+      print("⚠️ Province '$addr1 $addr2' 마커 생성 실패");
+      return LatLng(0, 0);
+    }
+    final doc = body['documents'][0];
+    print("✅ 좌표 결과: ${doc['y']}, ${doc['x']}");
+    return LatLng(
+      double.parse(doc['y']),
+      double.parse(doc['x']),
+    );
+  } else {
+    print("❌ API 호출 실패: ${response.statusCode}");
+    throw Exception('API 호출 실패: ${response.statusCode}');
+  }
+}
+
+// 위치 정보 파싱 및 정렬 함수
+List<LatLng> sortLocationsByTimestamp(List<dynamic> jsonList) {
+  // timestamp 순으로 정렬하고 LatLng 객체로 변환
+  List<LocationPoint> locations = jsonList
+      .map((json) => LocationPoint.fromJson(json))
+      .toList()
+    ..sort((a, b) => a.timestamp.compareTo(b.timestamp));  // timestamp 순 정렬
+
+  print("🔍 sortLocationsByTimestamp(): ${locations.length} locations sorted by timestamp");
+
+  // LatLng 리스트로 변환
+  List<LatLng> latLngList = locations.map((loc) => LatLng(loc.lat, loc.lng)).toList();
+
+  // 로그로 LatLng 리스트 출력 (위도/경도만)
+  for (final loc in latLngList) {
+    print("📍 LatLng: ${loc.latitude}, ${loc.longitude}");
+  }
+
+  return latLngList;
+}
+
 // 배송 정보 모델
 class DeliveryInfo {
   final int id;
   final String disposerAddress;
   final String preprocessorAddress;
   final LatLng disposerLocation;
-  final LatLng transporterLocation;
+  LatLng transporterLocation;
   final LatLng preprocessorLocation;
   final String transporterName;
-  final DeliveryStatus status;
+  final String byprodType;
+  final String byprodName;
+  final double byprodWeight;
+  final String reqDate;
+  DeliveryStatus status;
 
   DeliveryInfo({
     required this.id,
@@ -427,31 +494,56 @@ class DeliveryInfo {
     required this.transporterLocation,
     required this.preprocessorLocation,
     required this.transporterName,
+    required this.byprodType,
+    required this.byprodName,
+    required this.byprodWeight,
+    required this.reqDate,
     required this.status,
   });
 
-  factory DeliveryInfo.fromJson(Map<String, dynamic> json) {
+  static Future<DeliveryInfo> fromJson(Map<String, dynamic> json) async {
     return DeliveryInfo(
       id: json['id'].toInt(),
-      disposerAddress: json['disposer_address'],
-      preprocessorAddress: json['preprocessor_address'],
-      disposerLocation: LatLng(
-        json['disposer_lat'].toDouble(),
-        json['disposer_lng'].toDouble(),
-      ),
-      transporterLocation: LatLng(
-        json['transporter_lat'].toDouble(),
-        json['transporter_lng'].toDouble(),
-      ),
-      preprocessorLocation: LatLng(
-        json['preprocessor_lat'].toDouble(),
-        json['preprocessor_lng'].toDouble(),
-      ),
-      transporterName: json['transporter_name'],
+      disposerAddress: "${json['disposer']['addr1']} ${json['disposer']['addr2']}",
+      preprocessorAddress: "${json['preprocessor']['addr1']} ${json['preprocessor']['addr2']}",
+      disposerLocation: await getLatLngFromAddress(json['disposer']['addr1'], json['disposer']['addr2']),
+      //transporterLocation: await getLatLngFromAddress(json['transporter']['addr1'], json['transporter']['addr2']),
+      transporterLocation: LatLng(37.4979, 127.0276), // placeholder
+      preprocessorLocation: await getLatLngFromAddress(json['preprocessor']['addr1'], json['preprocessor']['addr2']),
+      transporterName: json['transporter']['company_name'],
+      byprodType: json['type'],
+      byprodName: json['name'],
+      byprodWeight: json['weight_float'].toDouble(),
+      reqDate: json['req_date'],
       status: DeliveryStatus.values.firstWhere(
         (status) => status.name == json['status'],
         orElse: () => DeliveryStatus.accepted,
       ),
     );
   }
+}
+// 위치 정보 모델
+class LocationPoint {
+  final int id;
+  final double lat;
+  final double lng;
+  final DateTime timestamp;
+
+  LocationPoint({
+    required this.id,
+    required this.lat,
+    required this.lng,
+    required this.timestamp,
+  });
+
+  factory LocationPoint.fromJson(Map<String, dynamic> json) {
+    return LocationPoint(
+      id: json['id'],
+      lat: json['lat'],
+      lng: json['lng'],
+      timestamp: DateTime.parse(json['timestamp']),
+    );
+  }
+
+  LatLng toLatLng() => LatLng(lat, lng);
 }
