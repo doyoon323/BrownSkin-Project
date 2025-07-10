@@ -39,6 +39,7 @@ class PolygonService {
     return coords.map<LatLng>((c) => LatLng(c[1], c[0])).toList();
   }
 
+
   /// MultiPolygon 처리
   List<List<LatLng>> parseMultiPolygon(List coords) {
     return coords.map<List<LatLng>>(
@@ -49,29 +50,67 @@ class PolygonService {
   /// GeoJSON -> Polygon 생성
   Future<void> createPolygonsFromGeoJson() async {
     final geoJson = await loadGeoJson();
-
     final List features = geoJson['features'];
 
-    // 서울만 따로 빼고
-    final seoulFeature = features.firstWhere(
-          (f) => f['properties']['name'] == '서울특별시',
-      orElse: () => null,
-    );
-
-
-    for (final feature in geoJson['features']) {
+    for (final feature in features) {
       final geometry = feature['geometry'];
       final String name = feature['properties']['name'];
+      final Color provinceColor = provinceColors[name] ?? Colors.red;
 
 
-      print("폴리곤 생성: $name");
+      if (name == '경기도') {
+        // 경기도 하드코딩 좌표 (경기도)
+        final List<LatLng> gyeonggiCoords = [
+          LatLng(37.45859429669539, 127.11674713187564),
+          LatLng(37.43637048559158, 126.90192185647521),
+          LatLng(37.5511754194035, 126.76474895751049),
+          LatLng(37.42904817687088, 126.77035223152424),
+          LatLng(37.32988698791891, 126.67106449501567),
+          LatLng(37.111924478183454, 126.68612820151787),
+          LatLng(37.1888808779548, 126.79710503013769),
+          LatLng(37.02925100714912, 126.75100563879833),
+          LatLng(36.90509655991407, 126.9086368769204),
+          LatLng(36.96610951620199, 127.10442880537073),
+          LatLng(36.89353353381547, 127.28855840198274),
+          LatLng(37.0529979060048, 127.46803673152135),
+          LatLng(37.042950020990205, 127.55979973400154),
+          LatLng(37.13530729579704, 127.68790646576998),
+          LatLng(37.30289227872186, 127.76768239764084),
+          LatLng(37.55321122766271, 127.8494476999771),
+          LatLng(37.628449266439425, 127.55898162627281),
+          LatLng(37.838905235791906, 127.52927275935066),
+          LatLng(37.95509527270969, 127.60299370955819),
+          LatLng(38.016233286625365, 127.45798948551693),
+          LatLng(38.10817136032753, 127.4410047744206),
+          LatLng(38.14685891066471, 127.2232670267822),
+          LatLng(38.29203792732757, 127.10928347342096),
+          LatLng(38.22307678822598, 126.87296943934071),
+          LatLng(38.127802544460295, 126.7480633194675),
+          LatLng(38.06979000320887, 126.89308963723236),
+          LatLng(38.01856307572189, 126.87254005350819),
+          LatLng(37.95569988264043, 126.67038387779681),
+          LatLng(37.784517209504884, 126.66700405635578),
+          LatLng(37.76694862256429, 126.51456397746584),
+          LatLng(37.586077393531376, 126.56574983556453),
+          LatLng(37.63822828854139, 126.6594362051889),
+          LatLng(37.57561931537229, 126.8509394260532),
+          LatLng(37.70102523886384, 127.01584584752527),
+          LatLng(37.68771674545948, 127.0959236405964),
+          LatLng(37.56002336317411, 127.1011460799232),
+          LatLng(37.54582646715933, 127.18355190345548),
+          LatLng(37.45859429669539, 127.11674713187564),
+        ];
 
-      final Color provinceColor = provinceColors[name] ?? Colors.green;
+        addPolygon(name, gyeonggiCoords,color: provinceColor);
+        continue;
+      }
 
       if (geometry['type'] == 'Polygon') {
-        final coords = parseCoordinates(geometry['coordinates'][0]);
-        print("서울 Polygon 점 개수: ${coords.length}");
-        addPolygon(name, coords, color: provinceColor);
+        final List coords = geometry['coordinates'];
+        final List<LatLng> outerRing = parseCoordinates(coords[0]);
+
+
+        addPolygon(name, outerRing, color: provinceColor);
       } else if (geometry['type'] == 'MultiPolygon') {
         final parts = parseMultiPolygon(geometry['coordinates']);
         for (var i = 0; i < parts.length; i++) {
@@ -79,29 +118,13 @@ class PolygonService {
         }
       }
     }
-
-    // 서울 마지막에 추가
-    if (seoulFeature != null) {
-      final geometry = seoulFeature['geometry'];
-      final Color provinceColor = provinceColors["서울특별시"] ?? Colors.green;
-
-      if (geometry['type'] == 'Polygon') {
-        final coords = parseCoordinates(geometry['coordinates'][0]);
-        addPolygon("서울특별시", coords, color: provinceColor);
-      } else if (geometry['type'] == 'MultiPolygon') {
-        final parts = parseMultiPolygon(geometry['coordinates']);
-        for (var i = 0; i < parts.length; i++) {
-          addPolygon("서울특별시-$i", parts[i], color: provinceColor);
-        }
-      }
-    }
   }
 
-  void addPolygon(String id, List<LatLng> coords, {Color? color}) {
-    if (coords.isEmpty) {
+  void addPolygon(String id, List<LatLng> outerRing,{ Color? color}) {
+    if (outerRing.isEmpty) {
       throw ArgumentError("좌표 리스트가 비어있습니다.");
     }
-    if (coords.length < 3) {
+    if (outerRing.length < 3) {
       throw ArgumentError("폴리곤은 최소 3개의 점이 필요합니다.");
     }
     if (_polygons.any((p) => p.polygonId.value == id)) {
@@ -111,10 +134,10 @@ class PolygonService {
     _polygons.add(
       Polygon(
         polygonId: PolygonId(id),
-        points: coords,
-        strokeColor: Color(0xFFF2F2F2).withOpacity(0.8), // 경계선 흰색으로 고정
+        points: outerRing,
+        strokeColor: Color(0xFFF2F2F2).withOpacity(0.8),
         strokeWidth: 2,
-        fillColor: (color ?? Colors.green), // 불투명 색상
+        fillColor: (color ?? Colors.green).withOpacity(1.0),
       ),
     );
   }

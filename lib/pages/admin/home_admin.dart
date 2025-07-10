@@ -1,11 +1,9 @@
-import 'dart:collection';
 import 'package:brownskin_app/model/polygon_data.dart';
 import 'package:brownskin_app/service/location_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/constants.dart';
 import 'dart:convert';
-import 'package:brownskin_app/model/polygon_data.dart';
 import 'dart:ui' as ui;
 
 import 'dart:async';
@@ -16,7 +14,6 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 //관리자 홈 화면 (부산물 데이터를 시각화하여 보여준다)
 class AdminHomePage extends StatefulWidget {
-  /* 인증 토큰을 매개변수로 받아 저장 */
   final String token;
   const AdminHomePage({required this.token, super.key});
 
@@ -28,11 +25,10 @@ class _AdminHomePageState extends State<AdminHomePage>
     with TickerProviderStateMixin {
 
   // dropdown 저장용 변수
-
   String selectedType = "수확"; // default = 수확
   String? selectedByproductName = "사과"; // default = 사과
 
-  double threshold = 1;
+  double threshold = 1; //default
 
 
   //UI 구성
@@ -43,13 +39,13 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
   //Maps
-  Set<Marker> _provinceMarkers = {};
-  Set<Marker> _districtMarkers = {};
-  Set<Marker> currentMarkers = {};
+  Set<Marker> _provinceMarkers = {}; //관리자가 가진 모든 시도 정보
+  Set<Marker> _districtMarkers = {}; //관리자가 가진 모든 구 정보
+  Set<Marker> currentMarkers = {}; //현재 지도에 띄울 마커
   GoogleMapController? _controller;
-  final LatLng _center = const LatLng(36.5,127.8);
+  final LatLng _center = const LatLng(35.5,127.8); //지도를 켰을 때 중심 좌표
 
-  final polygonService = PolygonService();
+  final polygonService = PolygonService(); // 지역별 경계선
   
   @override
   void initState() {

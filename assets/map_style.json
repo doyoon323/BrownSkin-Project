@@ -1,11 +1,4 @@
 [
-  {
-    "elementType": "geometry",
-    "stylers": [
-      { "color": "#009c4a" }
-    ]
-  },
-
 
   {
     "elementType": "labels.text.fill",
