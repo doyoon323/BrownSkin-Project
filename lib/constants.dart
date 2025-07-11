@@ -1,7 +1,7 @@
 //const String BASE_URL = 'http://127.0.0.1:8000';
 //const String BASE_URL = 'http://10.0.2.2:8000'; //맥북 로컬
 
-const String BASE_URL = 'http://52.78.74.77:8000'; //클라우드 서버(ec2)
+const String BASE_URL = 'http://54.180.99.127:8000'; //클라우드 서버(ec2)
 
 
 final byproductsCategory = [
@@ -13,28 +13,3 @@ final byproductsCategory = [
   {"name": "무", "type": "수확"},
   {"name": "귤", "type": "수확"},
 ];
-
-
-//도 - 100개
-
-/*
-*
-*/
-
-
-/// 1. 배포
-/// 1.도별로 특산물품
-/// 1.도별로 더미 데이터  + 배송업체 유통사 해결
-///
-
-// 데이터 받기
-
-// 2지도 데이터 클릭 후 이동 + 줌인 & 시도별 영역 구분
-
-
-
-
-// 1. 농가페기물 (국내에서 관리가 안된다 & 활용이 안 되고 버려진다 ) - 2. 가공 과정 중 loss & 단가 상승,, loss가 줄어드는 방향
-
-
-

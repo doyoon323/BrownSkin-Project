@@ -1,8 +1,6 @@
 import 'package:brownskin_app/model/polygon_data.dart';
-import 'package:brownskin_app/service/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/constants.dart';
-import 'dart:ui' as ui;
 
 import 'dart:async';
 import 'package:brownskin_app/pages/admin/setThreshold_admin.dart';
@@ -10,6 +8,7 @@ import 'package:brownskin_app/pages/admin/global.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'admin_data_provider.dart';
+import 'admin_marker_factory.dart';
 
 
 /// 관리자 기본 화면 (부산물 데이터 시각화 with google maps)
@@ -23,12 +22,15 @@ class AdminHomePage extends StatefulWidget {
 
 class _AdminHomePageState extends State<AdminHomePage>
     with TickerProviderStateMixin {
+/// refactoring ver 1.0 기능 분리
+/// refactoring ver 2.0 (예정)  - 1. 줌인할 때 범위에 해당하는 마커만 먼저 그리기 2. 15분~30분마다 자동으로 화면 갱신하기 3.
 
   // dropdown 저장용 변수
   String selectedType = "수확"; // default = 수확
   String? selectedByproductName = "사과"; // default = 사과
 
-  double threshold = 1; //default
+
+  double? threshold; //default
 
 
   //UI 구성
@@ -47,7 +49,30 @@ class _AdminHomePageState extends State<AdminHomePage>
 
   final polygonService = PolygonService(); // 지역별 경계선
   late final adminData = AdminData(token: widget.token);
-  
+
+  late final markerHelper;
+
+
+  late final Future<void> Function(LatLng) _onProvinceMarkerTap = (LatLng latLng) async {
+    const targetZoom = 8.0;
+    await _controller?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: latLng, zoom: targetZoom),
+      ),
+    );
+  };
+
+  late final Future<void> Function(LatLng) _onDistrictMarkerTap = (LatLng latLng) async {
+    const targetZoom = 10.0;
+    await _controller?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: latLng, zoom: targetZoom),
+      ),
+    );
+  };
+
+
+
   @override
   void initState() {
     super.initState();
@@ -74,16 +99,33 @@ class _AdminHomePageState extends State<AdminHomePage>
     super.dispose();
   }
 
-
-
   Future<void> initData() async {
+    // 1. 지역 데이터 로드
     allAreas = await adminData.updateRegionData();
+
+    // 2. 임계값 로드
     threshold = await adminData.getThreshold(selectedType, selectedByproductName);
 
-    _provinceMarkers = await _generateProvinceMarkers();
-    _districtMarkers = await _generateDistrictMarkers();
+    // 3. Marker Helper 생성
+    markerHelper = AdminMarker(token: widget.token);
+
+    final allMarkers = await markerHelper.generateAllMarkers(
+      allAreas: allAreas,
+      selectedType: selectedType,
+      selectedByproductName: selectedByproductName,
+      threshold: threshold!,
+      provinceOnTap: _onProvinceMarkerTap,
+      districtOnTap: _onDistrictMarkerTap,
+      adminData: adminData,
+    );
+
+    _provinceMarkers = allMarkers.provinceMarkers;
+    _districtMarkers = allMarkers.districtMarkers;
+
+    // 6. 초기 마커 표시
     currentMarkers = _provinceMarkers;
 
+    // 7. 로딩 종료
     setState(() {
       isLoading = false;
     });
@@ -91,325 +133,46 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
 
-  // Stack overlay로 바꾸길 요망
-  Future<Set<Marker>> _generateProvinceMarkers() async {
-    Set<Marker> markers = {};
-
-    // results Map만 반환하도록 구현했다고 가정
-    Map<String, dynamic> provinceWeightData = await adminData.getWeightData(
-        selectedType, selectedByproductName, null, null);
-
-    for (var province in allAreas.keys) {
-      LatLng latLng = await getLatLngFromAddress(province, "");
-
-      if (latLng.latitude == 0 && latLng.longitude == 0) {
-        continue;
-      }
-
-      double weight = 0.0;
-      if (provinceWeightData.containsKey(province)) {
-        weight = (provinceWeightData[province] as num).toDouble();
-      }
-
-// threshold 유효성 체크
-      double percent;
-      if (threshold <= 0) {
-        print("⚠️ 임계치 값이 유효하지 않아 색상 계산을 건너뜁니다.");
-        percent = 0.0;
-      } else {
-        percent = (weight / threshold).clamp(0.0, 1.0);
-      }
-
-// 색상 결정
-      List<Color> color;
-      if (threshold <= 0) {
-        color = [Colors.grey, Colors.grey];
-      } else {
-        color = getGradientColorsByPercentage(percent);
-      }
-
-      print("$province weight: $weight and threshold: $threshold, so percent is $percent\n Color is ${color
-              .toString()}");
-
-      final BitmapDescriptor icon = await createCustomMarkerBitmap(
-        province: province,
-        label: "${weight.toInt()}",
-        colorStart: color[0],
-        colorEnd: color[1],
-        percentage: percent,
-      );
-
-      Marker marker = Marker(
-        markerId: MarkerId(province),
-        position: latLng,
-        icon: icon,
-        onTap: () async {
-          // 원하는 줌 레벨
-          const double targetZoom = 8.0;
-
-          // 카메라 이동 + 줌인
-          await _controller?.animateCamera(
-            CameraUpdate.newCameraPosition(
-              CameraPosition(
-                target: latLng,
-                zoom: targetZoom,
-              ),
-            ),
-          );
-        },
-      );
-
-      markers.add(marker);
-    }
-    return markers;
-  }
-
-
-  List<Color> getGradientColorsByPercentage(double percent) {
-    int r, g, b;
-
-    if (percent <= 0.5) {
-      final ratio = percent / 0.5;
-      r = (0 + (249 - 0) * ratio).round();        // R: 0 → 249
-      g = (208 + (217 - 208) * ratio).round();    // G: 208 → 217
-      b = (98 + (51 - 98) * ratio).round();       // B: 98 → 51
-
-      // 중심색
-      final baseColor = Color.fromARGB(255, r, g, b);
-
-      // 테두리색: 중심색보다 약간 밝음
-      final lighterR = (r + 10).clamp(0, 255).toInt();
-      final lighterG = (g + 10).clamp(0, 255).toInt();
-      final lighterB = (b + 10).clamp(0, 255).toInt();
-
-      return [
-        baseColor,
-        Color.fromARGB(255, lighterR, lighterG, lighterB),
-      ];
-    } else {
-      final ratio = (percent - 0.5) / 0.5;
-      r = (249 + (244 - 249) * ratio).round();    // R: 249 → 244
-      g = (217 + (68 - 217) * ratio).round();     // G: 217 → 68
-      b = (51 + (68 - 51) * ratio).round();       // B: 51 → 68
-
-      final baseColor = Color.fromARGB(255, r, g, b);
-
-      final lighterR = (r + 10).clamp(0, 255).toInt();
-      final lighterG = (g + 10).clamp(0, 255).toInt();
-      final lighterB = (b + 10).clamp(0, 255).toInt();
-
-      return [
-        baseColor,
-        Color.fromARGB(255, lighterR, lighterG, lighterB),
-      ];
-    }
-  }
-
-
-  Future<Set<Marker>> _generateDistrictMarkers() async {
-    Set<Marker> markers = {};
-    for (var entry in allAreas.entries) {
-      final province = entry.key;
-      final districts = entry.value;
-
-
-      for (var district in districts) {
-        LatLng latLng = await getLatLngFromAddress(province, district);
-        if (latLng.latitude == 0 && latLng.longitude == 0) {
-          continue;
-        }
-
-
-        Map<String, dynamic> provinceWeightData = await adminData.getWeightData(
-            selectedType, selectedByproductName, province, district);
-
-        double? weight;
-        if (provinceWeightData.containsKey(district)) {
-          weight = (provinceWeightData[district] as num).toDouble();
-        } else if (provinceWeightData["total_weight"] != null) {
-          weight = (provinceWeightData["total_weight"] as num).toDouble();
-        }
-
-        print("$province $district weight: $weight");
-
-        final percent = (weight! / threshold).clamp(0.0, 1.0);
-
-
-        List<Color> color = getGradientColorsByPercentage(percent);
-
-        if (threshold <= 0) {
-          print("⚠️ 임계치 값이 유효하지 않아 색상 계산을 건너뜁니다.");
-          color[0] = Colors.grey;
-          color[1] = Colors.grey;
-        }
-
-        print(
-            "$province $district weight: $weight and threshold : $threshold, so percent is $percent\n Color is ${color
-                .toString()}");
-
-        final BitmapDescriptor icon = await createCustomMarkerBitmap(
-          province: district,
-          label: "${weight.toInt()}",
-          colorStart: color[0],
-          colorEnd: color[1],
-          percentage: percent
-        );
-
-
-        Marker marker = Marker(
-          markerId: MarkerId("$province $district"),
-          position: latLng,
-          icon: icon,
-          onTap: () async {
-            // 원하는 줌 레벨
-            const double targetZoom = 10.0;
-
-            // 카메라 이동 + 줌인
-            await _controller?.animateCamera(
-              CameraUpdate.newCameraPosition(
-                CameraPosition(
-                  target: latLng,
-                  zoom: targetZoom,
-                ),
-              ),
-            );
-          },
-        );
-        markers.add(marker);
-      }
-    }
-    return markers;
-  }
-
-  Future<BitmapDescriptor> createCustomMarkerBitmap({
-    required String province,
-    required String label,
-    required Color colorStart,
-    required Color colorEnd,
-    required double percentage,
-  }) async {
-    // 마커 크기 범위
-    const double minSize = 120;
-    const double maxSize = 140;
-
-    // 비율에 따라 크기 결정
-    final double size = minSize + percentage * (maxSize - minSize);
-
-    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
-    final Canvas canvas = Canvas(pictureRecorder);
-
-
-    final Offset center = Offset(size / 2, size / 2);
-    final double radius = size / 2;
-
-    final Paint backgroundPaint = Paint()
-      ..shader = ui.Gradient.radial(
-        center,
-        radius,
-        [
-          colorStart.withOpacity(1.0),    // 바깥 색
-          colorEnd.withOpacity(1.0), // 중심 색
-        ],
-        [0.0, 1.0],
-      );
-
-
-    // 동그란 원 그리기
-    canvas.drawCircle(
-      center,
-      radius,
-      backgroundPaint,
-    );
-
-
-    final String shortProvince =
-    province.length > 2 ? province.substring(0, 2) : province;
-
-    // 폰트 크기
-    final double baseFontSize = size / 4.2;
-    final double provinceFontSize = shortProvince.length >= 5
-        ? baseFontSize * 0.8
-        : baseFontSize;
-
-    // 텍스트
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    );
-
-    textPainter.text = TextSpan(
-      children: [
-        TextSpan(
-          text: "$shortProvince\n",
-          style: TextStyle(
-            fontSize: provinceFontSize,
-            color: const Color(0xFFF2F2F2),
-            fontWeight: FontWeight.w400,
-            height: 1.2,
-          ),
-        ),
-        TextSpan(
-          text: "$label",
-          style: TextStyle(
-            fontSize: baseFontSize,
-            color: const Color(0xFFF2F2F2),
-            fontWeight: FontWeight.w900,
-            height: 1.2,
-          ),
-        ),
-      ],
-    );
-
-    textPainter.layout(
-      minWidth: 0,
-      maxWidth: size * 0.85,
-    );
-
-    // 중앙에 여백 확보
-    textPainter.paint(
-      canvas,
-      Offset(
-        center.dx - textPainter.width / 2,
-        center.dy - textPainter.height / 2 + 4,
-      ),
-    );
-
-    final img = await pictureRecorder
-        .endRecording()
-        .toImage(size.toInt(), size.toInt());
-    final data = await img.toByteData(format: ui.ImageByteFormat.png);
-
-    return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
-  }
-
-
-
+  double? _lastZoomLevel;
 
   void _drawZoomMarker(double zoom) {
-    setState(() {
-      if (zoom <= 7) {
-        currentMarkers = _provinceMarkers;
-      } else {
-        currentMarkers = _districtMarkers;
-      }
-    });
+    if (_lastZoomLevel == null ||
+        (zoom <= 7 && _lastZoomLevel! > 7) ||
+        (zoom > 7 && _lastZoomLevel! <= 7)) {
+      setState(() {
+        currentMarkers = zoom <= 7 ? _provinceMarkers : _districtMarkers;
+      });
+    }
+    _lastZoomLevel = zoom;
   }
-
 
 
   Future<void> _reloadMarkers() async {
-    _provinceMarkers = await _generateProvinceMarkers();
-    _districtMarkers = await _generateDistrictMarkers();
+    // 새로 마커 생성
+    final allMarkers = await markerHelper.generateAllMarkers(
+      allAreas: allAreas,
+      selectedType: selectedType,
+      selectedByproductName: selectedByproductName,
+      threshold: threshold!,
+      provinceOnTap: _onProvinceMarkerTap,
+      districtOnTap: _onDistrictMarkerTap,
+      adminData: adminData,
+    );
 
-    // 현재 줌에 맞춰 지도에 새 마커 뿌리기
-    final position = await _controller?.getZoomLevel();
-    if (position != null) {
-      _drawZoomMarker(position);
+    _provinceMarkers = allMarkers.provinceMarkers;
+    _districtMarkers = allMarkers.districtMarkers;
+
+    // 현재 줌에 맞게 마커 표시
+    final zoom = await _controller?.getZoomLevel();
+    if (zoom != null) {
+      _drawZoomMarker(zoom);
     }
   }
 
-    int selectedIndex = 0;
-    Future<void> _onItemTapped(BuildContext context, int index) async {
+
+
+  int selectedIndex = 0;
+  Future<void> _onItemTapped(BuildContext context, int index) async {
       // 선택 인덱스 갱신
       setState(() {
         selectedIndex = index;
@@ -444,6 +207,8 @@ class _AdminHomePageState extends State<AdminHomePage>
         await _reloadMarkers();
       }
     }
+
+
 
 
   /* UI 구현 */
@@ -513,18 +278,22 @@ class _AdminHomePageState extends State<AdminHomePage>
               selectedType == "가공",
               selectedType == "수확",
             ],
+
             onPressed: (index) async {
+              final newType = index == 0 ? "가공" : "수확";
+              final filtered = byproductsCategory
+                  .where((item) => item["type"] == newType)
+                  .map((item) => item["name"]!)
+                  .toSet()
+                  .toList();
+              final newByproduct = filtered.isNotEmpty ? filtered.first : null;
+              final newThreshold = await adminData.getThreshold(newType, newByproduct);
+
               setState(() {
-                selectedType = index == 0 ? "가공" : "수확";
-                // ✅ 타입 바뀌면 품목을 첫번째로 초기화
-                final filtered = byproductsCategory
-                    .where((item) => item["type"] == selectedType)
-                    .map((item) => item["name"]!)
-                    .toSet()
-                    .toList();
-                selectedByproductName = filtered.isNotEmpty ? filtered.first : null;
+                selectedType = newType;
+                selectedByproductName = newByproduct;
+                threshold = newThreshold;
               });
-              threshold = await adminData.getThreshold(selectedType, selectedByproductName);
               _reloadMarkers();
             },
             children: const [

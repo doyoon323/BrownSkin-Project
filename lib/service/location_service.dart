@@ -17,7 +17,6 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
         'Authorization': 'KakaoAK 75acb2a58d477b9c94d5c3e61790980b'
       },
     );
-
     if (response.statusCode == 200) {
       final body = jsonDecode(utf8.decode(response.bodyBytes));
       if (body['documents'].isEmpty) {

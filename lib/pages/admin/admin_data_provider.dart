@@ -33,34 +33,43 @@ class AdminData {
       return {};
     }
   }
-
   /// 실제 업체가 존재하는 구 데이터 동적 로드
   Future<List<String>> fetchDistrictData(String province) async {
     String url = "$BASE_URL/api/addr-list?addr1=$province";
+    print("🌐 fetchDistrictData 요청 URL: $url");
 
     try {
       final response = await http.get(
         Uri.parse(url),
         headers: {'Authorization': 'Token ${this.token}'},
       );
+      print("✅ fetchDistrictData 응답 코드: ${response.statusCode}");
+      print("✅ fetchDistrictData 응답 body: ${utf8.decode(response.bodyBytes)}");
+
       if (response.statusCode == 200) {
         final body = jsonDecode(utf8.decode(response.bodyBytes));
-        final List<
-            dynamic> result = body['addr2_list']; // API 결과 예: {"addr2_list": ["강남구","송파구"]}
+        print("✅ fetchDistrictData 파싱 결과: $body");
+
+        final List<dynamic> result = body['addr2_list'];
+        print("✅ fetchDistrictData addr2_list: $result");
 
         return result.map((e) => e.toString()).toList();
       } else {
         throw Exception('시군구 정보 불러오기 실패 : ${response.statusCode}');
       }
     } catch (e) {
-      print("getDistrictData 예외 발생: $e");
+      print("⚠️ fetchDistrictData 예외 발생: $e");
       return [];
     }
   }
 
-  /// 해당 지역의 total_weight 반환 : return => {total_weight, result:{'서울':w1,'부산':w2}} or {total_weight}
-  Future<Map<String, dynamic>> getWeightData(String type, String? byproduct,
-      String? addr1, String? addr2) async {
+  /// 해당 지역의 total_weight 반환
+  Future<Map<String, dynamic>> getWeightData(
+      String type,
+      String? byproduct,
+      String? addr1,
+      String? addr2,
+      ) async {
     final url = Uri.parse("$BASE_URL/api/sum-byprod").replace(
       queryParameters: {
         "type": type,
@@ -70,24 +79,32 @@ class AdminData {
       },
     );
 
+    print("🌐 getWeightData 요청 URL: $url");
+
     try {
       final response = await http.get(
         url,
         headers: {'Authorization': 'Token ${this.token}'},
       );
+      print("✅ getWeightData 응답 코드: ${response.statusCode}");
+      print("✅ getWeightData 응답 body: ${utf8.decode(response.bodyBytes)}");
+
       if (response.statusCode == 200) {
         final body = jsonDecode(utf8.decode(response.bodyBytes));
+        print("✅ getWeightData 파싱 결과: $body");
 
-        if (addr2 != null) { // 구 단위 or 업체 단위
+        if (addr2 != null) {
+          print("✅ getWeightData 리턴 (구 or 업체 단위): $body");
           return body as Map<String, dynamic>;
         }
-        // 시도 단위
+
+        print("✅ getWeightData 리턴 (시도 단위): ${body["results"]}");
         return body["results"] as Map<String, dynamic>;
       } else {
         throw Exception("API 실패: ${response.statusCode}");
       }
     } catch (e) {
-      print("getProvinceWeightData() 예외: $e");
+      print("⚠️ getWeightData() 예외: $e");
       return {};
     }
   }
