@@ -191,10 +191,13 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
               ),
               child: IconButton(
                 icon: const Icon(Icons.refresh, color: Colors.white),
-                onPressed: fetchPreprocessItems,
-              ),
-            ),
-          ],
+                onPressed: () async {
+                  await fetchPreprocessItems();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('새로고침 완료')));
+                  },
+                ),
+              )
+            ],
           bottom: TabBar(
             indicatorColor: Colors.white,
             indicatorWeight: 3,
