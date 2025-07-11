@@ -2,7 +2,7 @@ import 'package:brownskin_app/model/polygon_data.dart';
 import 'package:brownskin_app/service/location_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import 'package:brownskin_app/constants.dart';
+import 'package:brownskin_app/common/constants.dart';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
