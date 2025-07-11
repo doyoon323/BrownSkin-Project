@@ -30,6 +30,8 @@ class AdminMarker {
     required Future<void> Function(LatLng) onTap,
   }) async {
     //print("✅ generateProvinceMarkers() 시작");
+    //print("✅ generateProvinceMarkers()에 전달된 provinceWeights: $provinceWeights");
+    
     Set<Marker> markers = {};
 
     for (var province in allAreas.keys) {
@@ -73,7 +75,7 @@ class AdminMarker {
           colorEnd: color[1],
           percentage: percent,
         );
-        //print("✅ [$province] Bitmap 생성 완료");
+        print("✅ 마커 생성: $province weight=$weight label=${weight.toInt()} percent=$percent");
 
         // 마커 생성
         Marker marker = Marker(
@@ -105,7 +107,7 @@ class AdminMarker {
   }) async {
     Set<Marker> markers = {};
 
-    //print("✅ districts 리스트: $districtWeightData");
+    print("✅ districts 리스트: $districtWeightData");
 
     for (var district in allAreas[province]!) {
       try {
@@ -119,7 +121,7 @@ class AdminMarker {
             ? (districtWeightData[district] as num).toDouble()
             : 0.0;
 
-        //print("✅ weight 데이터: $weight");
+        print("✅$province $district weight 데이터: $weight");
         //print("✅ 최종 weight: $weight");
 
         double percent = threshold <= 0
@@ -173,6 +175,9 @@ class AdminMarker {
       null,
       null,
     );
+    print("🔄 generateAllMarkers() 호출됨: $selectedType, $selectedByproductName");
+    print("🔄 generateAllMarkers() 호출됨: $provinceWeightData");
+
 
     final provinceMarkers = await generateProvinceMarkers(
       provinceWeights: provinceWeightData,

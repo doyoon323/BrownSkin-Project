@@ -120,8 +120,10 @@ class _AdminHomePageState extends State<AdminHomePage>
       adminData: adminData,
     );
 
-    _provinceMarkers = allMarkers.provinceMarkers;
-    _districtMarkers = allMarkers.districtMarkers;
+    setState(() {
+      _provinceMarkers = allMarkers.provinceMarkers;
+      _districtMarkers = allMarkers.districtMarkers;
+    });
 
     // 6. 초기 마커 표시
     currentMarkers = _provinceMarkers;
@@ -160,16 +162,18 @@ class _AdminHomePageState extends State<AdminHomePage>
       adminData: adminData,
     );
 
-    _provinceMarkers = allMarkers.provinceMarkers;
-    _districtMarkers = allMarkers.districtMarkers;
+    // 현재 줌 레벨
+    final zoom = await _controller?.getZoomLevel() ?? 7.0;
 
-    // 현재 줌에 맞게 마커 표시
-    final zoom = await _controller?.getZoomLevel();
-    if (zoom != null) {
-      _drawZoomMarker(zoom);
-    }
+    setState(() {
+      _provinceMarkers = allMarkers.provinceMarkers;
+      _districtMarkers = allMarkers.districtMarkers;
+      // ✅ 현재 마커 즉시 갱신
+      currentMarkers = zoom <= 7
+          ? _provinceMarkers
+          : _districtMarkers;
+    });
   }
-
 
 
   int selectedIndex = 0;
@@ -244,13 +248,13 @@ class _AdminHomePageState extends State<AdminHomePage>
   }
 
 
-
   Widget _buildFilterBar() {
     final filteredByproducts = byproductsCategory
         .where((item) => item["type"] == selectedType)
         .map((item) => item["name"]!)
         .toSet()
         .toList();
+
     return Container(
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -279,7 +283,6 @@ class _AdminHomePageState extends State<AdminHomePage>
               selectedType == "가공",
               selectedType == "수확",
             ],
-
             onPressed: (index) async {
               final newType = index == 0 ? "가공" : "수확";
               final filtered = byproductsCategory
@@ -288,6 +291,8 @@ class _AdminHomePageState extends State<AdminHomePage>
                   .toSet()
                   .toList();
               final newByproduct = filtered.isNotEmpty ? filtered.first : null;
+
+              // threshold 먼저 받아오기
               final newThreshold = await adminData.getThreshold(newType, newByproduct);
 
               setState(() {
@@ -295,7 +300,9 @@ class _AdminHomePageState extends State<AdminHomePage>
                 selectedByproductName = newByproduct;
                 threshold = newThreshold;
               });
-              _reloadMarkers();
+
+              // 마커 새로 생성
+              await _reloadMarkers();
             },
             children: const [
               Padding(
@@ -318,19 +325,23 @@ class _AdminHomePageState extends State<AdminHomePage>
               );
             }).toList(),
             onChanged: (value) async {
+              if (value == null) return;
+
+              // threshold 먼저 받아오기
+              final newThreshold = await adminData.getThreshold(selectedType, value);
+
               setState(() {
-                selectedByproductName = value!;
+                selectedByproductName = value;
+                threshold = newThreshold;
               });
-              threshold = await adminData.getThreshold(selectedType, selectedByproductName);
-              _reloadMarkers();
+
+              await _reloadMarkers();
             },
-          )
+          ),
         ],
       ),
     );
   }
-
-
 
 
   // 실행
