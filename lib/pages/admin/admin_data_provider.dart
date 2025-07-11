@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:brownskin_app/pages/admin/global.dart';
 import 'package:http/http.dart' as http;
-import 'package:brownskin_app/constants.dart';
+import 'package:brownskin_app/common/constants.dart';
 
 
 class AdminData {
