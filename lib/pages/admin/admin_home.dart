@@ -54,6 +54,10 @@ class _AdminHomePageState extends State<AdminHomePage>
   late final markerHelper;
 
 
+  Set<Marker> _highlightedMarkers = {};
+
+
+
   late final Future<void> Function(LatLng) _onProvinceMarkerTap = (LatLng latLng) async {
     const targetZoom = 8.0;
     await _controller?.animateCamera(
@@ -214,39 +218,69 @@ class _AdminHomePageState extends State<AdminHomePage>
     }
 
 
-
-
-  /* UI 구현 */
   Widget _buildMapSection() {
     return GoogleMap(
       polygons: polygonService.getPolygons(),
       mapType: MapType.normal,
       initialCameraPosition: CameraPosition(
-          target : _center,
-          zoom:7
+        target: _center,
+        zoom: 7,
       ),
       onMapCreated: (controller) async {
         _controller = controller;
-
-        // map_style.json 읽어오기
         final String style = await DefaultAssetBundle.of(context)
             .loadString('assets/map_style.json');
-
-        // 스타일 적용
         _controller?.setMapStyle(style);
-
         _drawZoomMarker(7);
       },
-
-      onCameraIdle : () async {
+      onCameraIdle: () async {
         final position = await _controller?.getZoomLevel();
         _drawZoomMarker(position!);
       },
-      markers: currentMarkers,
+      // ✅ 여기 수정
+      markers: {...currentMarkers, ..._highlightedMarkers},
       zoomControlsEnabled: true,
     );
   }
 
+
+
+  void _highlightMarkerTemporarily(Marker tappedMarker) {
+    setState(() {
+      final highlighted = tappedMarker.copyWith(zIndexParam: 9999);
+      _highlightedMarkers.add(highlighted);
+    });
+
+    Future.delayed(Duration(seconds: 3), () {
+      setState(() {
+        _highlightedMarkers.removeWhere(
+              (m) => m.markerId == tappedMarker.markerId,
+        );
+      });
+    });
+  }
+
+  Future<void> _handleMarkerTap(LatLng latLng, {required bool isProvince}) async {
+    Marker? tapped;
+    try {
+      tapped = currentMarkers.firstWhere(
+            (m) => m.position == latLng,
+      );
+    } catch (e) {
+      tapped = null;
+    }
+
+    if (tapped != null) {
+      _highlightMarkerTemporarily(tapped);
+    }
+
+    final targetZoom = isProvince ? 8.0 : 10.0;
+    await _controller?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: latLng, zoom: targetZoom),
+      ),
+    );
+  }
 
   Widget _buildFilterBar() {
     final filteredByproducts = byproductsCategory
