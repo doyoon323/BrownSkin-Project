@@ -105,10 +105,22 @@ final String role = 'transporter';
     return Scaffold(
       appBar: AppBar( //상단 앱 바
         title: const Text('배송사 홈', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF8B4513),
+        backgroundColor: const Color.fromARGB(255, 99, 77, 70),
         elevation: 2,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: () async {
+                await fetchMyDeliveries();
+                await fetchCompletedDeliveries();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('새로고침 완료')),
+                );
+             },
+            ),
+          ],
       ),
-      backgroundColor: const Color(0xFFF5F5DC), //배경색
+      backgroundColor: const Color(0xFFF5F5F5), //배경색
       body: Column(
         children: [
           Container( //탭 버튼 영역

@@ -126,6 +126,18 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
               ),
               backgroundColor: Colors.brown[700],
               elevation: 0,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh, color: Colors.white),
+                  onPressed: () async {
+                      await fetchMyRequests();
+                      await fetchCompletedRequests();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('새로고침 완료')),
+                        );
+                      },
+                    ),
+                  ],
               iconTheme: const IconThemeData(color: Colors.white),
               bottom: const TabBar(
                 labelColor: Colors.white,

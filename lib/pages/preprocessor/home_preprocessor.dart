@@ -5,7 +5,6 @@ import 'package:brownskin_app/common/constants.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:brownskin_app/common/api_service.dart';
 
-
 class PreprocessorHomePage extends StatefulWidget {
   final String token;
   const PreprocessorHomePage({super.key, required this.token});
@@ -34,29 +33,27 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
   }
 
   Future<void> fetchPreprocessItems() async {
-  final pendingList = await ApiService.fetchList(
-    url: '$BASE_URL/api/my-preprocess?status=pending',
-    token: widget.token,
-  );
+    final pendingList = await ApiService.fetchList(
+      url: '$BASE_URL/api/my-preprocess?status=pending',
+      token: widget.token,
+    );
+    final acceptedList = await ApiService.fetchList(
+      url: '$BASE_URL/api/my-preprocess?status=accepted',
+      token: widget.token,
+    );
+    final completedList = await ApiService.fetchList(
+      url: '$BASE_URL/api/my-preprocess?status=completed',
+      token: widget.token,
+    );
 
-  final acceptedList = await ApiService.fetchList(
-    url: '$BASE_URL/api/my-preprocess?status=accepted',
-    token: widget.token,
-  );
+    if (!mounted) return;
 
-  final completedList = await ApiService.fetchList(
-    url: '$BASE_URL/api/my-preprocess?status=completed',
-    token: widget.token,
-  );
-
-  if (!mounted) return;
-
-  setState(() {
-    receivedItems = pendingList;
-    processingItems = acceptedList;
-    completedItems = completedList;
-  });
-}
+    setState(() {
+      receivedItems = pendingList;
+      processingItems = acceptedList;
+      completedItems = completedList;
+    });
+  }
 
   Future<void> _startProcessing(Map<String, dynamic> item) async {
     final pickedDate = await showDatePicker(
@@ -82,6 +79,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
     if (pickedDate != null) {
       final startDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
       final completeDate = DateFormat('yyyy-MM-dd').format(pickedDate);
+
       final body = {
         "id": item['id'].toString(),
         "start_date": startDate,
@@ -112,7 +110,8 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
           textTheme: TextTheme(
             titleLarge: TextStyle(color: darkBrown, fontWeight: FontWeight.bold),
             bodyMedium: TextStyle(color: darkBrown),
-          ), dialogTheme: DialogThemeData(backgroundColor: Colors.white),
+          ),
+          dialogTheme: DialogThemeData(backgroundColor: Colors.white),
         ),
         child: AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -232,27 +231,17 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
             child: Card(
               elevation: 6,
               shadowColor: darkBrown.withOpacity(0.2),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: primaryBrown, width: 1.5),
+              ),
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    colors: [Colors.white, accentBrown.withOpacity(0.1)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: Colors.white,
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.all(16),
-                  leading: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: lightBrown.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.inventory_2, color: primaryBrown, size: 28),
-                  ),
                   title: Text(
                     "${item['name']} (${item['type']})",
                     style: TextStyle(
@@ -300,27 +289,17 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
             child: Card(
               elevation: 6,
               shadowColor: darkBrown.withOpacity(0.2),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: primaryBrown, width: 1.5),
+              ),
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    colors: [Colors.white, Colors.orange.withOpacity(0.1)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: Colors.white,
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.all(16),
-                  leading: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.settings, color: Colors.orange[700], size: 28),
-                  ),
                   title: Text(
                     "${item['name']} (${item['type']})",
                     style: TextStyle(
@@ -339,7 +318,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
                   trailing: ElevatedButton(
                     onPressed: () => _completeProcessing(item),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange[700],
+                      backgroundColor: primaryBrown,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -419,19 +398,18 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
                           double.tryParse(item['weight_float'].toString()) ?? 1;
                       final double yield =
                           originalWeight > 0 ? (finalWeight / originalWeight) : 0;
-                      
+
                       return Card(
                         elevation: 6,
                         shadowColor: darkBrown.withOpacity(0.2),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: primaryBrown, width: 1.5),
+                        ),
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
-                            gradient: LinearGradient(
-                              colors: [Colors.white, Colors.green.withOpacity(0.05)],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
+                            color: accentBrown.withOpacity(0.1),
                           ),
                           padding: const EdgeInsets.all(12.0),
                           child: Column(
@@ -471,8 +449,8 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
                                     color: darkBrown,
                                   ),
                                 ),
-                                progressColor: Colors.green[600],
-                                backgroundColor: Colors.grey[200]!,
+                                progressColor: primaryBrown,
+                                backgroundColor: lightBrown.withOpacity(0.3),
                                 animation: true,
                                 animationDuration: 800,
                                 circularStrokeCap: CircularStrokeCap.round,
@@ -515,33 +493,23 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
                           double.tryParse(item['weight_float'].toString()) ?? 1;
                       final double yield =
                           originalWeight > 0 ? (finalWeight / originalWeight * 100) : 0;
-                      
+
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         child: Card(
                           elevation: 6,
                           shadowColor: darkBrown.withOpacity(0.2),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(color: primaryBrown, width: 1.5),
+                          ),
                           child: Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
-                              gradient: LinearGradient(
-                                colors: [Colors.white, Colors.green.withOpacity(0.1)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
+                              color: Colors.white,
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.all(16),
-                              leading: Container(
-                                width: 50,
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(Icons.check_circle, color: Colors.green[700], size: 28),
-                              ),
                               title: Text(
                                 "${item['name']} (${item['type']})",
                                 style: TextStyle(
@@ -560,7 +528,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
                               trailing: ElevatedButton(
                                 onPressed: () {},
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green[700],
+                                  backgroundColor: primaryBrown,
                                   foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
