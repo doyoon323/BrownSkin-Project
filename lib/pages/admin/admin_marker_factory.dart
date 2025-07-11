@@ -29,20 +29,20 @@ class AdminMarker {
     required double threshold,
     required Future<void> Function(LatLng) onTap,
   }) async {
-    print("✅ generateProvinceMarkers() 시작");
+    //print("✅ generateProvinceMarkers() 시작");
     Set<Marker> markers = {};
 
     for (var province in allAreas.keys) {
-      print("🔍 [$province] 마커 생성 시작");
+      //print("🔍 [$province] 마커 생성 시작");
 
       // 좌표 조회
       try {
         LatLng latLng = await getLatLngFromAddress(province, "");
-        print("✅ [$province] 좌표: ${latLng.latitude}, ${latLng.longitude}");
+        //print("✅ [$province] 좌표: ${latLng.latitude}, ${latLng.longitude}");
 
 
         if (latLng.latitude == 0 && latLng.longitude == 0) {
-          print("⚠️ [$province] 유효하지 않은 좌표. 스킵");
+          //print("⚠️ [$province] 유효하지 않은 좌표. 스킵");
           continue;
         }
 
@@ -51,19 +51,19 @@ class AdminMarker {
         if (provinceWeights.containsKey(province)) {
           weight = (provinceWeights[province] as num).toDouble();
         }
-        print("✅ [$province] weight: $weight");
+        //print("✅ [$province] weight: $weight");
 
         // 퍼센트
         double percent = threshold <= 0
             ? 0.0
             : (weight / threshold).clamp(0.0, 1.0);
-        print("✅ [$province] percent: $percent");
+        //print("✅ [$province] percent: $percent");
 
         // 색상
         List<Color> color = threshold <= 0
             ? [Colors.grey, Colors.grey]
             : getGradientColorsByPercentage(percent);
-        print("✅ [$province] color: $color");
+        //print("✅ [$province] color: $color");
 
         // 마커 비트맵 생성
         final BitmapDescriptor icon = await createCustomMarkerBitmap(
@@ -73,7 +73,7 @@ class AdminMarker {
           colorEnd: color[1],
           percentage: percent,
         );
-        print("✅ [$province] Bitmap 생성 완료");
+        //print("✅ [$province] Bitmap 생성 완료");
 
         // 마커 생성
         Marker marker = Marker(
@@ -84,16 +84,16 @@ class AdminMarker {
         );
 
         markers.add(marker);
-        print("✅ [$province] Marker 추가 완료");
+        //print("✅ [$province] Marker 추가 완료");
 
       }
       catch (e) {
-        print("⚠️ getLatLngFromAddress 실패: $e");
+        //print("⚠️ getLatLngFromAddress 실패: $e");
         continue; // 다음 province로 넘어가기
       }
     }
 
-    print("✅ generateProvinceMarkers() 종료 (총 ${markers.length}개)");
+    //print("✅ generateProvinceMarkers() 종료 (총 ${markers.length}개)");
     return markers;
   }
 
@@ -105,12 +105,12 @@ class AdminMarker {
   }) async {
     Set<Marker> markers = {};
 
-    print("✅ districts 리스트: $districtWeightData");
+    //print("✅ districts 리스트: $districtWeightData");
 
     for (var district in allAreas[province]!) {
       try {
         LatLng latLng = await getLatLngFromAddress(province, district);
-        print("✅ LatLng for $province $district: ${latLng.latitude}, ${latLng.longitude}");
+        //print("✅ LatLng for $province $district: ${latLng.latitude}, ${latLng.longitude}");
         if (latLng.latitude == 0 && latLng.longitude == 0) {
           continue;
         }
@@ -119,8 +119,8 @@ class AdminMarker {
             ? (districtWeightData[district] as num).toDouble()
             : 0.0;
 
-        print("✅ weight 데이터: $weight");
-        print("✅ 최종 weight: $weight");
+        //print("✅ weight 데이터: $weight");
+        //print("✅ 최종 weight: $weight");
 
         double percent = threshold <= 0
             ? 0.0
@@ -149,7 +149,7 @@ class AdminMarker {
 
         markers.add(marker);
       } catch (e) {
-        print("⚠️ getLatLngFromAddress 실패: $e");
+        //print("⚠️ getLatLngFromAddress 실패: $e");
         continue;
       }
     }
