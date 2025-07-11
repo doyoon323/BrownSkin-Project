@@ -1,6 +1,5 @@
 import 'package:brownskin_app/model/polygon_data.dart';
 import 'package:brownskin_app/service/location_service.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/common/constants.dart';
 import 'dart:convert';
@@ -11,8 +10,10 @@ import 'package:brownskin_app/pages/admin/setThreshold_admin.dart';
 import 'package:brownskin_app/pages/admin/global.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import 'admin_data_provider.dart';
 
-//관리자 홈 화면 (부산물 데이터를 시각화하여 보여준다)
+
+/// 관리자 기본 화면 (부산물 데이터 시각화 with google maps)
 class AdminHomePage extends StatefulWidget {
   final String token;
   const AdminHomePage({required this.token, super.key});
@@ -46,6 +47,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   final LatLng _center = const LatLng(35.5,127.8); //지도를 켰을 때 중심 좌표
 
   final polygonService = PolygonService(); // 지역별 경계선
+  late final adminData = AdminData(token: widget.token);
   
   @override
   void initState() {
@@ -59,11 +61,9 @@ class _AdminHomePageState extends State<AdminHomePage>
       vsync: this,
     );
 
-
-    // 데이터 로드  (화면에 띄울 데이터 분류, 동적 지역 정보)
     initData();
 
-    polygonService.createPolygonsFromGeoJson().then((_){
+    polygonService.createPolygonsFromConsts().then((_){
       setState(() {});
     });
   }
@@ -77,142 +77,19 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
 
-    Future<void> initData() async {
-      await getProvinceData();
-      await loadAllDistricts();
-      print("✅ 전체 데이터 로드 완료: $allAreas");
-      threshold = await getThreshold(selectedType, selectedByproductName);
-      _provinceMarkers = await _generateProvinceMarkers();
-      _districtMarkers = await _generateDistrictMarkers();
-      currentMarkers = _provinceMarkers;
+  Future<void> initData() async {
+    allAreas = await adminData.updateRegionData();
+    threshold = await adminData.getThreshold(selectedType, selectedByproductName);
 
-      setState(() {
-        isLoading = false;
-      });
-    }
+    _provinceMarkers = await _generateProvinceMarkers();
+    _districtMarkers = await _generateDistrictMarkers();
+    currentMarkers = _provinceMarkers;
 
-
-    Future<void> getProvinceData() async {
-      String url = "$BASE_URL/api/addr-list";
-
-      try {
-        final response = await http.get(
-          Uri.parse(url),
-          headers: {'Authorization': 'Token ${widget.token}'},
-        );
-
-        if (response.statusCode == 200) {
-          final body = jsonDecode(utf8.decode(response.bodyBytes));
-          final List<dynamic> result = body['addr1_list'];
-
-          // Map으로 초기화
-          setState(() {
-            allAreas = {
-              for (final province in result) province.toString(): []
-            };
-          });
-        } else {
-          throw Exception('지역 정보 불러오기 실패 : ${response.statusCode}');
-        }
-      } catch (e) {
-        print("getProvinceData 예외 발생: $e");
-      }
-    }
-
-  Future<Map<String, dynamic>> getWeightData(String type, String? byproduct, String? addr1,String? addr2) async {
-    String url = "$BASE_URL/api/sum-byprod?type=$type&name=$byproduct";
-
-    String returnfield = "results";
-    if (addr1 != null){
-      url += "&addr1=$addr1";
-    }
-    if (addr2 != null){
-      url += "&addr2=$addr2";
-    }
-
-    try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {'Authorization': 'Token ${widget.token}'},
-      );
-      print("📨 응답 바디: ${response.body}");
-
-      if (response.statusCode == 200) {
-        final body = jsonDecode(utf8.decode(response.bodyBytes));
-        if (addr2 != null){
-          return body as Map<String, dynamic>;
-        }
-        return body[returnfield] as Map<String, dynamic>;
-
-
-      } else {
-        throw Exception("API 실패: ${response.statusCode}");
-      }
-    } catch (e) {
-      print("getProvinceWeightData() 예외: $e");
-      // **빈 Map을 반환해 null이 안 되도록**
-      return {};
-    }
+    setState(() {
+      isLoading = false;
+    });
   }
 
-
-  Future<double> getThreshold (String type, String? byproduct) async {
-    String url = "$BASE_URL/api/threshold?type=$type&name=$byproduct";
-
-    final response = await http.get(
-      Uri.parse(url),
-      headers: {'Authorization': 'Token ${widget.token}'},
-    );
-
-    if (response.statusCode == 200) {
-      final body = jsonDecode(utf8.decode(response.bodyBytes));
-      print("☎️😋😋😋😋$body");
-      return body['weight_float'] == null ? -1 : body['weight_float'] as double;
-    }
-    else {
-      throw Exception("get Threshold() 실패: ${response.statusCode}");
-    }
-  }
-
-    Future<List<String>> getDistrictData(String province) async {
-      String url = "$BASE_URL/api/addr-list?addr1=$province";
-
-      try {
-        final response = await http.get(
-          Uri.parse(url),
-          headers: {'Authorization': 'Token ${widget.token}'},
-        );
-
-        if (response.statusCode == 200) {
-          final body = jsonDecode(utf8.decode(response.bodyBytes));
-
-          // API 결과 예: {"addr2_list": ["강남구","송파구"]}
-          final List<dynamic> result = body['addr2_list'];
-
-          // List<String>으로 변환해서 반환
-          return result.map((e) => e.toString()).toList();
-        } else {
-          throw Exception('시군구 정보 불러오기 실패 : ${response.statusCode}');
-        }
-      } catch (e) {
-        print("getDistrictData 예외 발생: $e");
-        // 실패 시 빈 리스트 반환
-        return [];
-      }
-    }
-
-    Future<void> loadAllDistricts() async {
-      final provinceList = allAreas.keys.toList();
-
-      final futures = provinceList.map((province) => getDistrictData(province));
-      final results = await Future.wait(futures);
-
-      setState(() {
-        for (int i = 0; i < provinceList.length; i++) {
-          allAreas[provinceList[i]] = results[i];
-        }
-      });
-    }
 
 
   // Stack overlay로 바꾸길 요망
@@ -220,7 +97,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     Set<Marker> markers = {};
 
     // results Map만 반환하도록 구현했다고 가정
-    Map<String, dynamic> provinceWeightData = await getWeightData(
+    Map<String, dynamic> provinceWeightData = await adminData.getWeightData(
         selectedType, selectedByproductName, null, null);
 
     for (var province in allAreas.keys) {
@@ -344,7 +221,7 @@ class _AdminHomePageState extends State<AdminHomePage>
         }
 
 
-        Map<String, dynamic> provinceWeightData = await getWeightData(
+        Map<String, dynamic> provinceWeightData = await adminData.getWeightData(
             selectedType, selectedByproductName, province, district);
 
         double? weight;
@@ -505,36 +382,6 @@ class _AdminHomePageState extends State<AdminHomePage>
 
     return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
   }
-    /* UI 구현 */
-    Widget _buildMapSection() {
-      return GoogleMap(
-        polygons: polygonService.getPolygons(),
-        mapType: MapType.normal,
-        initialCameraPosition: CameraPosition(
-          target : _center,
-          zoom:7
-        ),
-        onMapCreated: (controller) async {
-          _controller = controller;
-
-          // map_style.json 읽어오기
-          final String style = await DefaultAssetBundle.of(context)
-              .loadString('assets/map_style.json');
-
-          // 스타일 적용
-          _controller?.setMapStyle(style);
-
-          _drawZoomMarker(7);
-        },
-
-        onCameraIdle : () async {
-          final position = await _controller?.getZoomLevel();
-          _drawZoomMarker(position!);
-        },
-        markers: currentMarkers,
-        zoomControlsEnabled: true,
-      );
-    }
 
 
 
@@ -550,6 +397,17 @@ class _AdminHomePageState extends State<AdminHomePage>
   }
 
 
+
+  Future<void> _reloadMarkers() async {
+    _provinceMarkers = await _generateProvinceMarkers();
+    _districtMarkers = await _generateDistrictMarkers();
+
+    // 현재 줌에 맞춰 지도에 새 마커 뿌리기
+    final position = await _controller?.getZoomLevel();
+    if (position != null) {
+      _drawZoomMarker(position);
+    }
+  }
 
     int selectedIndex = 0;
     Future<void> _onItemTapped(BuildContext context, int index) async {
@@ -583,22 +441,41 @@ class _AdminHomePageState extends State<AdminHomePage>
         setState(() {
           selectedIndex = result;
         });
-        threshold = await getThreshold(selectedType, selectedByproductName);
+        threshold = await adminData.getThreshold(selectedType, selectedByproductName);
         await _reloadMarkers();
       }
     }
 
 
+  /* UI 구현 */
+  Widget _buildMapSection() {
+    return GoogleMap(
+      polygons: polygonService.getPolygons(),
+      mapType: MapType.normal,
+      initialCameraPosition: CameraPosition(
+          target : _center,
+          zoom:7
+      ),
+      onMapCreated: (controller) async {
+        _controller = controller;
 
-  Future<void> _reloadMarkers() async {
-    _provinceMarkers = await _generateProvinceMarkers();
-    _districtMarkers = await _generateDistrictMarkers();
+        // map_style.json 읽어오기
+        final String style = await DefaultAssetBundle.of(context)
+            .loadString('assets/map_style.json');
 
-    // 현재 줌에 맞춰 지도에 새 마커 뿌리기
-    final position = await _controller?.getZoomLevel();
-    if (position != null) {
-      _drawZoomMarker(position);
-    }
+        // 스타일 적용
+        _controller?.setMapStyle(style);
+
+        _drawZoomMarker(7);
+      },
+
+      onCameraIdle : () async {
+        final position = await _controller?.getZoomLevel();
+        _drawZoomMarker(position!);
+      },
+      markers: currentMarkers,
+      zoomControlsEnabled: true,
+    );
   }
 
 
@@ -648,7 +525,7 @@ class _AdminHomePageState extends State<AdminHomePage>
                     .toList();
                 selectedByproductName = filtered.isNotEmpty ? filtered.first : null;
               });
-              threshold = await getThreshold(selectedType, selectedByproductName);
+              threshold = await adminData.getThreshold(selectedType, selectedByproductName);
               _reloadMarkers();
             },
             children: const [
@@ -675,7 +552,7 @@ class _AdminHomePageState extends State<AdminHomePage>
               setState(() {
                 selectedByproductName = value!;
               });
-              threshold = await getThreshold(selectedType, selectedByproductName);
+              threshold = await adminData.getThreshold(selectedType, selectedByproductName);
               _reloadMarkers();
             },
           )

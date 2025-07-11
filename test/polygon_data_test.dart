@@ -1,25 +1,28 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:brownskin_app/model/polygon_data.dart';
 
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+
   group('PolygonService GeoJSON 테스트', () {
-    final service = PolygonService();
 
-    test('GeoJSON 파일이 깨지지 않고 로드된다', () async {
-      final geoJson = await service.loadGeoJson();
 
-      // Map인지 확인
-      expect(geoJson, isA<Map<String, dynamic>>());
+    test('GeoJSON 시도 데이터 개수(17) 검사', () async {
+      final service = PolygonService();
+      await service.createPolygonsFromConsts();
+      final polygons = service.getPolygons();
 
-      // features 키가 있어야 함
-      expect(geoJson.containsKey('features'), true);
-    });
+      // PolygonId에 들어간 name 파싱
+      final uniqueProvinceNames = polygons
+          .map((p) => p.polygonId.value.split('-').first)
+          .toSet();
 
-    test('GeoJSON에 17개의 시도 데이터가 들어있다', () async {
-      final geoJson = await service.loadGeoJson();
-      final features = geoJson['features'] as List<dynamic>;
+      print('로드된 시도 개수: ${uniqueProvinceNames.length}');
+      print('시도 이름 목록: $uniqueProvinceNames');
 
-      expect(features.length, 17, reason: '시도 개수가 17개인지 확인');
+      expect(uniqueProvinceNames.length, 17, reason: '시도 개수가 17개인지 확인');
     });
   });
 }

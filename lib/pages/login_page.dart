@@ -5,7 +5,7 @@ import 'package:brownskin_app/common/constants.dart';
 import 'dart:convert';
 import 'signup_page.dart';
 import 'agriculture/home_agriculture.dart';
-import 'admin/home_admin.dart';
+import 'admin/admin_home.dart';
 import 'transporter/home_transporter.dart';
 import 'preprocessor/home_preprocessor.dart';
 
