@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; //이거 두 개 경로 그대로 가능. 내장 라이브러리
 import 'package:http/http.dart' as http;
-import 'package:brownskin_app/constants.dart';
+import 'package:brownskin_app/common/constants.dart';
 import 'dart:convert';
 import 'signup_page.dart';
 import 'agriculture/home_agriculture.dart';
 import 'admin/admin_home.dart';
 import 'transporter/home_transporter.dart';
+import 'preprocessor/home_preprocessor.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -84,10 +85,10 @@ class _LoginPageState extends State<LoginPage> {
             context,
             MaterialPageRoute(builder: (_) => AdminHomePage(token: token)),
           );
-        } else {
+        } else if (role == 'preprocessor') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const HomePage()),
+            MaterialPageRoute(builder: (_) => PreprocessorHomePage(token: token)),
           );
         }
       } else {
@@ -256,15 +257,3 @@ class _LoginPageState extends State<LoginPage> {
   //여기까지 디자인
 }
 
-//로그인 성공 후 이동하는 Homepage - 유통사 구현되면 없앨 예정
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('홈 화면')),
-      body: const Center(child: Text('로그인 성공! 홈 화면입니다.')),
-    );
-  }
-}
