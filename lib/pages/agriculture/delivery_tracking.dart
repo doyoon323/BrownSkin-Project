@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'dart:ui' as ui;
+import 'package:geolocator/geolocator.dart';
 
 class DeliveryTrackingPage extends StatefulWidget {
   final String token;
@@ -144,6 +145,41 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         backgroundColor: Colors.brown[600]!,
         iconData: Icons.settings,
         label: '전처리사');
+
+    // 중간 거리 마커를 위한 변수 (if문 밖으로 이동)
+    late LatLng distanceLeftLocation;
+    late BitmapDescriptor distanceLeftIcon;
+
+    if (_deliveryInfo != null) {
+      LatLng targetLocation = (
+        _currentStatus == DeliveryStatus.transit
+            ? _deliveryInfo!.preprocessorLocation
+            : _deliveryInfo!.disposerLocation
+      );
+      // 중간 지점 좌표 계산
+      distanceLeftLocation = LatLng(
+        (targetLocation.latitude + _deliveryInfo!.transporterLocation.latitude) / 2,
+        (targetLocation.longitude + _deliveryInfo!.transporterLocation.longitude) / 2
+      );
+      int distanceInMeters = Geolocator.distanceBetween(
+        targetLocation.latitude,
+        targetLocation.longitude,
+        _deliveryInfo!.transporterLocation.latitude,
+        _deliveryInfo!.transporterLocation.longitude,
+      ).round();
+      if (distanceInMeters < 1000) {
+        distanceLeftIcon = await createCustomMarkerBitmap(
+          backgroundColor: Colors.grey[600]!,
+          iconData: Icons.keyboard_double_arrow_right,
+          label: '${distanceInMeters}m');
+      } else {
+        distanceLeftIcon = await createCustomMarkerBitmap(
+          backgroundColor: Colors.grey[600]!,
+          iconData: Icons.keyboard_double_arrow_right,
+          label: '${(distanceInMeters / 1000).toStringAsFixed(2)}km');
+      }
+    }
+
     setState(() {
       _markers = {
         Marker(
@@ -161,6 +197,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             markerId: const MarkerId('preprocessor_location'),
             position: _deliveryInfo!.preprocessorLocation,
             icon: preprocessorIcon,
+          ),
+          Marker(
+            markerId: const MarkerId('distance_left_location'),
+            position: distanceLeftLocation,
+            icon: distanceLeftIcon,
           ),
         ],
       };
