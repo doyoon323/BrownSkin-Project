@@ -81,6 +81,7 @@ class AdminMarker {
             position: latLng,
             icon: icon,
             zIndex: weight,
+            anchor: Offset(0.5, 0.5), // 중심 anchoring!
             onTap: () => onTap(latLng)
         );
 
@@ -144,6 +145,7 @@ class AdminMarker {
           position: latLng,
           icon: icon,
           zIndex: weight,
+          anchor: Offset(0.5, 0.5), // 중심 anchoring!
           onTap: () {
             onTap(latLng);
           },
@@ -251,7 +253,6 @@ class AdminMarker {
     }
   }
 
-
   Future<BitmapDescriptor> createCustomMarkerBitmap({
     required String province,
     required String label,
@@ -269,40 +270,62 @@ class AdminMarker {
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
 
+    // Padding 확보
+    const double padding = 12.0;
 
+    // 중심 좌표
     final Offset center = Offset(size / 2, size / 2);
-    final double radius = size / 2;
+    // padding 고려해서 radius 줄임
+    final double radius = (size / 2) - padding;
 
+    // (1) 테두리 색 결정
+    final borderColor = Color.fromARGB(
+      255,
+      (colorStart.red - 20).clamp(0, 255),
+      (colorStart.green - 20).clamp(0, 255),
+      (colorStart.blue - 20).clamp(0, 255),
+    );
+
+    // (2) 테두리 Paint
+    final Paint borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 9.0;
+
+    // (3) 테두리 먼저 그리기
+    canvas.drawCircle(
+      center,
+      radius,
+      borderPaint,
+    );
+
+    // (4) 배경 원 그리기
     final Paint backgroundPaint = Paint()
       ..shader = ui.Gradient.radial(
         center,
         radius,
         [
-          colorStart.withOpacity(1.0),    // 바깥 색
-          colorEnd.withOpacity(1.0), // 중심 색
+          colorStart.withOpacity(1.0),
+          colorEnd.withOpacity(1.0),
         ],
         [0.0, 1.0],
       );
 
-
-    // 동그란 원 그리기
     canvas.drawCircle(
       center,
       radius,
       backgroundPaint,
     );
 
-
+    // 텍스트 처리
     final String shortProvince =
     province.length > 2 ? province.substring(0, 2) : province;
 
-    // 폰트 크기
     final double baseFontSize = size / 4.2;
     final double provinceFontSize = shortProvince.length >= 5
         ? baseFontSize * 0.8
         : baseFontSize;
 
-    // 텍스트
     final textPainter = TextPainter(
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.center,
@@ -336,7 +359,6 @@ class AdminMarker {
       maxWidth: size * 0.85,
     );
 
-    // 중앙에 여백 확보
     textPainter.paint(
       canvas,
       Offset(
