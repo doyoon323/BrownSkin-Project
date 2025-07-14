@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/constants.dart';
+import 'dart:ui' as ui;
 
 class DeliveryTrackingPage extends StatefulWidget {
   final String token;
@@ -130,36 +132,36 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     */
   }
 
-  void _updateMarkers() {
+  Future<void> _updateMarkers() async {
+    final BitmapDescriptor transporterIcon = await createCustomMarkerBitmap(
+        backgroundColor: Colors.orange[600]!,
+        iconData: Icons.local_shipping,
+        label: '유통사');
+    final BitmapDescriptor disposerIcon = await createCustomMarkerBitmap(
+        backgroundColor: Colors.green[600]!,
+        iconData: Icons.eco,
+        label: '배출사');
+    final BitmapDescriptor preprocessorIcon = await createCustomMarkerBitmap(
+        backgroundColor: Colors.brown[600]!,
+        iconData: Icons.settings,
+        label: '전처리사');
     setState(() {
       _markers = {
         Marker(
           markerId: const MarkerId('transporter_location'),
           position: _deliveryInfo!.transporterLocation,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          infoWindow: InfoWindow(
-            title: '배송 차량',
-            snippet: _currentStatus.displayName,
-          ),
+          icon: transporterIcon,
         ),
         if (_deliveryInfo != null) ...[
           Marker(
             markerId: const MarkerId('disposer_location'),
             position: _deliveryInfo!.disposerLocation,
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-            infoWindow: const InfoWindow(
-              title: '배출사',
-              snippet: '부산물 수거 위치',
-            ),
+            icon: disposerIcon,
           ),
           Marker(
             markerId: const MarkerId('preprocessor_location'),
             position: _deliveryInfo!.preprocessorLocation,
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-            infoWindow: const InfoWindow(
-              title: '전처리사',
-              snippet: '최종 배송 위치',
-            ),
+            icon: preprocessorIcon,
           ),
         ],
       };
@@ -546,4 +548,99 @@ class LocationPoint {
   }
 
   LatLng toLatLng() => LatLng(lat, lng);
+}
+
+// 마커 위젯을 생성하고 BitmapDescriptor로 변환하는 함수
+Future<BitmapDescriptor> createCustomMarkerBitmap({
+  required Color backgroundColor,
+  required IconData iconData,
+  required String label,
+  Size size = const Size(150, 105), // 기본 크기 설정
+}) async {
+  // Canvas와 PictureRecorder 초기화
+  final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+  final Canvas canvas = Canvas(pictureRecorder);
+
+  // 배경 그리기
+  final Paint paint = Paint()..color = backgroundColor;
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Radius.circular(24)
+    ),
+    paint
+  );
+
+  // 테두리 추가
+  final Paint borderPaint = Paint()
+    ..color = Colors.white
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.5;
+
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Radius.circular(24)
+    ),
+    borderPaint
+  );
+
+  // 아이콘 그리기
+  final TextPainter iconPainter = TextPainter(
+    textDirection: TextDirection.ltr
+  );
+
+  iconPainter.text = TextSpan(
+    text: String.fromCharCode(iconData.codePoint),
+    style: TextStyle(
+      fontSize: 48,
+      fontFamily: iconData.fontFamily,
+      fontWeight: FontWeight.bold,
+      color: Colors.white,
+      package: iconData.fontPackage,
+    ),
+  );
+
+  iconPainter.layout();
+  iconPainter.paint(
+    canvas,
+    Offset(
+      (size.width - iconPainter.width) / 2,
+      size.height * 0.2
+    )
+  );
+
+  // 텍스트 그리기
+  final TextPainter textPainter = TextPainter(
+    textDirection: TextDirection.ltr,
+    textAlign: TextAlign.center,
+  );
+
+  textPainter.text = TextSpan(
+    text: label,
+    style: const TextStyle(
+      fontSize: 24,
+      fontWeight: FontWeight.bold,
+      color: Colors.white,
+    ),
+  );
+
+  textPainter.layout(maxWidth: size.width - 10);
+  textPainter.paint(
+    canvas,
+    Offset(
+      (size.width - textPainter.width) / 2,
+      size.height * 0.65
+    )
+  );
+
+  // 이미지로 변환
+  final img = await pictureRecorder.endRecording().toImage(
+    size.width.toInt(),
+    size.height.toInt(),
+  );
+
+  final data = await img.toByteData(format: ui.ImageByteFormat.png);
+
+  return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
 }
