@@ -1,9 +1,9 @@
-import 'package:brownskin_app/pages/agriculture/delivery_tracking.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'package:brownskin_app/common/api_service.dart';
 import 'package:brownskin_app/common/status_utils.dart';
+import 'package:brownskin_app/pages/agriculture/delivery_tracking.dart';
 
 
 class DeliveryReqAgriculturePage extends StatefulWidget {
@@ -322,21 +322,6 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
                 color: Color(0xFF5D4037),
               ),
             ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                "배송사: ${item['transporter']['company_name']} (${item['transporter']['addr1']} ${item['transporter']['addr2']} ${item['transporter']['addrDetail']})\n"
-                "전처리사: ${item['preprocessor']['company_name']} (${item['preprocessor']['addr1']} ${item['preprocessor']['addr2']} ${item['preprocessor']['addrDetail']})\n"
-                "상태: ${getStatusLabelForRole(role, item['status'])}\n"
-                "${getDateLabelForRole(role, item['status'])}: ${item['date']}",
-                style: TextStyle(
-                    color: Colors.brown[600],
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            ),
             trailing: item['status']=='accepted' || item['status']=='transit'
                 ? ElevatedButton(
               onPressed: () {
@@ -358,6 +343,20 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
               child: const Text('배송 조회', style: TextStyle(fontSize: 13)),
             )
                 : null,
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                "배송사: ${item['transporter']['company_name']} (${item['transporter']['addr1']} ${item['transporter']['addr2']} ${item['transporter']['addrDetail']})\n"
+                "전처리사: ${item['preprocessor']['company_name']} (${item['preprocessor']['addr1']} ${item['preprocessor']['addr2']} ${item['preprocessor']['addrDetail']})\n"
+                "상태: ${getStatusLabelForRole(role, item['status'])}\n"
+                "${getDateLabelForRole(role, item['status'])}: ${item['date']}",
+                style: TextStyle(
+                    color: Colors.brown[600],
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+              ),
           ),
         );
       },

@@ -3,7 +3,6 @@ name: Flutter CI/CD with Firebase App Distribution
 on:
   push:
     branches:
-      - develop
       - "release/**"
       - "feature/release"
 
