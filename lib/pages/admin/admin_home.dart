@@ -8,6 +8,7 @@ import 'package:brownskin_app/pages/admin/setThreshold_admin.dart';
 import 'package:brownskin_app/pages/admin/global.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../service/location_service.dart';
 import 'admin_data_provider.dart';
 import 'admin_marker_factory.dart';
 
@@ -23,15 +24,12 @@ class AdminHomePage extends StatefulWidget {
 
 class _AdminHomePageState extends State<AdminHomePage>
     with TickerProviderStateMixin {
-/// refactoring ver 1.0 기능 분리
-/// refactoring ver 2.0 (예정)  - 1. 줌인할 때 범위에 해당하는 마커만 먼저 그리기 2. 15분~30분마다 자동으로 화면 갱신하기 3.
+/// refactoring ver 2.0 (예정)  - 1. 줌인할 때 범위에 해당하는 마커만 먼저 그리기 2. 5분분마다 자동으로 화면 갱신하기
 
   // dropdown 저장용 변수
   String selectedType = "수확"; // default = 수확
   String? selectedByproductName = "사과"; // default = 사과
 
-
-  double? threshold; //default
 
 
   //UI 구성
@@ -39,6 +37,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   String? errorMessage;
   late AnimationController _animationController;
   late AnimationController _chartAnimationController;
+  double? threshold;
 
 
   //Maps
@@ -54,20 +53,8 @@ class _AdminHomePageState extends State<AdminHomePage>
   late final markerHelper;
 
 
-  Set<Marker> _highlightedMarkers = {};
-
-
-
+//마커 절반 먼저 그리고 ,
   late final Future<void> Function(LatLng) _onProvinceMarkerTap = (LatLng latLng) async {
-    const targetZoom = 8.0;
-    await _controller?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: latLng, zoom: targetZoom),
-      ),
-    );
-  };
-
-  late final Future<void> Function(LatLng) _onDistrictMarkerTap = (LatLng latLng) async {
     const targetZoom = 10.0;
     await _controller?.animateCamera(
       CameraUpdate.newCameraPosition(
@@ -76,6 +63,14 @@ class _AdminHomePageState extends State<AdminHomePage>
     );
   };
 
+  late final Future<void> Function(LatLng) _onDistrictMarkerTap = (LatLng latLng) async {
+    const targetZoom = 12.0;
+    await _controller?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: latLng, zoom: targetZoom),
+      ),
+    );
+  };
 
 
   @override
@@ -105,57 +100,64 @@ class _AdminHomePageState extends State<AdminHomePage>
   }
 
   Future<void> initData() async {
+    final totalStopwatch = Stopwatch()..start();
+    print('⚡ initData 시작');
+
     // 1. 지역 데이터 로드
+    final sw1 = Stopwatch()..start();
     allAreas = await adminData.updateRegionData();
+    sw1.stop();
+    print('✅ updateRegionData 완료: ${sw1.elapsedMilliseconds} ms');
+
 
     // 2. 임계값 로드
+    final sw2 = Stopwatch()..start();
     threshold = await adminData.getThreshold(selectedType, selectedByproductName);
+    sw2.stop();
+    print('✅ getThreshold 완료: ${sw2.elapsedMilliseconds} ms');
 
     // 3. Marker Helper 생성
     markerHelper = AdminMarker(token: widget.token);
 
-    final allMarkers = await markerHelper.generateAllMarkers(
-      allAreas: allAreas,
-      selectedType: selectedType,
-      selectedByproductName: selectedByproductName,
-      threshold: threshold!,
-      provinceOnTap: _onProvinceMarkerTap,
-      districtOnTap: _onDistrictMarkerTap,
-      adminData: adminData,
+    // 4. 마커 생성
+    final sw3 = Stopwatch()..start();
+
+    final provinceWeightData = await adminData.getWeightData(
+      selectedType,
+      selectedByproductName,
+      null,
+      null,
     );
 
-    setState(() {
-      _provinceMarkers = allMarkers.provinceMarkers;
-      _districtMarkers = allMarkers.districtMarkers;
-    });
+    _provinceMarkers = await markerHelper.generateProvinceMarkers(
+      provinceWeights: provinceWeightData,
+      threshold: threshold!,
+      onTap: _onProvinceMarkerTap,
+    );
 
-    // 6. 초기 마커 표시
+    sw3.stop();
+    print('✅ generateProvinceMarkers 완료: ${sw3.elapsedMilliseconds} ms');
+
+    // 초기 마커 표시
     currentMarkers = _provinceMarkers;
 
-    // 7. 로딩 종료
     setState(() {
       isLoading = false;
     });
+
+    totalStopwatch.stop();
+    print('🎉 initData 총 소요 시간: ${totalStopwatch.elapsedMilliseconds} ms');
   }
 
 
-
-  double? _lastZoomLevel;
-
-  void _drawZoomMarker(double zoom) {
-    if (_lastZoomLevel == null ||
-        (zoom <= 7 && _lastZoomLevel! > 7) ||
-        (zoom > 7 && _lastZoomLevel! <= 7)) {
-      setState(() {
-        currentMarkers = zoom <= 7 ? _provinceMarkers : _districtMarkers;
-      });
-    }
-    _lastZoomLevel = zoom;
-  }
 
 
   Future<void> _reloadMarkers() async {
     // 새로 마커 생성
+    final sw = Stopwatch()..start();
+    print('🔄 _reloadMarkers 시작');
+
+    final swGen = Stopwatch()..start();
     final allMarkers = await markerHelper.generateAllMarkers(
       allAreas: allAreas,
       selectedType: selectedType,
@@ -165,42 +167,45 @@ class _AdminHomePageState extends State<AdminHomePage>
       districtOnTap: _onDistrictMarkerTap,
       adminData: adminData,
     );
+    swGen.stop();
+    print('✅ generateAllMarkers 완료: ${swGen.elapsedMilliseconds} ms');
 
     // 현재 줌 레벨
+    final swZoom = Stopwatch()..start();
     final zoom = await _controller?.getZoomLevel() ?? 7.0;
+    swZoom.stop();
+    print('✅ getZoomLevel 완료: ${swZoom.elapsedMilliseconds} ms');
 
     setState(() {
       _provinceMarkers = allMarkers.provinceMarkers;
       _districtMarkers = allMarkers.districtMarkers;
-      // ✅ 현재 마커 즉시 갱신
       currentMarkers = zoom <= 7
           ? _provinceMarkers
           : _districtMarkers;
     });
+
+    sw.stop();
+    print('🎉 _reloadMarkers 총 소요 시간: ${sw.elapsedMilliseconds} ms');
   }
 
 
   int selectedIndex = 0;
   Future<void> _onItemTapped(BuildContext context, int index) async {
-      // 선택 인덱스 갱신
       setState(() {
         selectedIndex = index;
       });
-
       // 홈
       if (index == 0) {
         return;
       }
-
       // 임계 설정
-      if (index == 1) {
+      else if (index == 1) {
         final result = await Navigator.push<int>(
           context,
           MaterialPageRoute(
               builder: (context) => SetThresholdAdminPage(token: widget.token)
           ),
         );
-
         // 복귀했울 때 result 없으면 홈으로
         if (result == null) {
           setState(() {
@@ -208,7 +213,6 @@ class _AdminHomePageState extends State<AdminHomePage>
           });
           return;
         }
-
         setState(() {
           selectedIndex = result;
         });
@@ -233,54 +237,134 @@ class _AdminHomePageState extends State<AdminHomePage>
         _controller?.setMapStyle(style);
         _drawZoomMarker(7);
       },
+
       onCameraIdle: () async {
-        final position = await _controller?.getZoomLevel();
-        _drawZoomMarker(position!);
+        final zoom = await _controller?.getZoomLevel() ?? 7.0;
+
+        _drawZoomMarker(zoom);             // 최적화 (불필요 setState 방지)
+        await lazyLoadDistrictMarker(zoom); // 필요 시 lazy load
       },
-      // ✅ 여기 수정
-      markers: {...currentMarkers, ..._highlightedMarkers},
+
+      markers: currentMarkers,
       zoomControlsEnabled: true,
     );
   }
 
+  //로드는 처음부터 받아두는건 어떨까
 
+  Future<void> lazyLoadDistrictMarker(double zoom) async {
+    if (zoom <= 7) return;
 
-  void _highlightMarkerTemporarily(Marker tappedMarker) {
-    setState(() {
-      final highlighted = tappedMarker.copyWith(zIndexParam: 9999);
-      _highlightedMarkers.add(highlighted);
-    });
+    final totalSw = Stopwatch()..start();
+    print('🔄 lazyLoadDistrictMarker START');
 
-    Future.delayed(Duration(seconds: 3), () {
-      setState(() {
-        _highlightedMarkers.removeWhere(
-              (m) => m.markerId == tappedMarker.markerId,
-        );
-      });
-    });
-  }
+    // 1. bounds 얻기
+    final swBounds = Stopwatch()..start();
+    final bounds = await _controller!.getVisibleRegion();
+    swBounds.stop();
+    print('✅ getVisibleRegion: ${swBounds.elapsedMilliseconds} ms');
 
-  Future<void> _handleMarkerTap(LatLng latLng, {required bool isProvince}) async {
-    Marker? tapped;
-    try {
-      tapped = currentMarkers.firstWhere(
-            (m) => m.position == latLng,
+    // 2. 화면에 보이는 구 필터링
+    final swFilter = Stopwatch()..start();
+    final visibleDistricts = <String, List<String>>{};
+
+    for (final entry in allAreas.entries) {
+      final province = entry.key;
+      for (final district in entry.value) {
+        final LatLng pos = await getLatLngFromAddress(province, district);
+        if (_latLngInBounds(pos, bounds)) {
+          visibleDistricts.putIfAbsent(province, () => []).add(district);
+        }
+      }
+    }
+    swFilter.stop();
+    print('✅ filter visibleDistricts: ${swFilter.elapsedMilliseconds} ms (총 ${visibleDistricts.length}개 province)');
+
+    // 3. 마커 생성
+    final swGenerate = Stopwatch()..start();
+    final newMarkers = <Marker>{};
+
+    for (final entry in visibleDistricts.entries) {
+      final province = entry.key;
+      final districts = entry.value;
+
+      // weight 한번만 가져오기
+      final swWeight = Stopwatch()..start();
+      final districtWeightData = await adminData.getWeightData(
+        selectedType,
+        selectedByproductName,
+        province,
+        null,
       );
-    } catch (e) {
-      tapped = null;
+      swWeight.stop();
+      print('✅ getWeightData($province): ${swWeight.elapsedMilliseconds} ms');
+
+      // 개별 district 처리
+      for (final district in districts) {
+        final markerId = MarkerId("$province $district");
+        if (!_districtMarkers.any((m) => m.markerId == markerId)) {
+          final swMarker = Stopwatch()..start();
+
+          final generated = await markerHelper.generateDistrictMarkers(
+            province: province,
+            districtWeightData: districtWeightData,
+            threshold: threshold!,
+            onTap: _onDistrictMarkerTap,
+          );
+
+          newMarkers.addAll(generated);
+
+          swMarker.stop();
+          print('✅ generateDistrictMarkers($province-$district): ${swMarker.elapsedMilliseconds} ms');
+        }
+      }
     }
 
-    if (tapped != null) {
-      _highlightMarkerTemporarily(tapped);
+    swGenerate.stop();
+    print('✅ 마커 생성 총 시간: ${swGenerate.elapsedMilliseconds} ms (마커 ${newMarkers.length}개)');
+
+    // 4. SetState
+    if (newMarkers.isNotEmpty) {
+      setState(() {
+        _districtMarkers.addAll(newMarkers);
+        if (zoom > 7) {
+          currentMarkers = {..._provinceMarkers, ..._districtMarkers};
+        }
+      });
     }
 
-    final targetZoom = isProvince ? 8.0 : 10.0;
-    await _controller?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: latLng, zoom: targetZoom),
-      ),
-    );
+    totalSw.stop();
+    print('🎉 lazyLoadDistrictMarker TOTAL: ${totalSw.elapsedMilliseconds} ms');
   }
+
+
+  bool _latLngInBounds(LatLng point, LatLngBounds bounds) {
+    final lat = point.latitude;
+    final lng = point.longitude;
+
+    // 북서/남동 좌표
+    final southWest = bounds.southwest;
+    final northEast = bounds.northeast;
+
+    return lat >= southWest.latitude &&
+        lat <= northEast.latitude &&
+        lng >= southWest.longitude &&
+        lng <= northEast.longitude;
+  }
+
+
+  double? _lastZoomLevel;
+  void _drawZoomMarker(double zoom) {
+    if (_lastZoomLevel == null ||
+        (zoom <= 7 && _lastZoomLevel! > 7) ||
+        (zoom > 7 && _lastZoomLevel! <= 7)) {
+      setState(() {
+        currentMarkers = zoom <= 7 ? _provinceMarkers : _districtMarkers;
+      });
+    }
+    _lastZoomLevel = zoom;
+  }
+
 
   Widget _buildFilterBar() {
     final filteredByproducts = byproductsCategory

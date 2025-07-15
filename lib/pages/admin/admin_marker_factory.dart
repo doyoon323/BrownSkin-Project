@@ -23,49 +23,40 @@ class AdminMarker {
   });
 
 
-
   Future<Set<Marker>> generateProvinceMarkers({
     required Map<String, dynamic> provinceWeights,
     required double threshold,
     required Future<void> Function(LatLng) onTap,
-  }) async {
-    //print("✅ generateProvinceMarkers() 시작");
-    Set<Marker> markers = {};
+  })
+  async {
+    print("✅ generateProvinceMarkers() 병렬 처리 시작");
+    final stopwatch = Stopwatch()..start();
 
-    for (var province in allAreas.keys) {
-      //print("🔍 [$province] 마커 생성 시작");
-
-      // 좌표 조회
+    // 병렬 Future 리스트
+    final futures = allAreas.keys.map((province) async {
+      final itemStopwatch = Stopwatch()..start();
       try {
+        // 좌표 가져오기 (-> 추후 서버에 위치정보 저장하여 api의 호출 수를 줄이는 방안으로 최적화 필요)
         LatLng latLng = await getLatLngFromAddress(province, "");
-        //print("✅ [$province] 좌표: ${latLng.latitude}, ${latLng.longitude}");
-
-
         if (latLng.latitude == 0 && latLng.longitude == 0) {
-          //print("⚠️ [$province] 유효하지 않은 좌표. 스킵");
-          continue;
+          print("⚠️ [$province] 좌표 없음 (skip)");
+          return null;
         }
 
-        // 무게
-        double weight = 0.0;
-        if (provinceWeights.containsKey(province)) {
-          weight = (provinceWeights[province] as num).toDouble();
-        }
-        //print("✅ [$province] weight: $weight");
+        // weight 계산
+        double weight = provinceWeights.containsKey(province)
+            ? (provinceWeights[province] as num).toDouble()
+            : 0.0;
 
-        // 퍼센트
         double percent = threshold <= 0
             ? 0.0
             : (weight / threshold).clamp(0.0, 1.0);
-        //print("✅ [$province] percent: $percent");
 
-        // 색상
         List<Color> color = threshold <= 0
             ? [Colors.grey, Colors.grey]
             : getGradientColorsByPercentage(percent);
-        //print("✅ [$province] color: $color");
 
-        // 마커 비트맵 생성
+        // 비트맵 생성
         final BitmapDescriptor icon = await createCustomMarkerBitmap(
           province: province,
           label: "${weight.toInt()}",
@@ -73,37 +64,38 @@ class AdminMarker {
           colorEnd: color[1],
           percentage: percent,
         );
-        //print("✅ [$province] Bitmap 생성 완료");
 
-        // 마커 생성
         Marker marker = Marker(
-            markerId: MarkerId(province),
-            position: latLng,
-            icon: icon,
-            zIndex: weight,
-            anchor: Offset(0.5, 0.5), // 중심 anchoring!
-            onTap: () => onTap(latLng)
+          markerId: MarkerId(province),
+          position: latLng,
+          icon: icon,
+          zIndex: weight,
+          anchor: Offset(0.5, 0.5),
+          onTap: () => onTap(latLng),
         );
 
-        markers.add(marker);
-        //print("✅ [$province] Marker 추가 완료");
-
+        print("✅ [$province] 마커 생성 완료 (${itemStopwatch.elapsed.inMilliseconds} ms)");
+        return marker;
+      } catch (e) {
+        print("⚠️ [$province] 에러: $e (${itemStopwatch.elapsed.inMilliseconds} ms)");
+        return null;
       }
-      catch (e) {
-        //print("⚠️ getLatLngFromAddress 실패: $e");
-        continue; // 다음 province로 넘어가기
-      }
-    }
+    }).toList();
 
-    //print("✅ generateProvinceMarkers() 종료 (총 ${markers.length}개)");
+    final results = await Future.wait(futures);
+    final markers = results.whereType<Marker>().toSet();
+
+    print("🎉 generateProvinceMarkers() 총 소요 시간: ${stopwatch.elapsed.inMilliseconds} ms (마커 ${markers.length}개)");
     return markers;
   }
+
 
   Future<Set<Marker>> generateDistrictMarkers({
     required String province,
     required Map<String, dynamic> districtWeightData,
     required double threshold,
     required void Function(LatLng) onTap,
+    required AdminData adminData,
   }) async {
     Set<Marker> markers = {};
 
@@ -161,57 +153,6 @@ class AdminMarker {
   }
 
 
-  Future<AllMarkers> generateAllMarkers({
-    required Map<String, List<String>> allAreas,
-    required String selectedType,
-    required String? selectedByproductName,
-    required double threshold,
-    required Future<void> Function(LatLng) provinceOnTap,
-    required Future<void> Function(LatLng) districtOnTap,
-    required AdminData adminData,
-  }) async {
-    // 시도 마커 생성
-    final provinceWeightData = await adminData.getWeightData(
-      selectedType,
-      selectedByproductName,
-      null,
-      null,
-    );
-
-    final provinceMarkers = await generateProvinceMarkers(
-      provinceWeights: provinceWeightData,
-      threshold: threshold,
-      onTap: provinceOnTap,
-    );
-
-    // 구 마커 생성
-    final districtResults = await Future.wait(
-      allAreas.entries.map((entry) async {
-        final province = entry.key;
-        final districtWeightData = await adminData.getWeightData(
-          selectedType,
-          selectedByproductName,
-          province,
-          null,
-        );
-        return generateDistrictMarkers(
-          province: province,
-          districtWeightData: districtWeightData,
-          threshold: threshold,
-          onTap: (latLng) => districtOnTap(latLng),
-        );
-      }),
-    );
-
-    final districtMarkers = districtResults
-        .expand((markers) => markers as Iterable<Marker>)
-        .toSet();
-
-    return AllMarkers(
-      provinceMarkers: provinceMarkers,
-      districtMarkers: districtMarkers,
-    );
-  }
 
   List<Color> getGradientColorsByPercentage(double percent) {
     int r, g, b;
