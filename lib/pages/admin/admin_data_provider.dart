@@ -131,9 +131,7 @@ class AdminData {
 
   /// 갱신한 시도별 구 목록 return
   Future<Map<String, List<String>>> updateRegionData() async {
-    ////print("✅ updateRegionData 호출됨");
     final Map<String, List<String>> updated = await fetchProvinceData();
-    ////print("✅ 시도 데이터: $updated");
 
     final provinceList = updated.keys.toList();
     final futures = provinceList.map((province) => fetchDistrictData(province));
@@ -142,7 +140,6 @@ class AdminData {
     for (int i = 0; i < provinceList.length; i++) {
       updated[provinceList[i]] = results[i];
     }
-    ////print("✅ 구까지 포함된 데이터: $updated");
     return updated;
   }
   }

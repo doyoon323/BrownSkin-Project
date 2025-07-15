@@ -4,16 +4,7 @@ import 'dart:ui' as ui;
 import '../../service/location_service.dart';
 import 'admin_data_provider.dart';
 import 'global.dart';
-
-class AllMarkers {
-  final Set<Marker> provinceMarkers;
-  final Set<Marker> districtMarkers;
-
-  AllMarkers({
-    required this.provinceMarkers,
-    required this.districtMarkers,
-  });
-}
+import 'package:collection/collection.dart';
 
 class AdminMarker {
   final String token;
@@ -32,7 +23,6 @@ class AdminMarker {
     print("✅ generateProvinceMarkers() 병렬 처리 시작");
     final stopwatch = Stopwatch()..start();
 
-    // 병렬 Future 리스트
     final futures = allAreas.keys.map((province) async {
       final itemStopwatch = Stopwatch()..start();
       try {
@@ -42,7 +32,6 @@ class AdminMarker {
           print("⚠️ [$province] 좌표 없음 (skip)");
           return null;
         }
-
         // weight 계산
         double weight = provinceWeights.containsKey(province)
             ? (provinceWeights[province] as num).toDouble()
@@ -73,8 +62,6 @@ class AdminMarker {
           anchor: Offset(0.5, 0.5),
           onTap: () => onTap(latLng),
         );
-
-        print("✅ [$province] 마커 생성 완료 (${itemStopwatch.elapsed.inMilliseconds} ms)");
         return marker;
       } catch (e) {
         print("⚠️ [$province] 에러: $e (${itemStopwatch.elapsed.inMilliseconds} ms)");
@@ -84,27 +71,102 @@ class AdminMarker {
 
     final results = await Future.wait(futures);
     final markers = results.whereType<Marker>().toSet();
-
     print("🎉 generateProvinceMarkers() 총 소요 시간: ${stopwatch.elapsed.inMilliseconds} ms (마커 ${markers.length}개)");
     return markers;
   }
 
+  Stream<Marker> updateDistrictMarkers({
+    required String selectedType,
+    required String? selectedByproductName,
+    required double threshold,
+    required Set<Marker> existingMarkers,
+    required void Function(LatLng) onTap,
+    required AdminData adminData,
+  }) async* {
+    final stopwatch = Stopwatch()..start();
 
+    for (final province in allAreas.keys) {
+      final weightData = await adminData.getWeightData(
+        selectedType,
+        selectedByproductName,
+        province,
+        null,
+      );
+      final districtWeightMap = (weightData["results"] as Map<String, dynamic>? ?? {});
+
+      for (final district in districtWeightMap.keys) {
+        final markerId = MarkerId("$province $district");
+
+        final existing = existingMarkers.firstWhereOrNull(
+              (m) => m.markerId == markerId,
+        );
+
+        double newWeight = (districtWeightMap[district] as num?)?.toDouble() ?? 0.0;
+
+        bool shouldRebuild = true;
+        if (existing != null) {
+          final oldWeight = existing.zIndex;
+          if ((oldWeight - newWeight).abs() < 0.01) {
+            shouldRebuild = false;
+          }
+        }
+
+        if (!shouldRebuild) continue;
+
+        final latLng = await getLatLngFromAddress(province, district);
+        if (latLng.latitude == 0 && latLng.longitude == 0) continue;
+
+        double percent = threshold <= 0 ? 0.0 : (newWeight / threshold).clamp(0.0, 1.0);
+        List<Color> colors = threshold <= 0
+            ? [Colors.grey, Colors.grey]
+            : getGradientColorsByPercentage(percent);
+
+        final icon = await createCustomMarkerBitmap(
+          province: district,
+          label: "${newWeight.toInt()}",
+          colorStart: colors[0],
+          colorEnd: colors[1],
+          percentage: percent,
+        );
+
+        yield Marker(
+          markerId: markerId,
+          position: latLng,
+          icon: icon,
+          zIndex: newWeight,
+          anchor: Offset(0.5, 0.5),
+          onTap: () => onTap(latLng),
+        );
+      }
+    }
+    stopwatch.stop();
+    print("✅ updateDistrictMarkers 완료 (${stopwatch.elapsedMilliseconds} ms)");
+  }
+
+
+
+
+
+
+  /// 구에 해당하는 모든 마커를 생성하는 함수
   Future<Set<Marker>> generateDistrictMarkers({
     required String province,
     required Map<String, dynamic> districtWeightData,
     required double threshold,
+    required Set<Marker> existingMarkers,
     required void Function(LatLng) onTap,
-    required AdminData adminData,
   }) async {
+    final stopwatch = Stopwatch()..start();
     Set<Marker> markers = {};
-
-    //print("✅ districts 리스트: $districtWeightData");
-
     for (var district in allAreas[province]!) {
+      final markerId = MarkerId("$province $district");
+
+      if (existingMarkers.any((m) => m.markerId == markerId)) {
+        continue;
+      }
+
       try {
         LatLng latLng = await getLatLngFromAddress(province, district);
-        //print("✅ LatLng for $province $district: ${latLng.latitude}, ${latLng.longitude}");
         if (latLng.latitude == 0 && latLng.longitude == 0) {
           continue;
         }
@@ -112,9 +174,6 @@ class AdminMarker {
         double weight = districtWeightData.containsKey(district)
             ? (districtWeightData[district] as num).toDouble()
             : 0.0;
-
-        //print("✅ weight 데이터: $weight");
-        //print("✅ 최종 weight: $weight");
 
         double percent = threshold <= 0
             ? 0.0
@@ -145,9 +204,62 @@ class AdminMarker {
 
         markers.add(marker);
       } catch (e) {
-        //print("⚠️ getLatLngFromAddress 실패: $e");
+        print("⚠️ getLatLngFromAddress 실패: $e");
         continue;
       }
+    }
+    stopwatch.stop();
+    print("✅ generateDistrictMarkers($province) 완료 (${stopwatch.elapsedMilliseconds} ms, 새 마커 ${markers.length}개)");
+    return markers;
+  }
+
+
+
+  Future<Set<Marker>> generateSpecificDistrictMarkers({
+    required String province,
+    required List<String> districts,
+    required Map<String, dynamic> districtWeightData,
+    required double threshold,
+    required Set<Marker> existingMarkers,
+    required void Function(LatLng) onTap,
+  }) async {
+    final Set<Marker> markers = {};
+
+    for (final district in districts) {
+      final markerId = MarkerId("$province $district");
+      if (existingMarkers.any((m) => m.markerId == markerId)) {
+        continue;
+      }
+
+      final LatLng latLng = await getLatLngFromAddress(province, district);
+      if (latLng.latitude == 0 && latLng.longitude == 0) {
+        continue;
+      }
+
+      final double weight = (districtWeightData[district] as num?)?.toDouble() ?? 0.0;
+      final double percent = threshold <= 0 ? 0.0 : (weight / threshold).clamp(0.0, 1.0);
+      final List<Color> color = threshold <= 0
+          ? [Colors.grey, Colors.grey]
+          : getGradientColorsByPercentage(percent);
+
+      final icon = await createCustomMarkerBitmap(
+        province: district,
+        label: "${weight.toInt()}",
+        colorStart: color[0],
+        colorEnd: color[1],
+        percentage: percent,
+      );
+
+      markers.add(
+        Marker(
+          markerId: markerId,
+          position: latLng,
+          icon: icon,
+          zIndex: weight,
+          anchor: Offset(0.5, 0.5),
+          onTap: () => onTap(latLng),
+        ),
+      );
     }
     return markers;
   }
