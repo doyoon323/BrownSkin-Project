@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'package:brownskin_app/common/api_service.dart';
@@ -31,6 +34,9 @@ final String role = 'transporter';
     super.initState();
     fetchMyDeliveries(); //진행중 요청 로딩
     fetchCompletedDeliveries(); //완료, 거절 요청 로딩
+    Timer.periodic(const Duration(minutes: 3), (timer) {
+      _postLocation();
+    });
   }
 
 //진행중 요청 불러오기
@@ -337,6 +343,45 @@ final String role = 'transporter';
         await fetchCompletedDeliveries();
       } else {
         print('배송 완료 실패: ${response.body}');
+      }
+    } catch (e) {
+      print('네트워크 오류: $e');
+    }
+  }
+
+  //위치 전송 API 호출
+  Future<void> _postLocation() async {
+    // 위치 정보 획득 가능한지 확인
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
+    }
+    // 위치 추적 퍼미션 확인
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('permissions are denied');
+      }
+    }
+    // 현재 위치 구하기
+    Position position = await Geolocator.getCurrentPosition();
+    // 요청 보내기
+    final url = Uri.parse('$BASE_URL/api/update-location');
+    final headers = {
+      "Authorization": "Token ${widget.token}",
+      "Content-Type": "application/x-www-form-urlencoded",
+    };
+    final bodys = {
+      "latitude": position.latitude.toString(),
+      "longitude": position.longitude.toString(),
+    };
+    try {
+      final response = await http.post(url, headers: headers, body: bodys);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        print('위치 post 성공: ${response.body}');
+      } else {
+        print('위치 post 실패: ${response.body}');
       }
     } catch (e) {
       print('네트워크 오류: $e');
