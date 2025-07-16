@@ -32,6 +32,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   // 배송 위치 리스트
   List<LatLng> _sortedLocations = [];
 
+  // 마지막 업데이트 시간
+  DateTime? _lastFetched;
+
   // 지도 관련
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
@@ -91,45 +94,56 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
 
   // 주기적으로 배송 위치 업데이트
   void _startLocationTracking() {
-    _locationTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    _locationTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       _updateDeliveryLocation();
     });
   }
 
   Future<void> _updateDeliveryLocation() async {
-    /*
+    print("🔄 _updateDeliveryLocation() called");
+    String url = "$BASE_URL/api/track-delivery?id=${widget.deliveryId}";
+    if (_lastFetched != null) {
+      print("📅 마지막 업데이트 시간 요청에 추가: $_lastFetched");
+      url += "&last_fetched=${_lastFetched!.toIso8601String()}";
+    }
     try {
       final response = await http.get(
-        Uri.parse('https://your-api.com/delivery/${widget.deliveryId}/location'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse(url),
+        headers: {'Authorization': 'Token ${widget.token}'},
       );
-      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final newLocation = LatLng(
-          data['latitude'].toDouble(),
-          data['longitude'].toDouble(),
-        );
-        
+        DeliveryInfo tempDeliveryInfo = await DeliveryInfo.fromJson(data);
+        // locations를 timestamp 순으로 정렬
+        List<LatLng> sortedLocations = sortLocationsByTimestamp(data['locations']);
+
+        bool updatedFlag = sortedLocations.isNotEmpty;
+
+        // 마지막 위치를 tempDeliveryInfo의 location으로 설정
+        if (updatedFlag) {
+          tempDeliveryInfo.transporterLocation = sortedLocations.last;
+        }
+
         setState(() {
-          _currentLocation = newLocation;
-          _currentStatus = DeliveryStatus.values.firstWhere(
-            (status) => status.name == data['status'],
-            orElse: () => _currentStatus,
-          );
+          _deliveryInfo = tempDeliveryInfo;
+          _sortedLocations += sortedLocations;
+          _currentStatus = _deliveryInfo!.status;
+          _isLoading = false;
           _updateMarkers();
           _updatePolylines();
+          // 업데이트 있으면 지도 카메라 이동
+          if (updatedFlag) {
+            _mapController?.animateCamera(
+              CameraUpdate.newLatLng(_deliveryInfo!.transporterLocation),
+            );
+          }
         });
-        
-        // 지도 카메라 이동
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLng(newLocation),
-        );
+        print("_sortedLocations 업데이트: ${_sortedLocations.length}개의 위치");
       }
     } catch (e) {
-      print('위치 업데이트 실패: $e');
+      print('배송 위치 업데이트 실패: $e');
+      setState(() => _isLoading = false);
     }
-    */
   }
 
   Future<void> _updateMarkers() async {
@@ -441,6 +455,35 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       ),
     );
   }
+
+  // 위치 정보 파싱 및 정렬 함수
+  List<LatLng> sortLocationsByTimestamp(List<dynamic> jsonList) {
+    // timestamp 순으로 정렬하고 LatLng 객체로 변환
+    List<LocationPoint> locations = jsonList
+        .map((json) => LocationPoint.fromJson(json))
+        .toList()
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));  // timestamp 순 정렬
+
+    print("🔍 sortLocationsByTimestamp(): ${locations.length} locations sorted by timestamp");
+
+    // 마지막 업데이트 시간 저장
+    if (locations.isNotEmpty) {
+      _lastFetched = locations.last.timestamp;
+      print("📅 마지막 업데이트 시간 변경: $_lastFetched");
+    } else {
+      print("⚠️ 시간 업데이트 실패: 위치 정보가 없습니다.");
+    }
+
+    // LatLng 리스트로 변환
+    List<LatLng> latLngList = locations.map((loc) => LatLng(loc.lat, loc.lng)).toList();
+
+    // 로그로 LatLng 리스트 출력 (위도/경도만)
+    for (final loc in latLngList) {
+      print("📍 LatLng: ${loc.latitude}, ${loc.longitude}");
+    }
+
+    return latLngList;
+  }
 }
 
 // 배송 상태 enum
@@ -490,27 +533,6 @@ Future<LatLng> getLatLngFromAddress(String addr1, String addr2) async {
     print("❌ API 호출 실패: ${response.statusCode}");
     throw Exception('API 호출 실패: ${response.statusCode}');
   }
-}
-
-// 위치 정보 파싱 및 정렬 함수
-List<LatLng> sortLocationsByTimestamp(List<dynamic> jsonList) {
-  // timestamp 순으로 정렬하고 LatLng 객체로 변환
-  List<LocationPoint> locations = jsonList
-      .map((json) => LocationPoint.fromJson(json))
-      .toList()
-    ..sort((a, b) => a.timestamp.compareTo(b.timestamp));  // timestamp 순 정렬
-
-  print("🔍 sortLocationsByTimestamp(): ${locations.length} locations sorted by timestamp");
-
-  // LatLng 리스트로 변환
-  List<LatLng> latLngList = locations.map((loc) => LatLng(loc.lat, loc.lng)).toList();
-
-  // 로그로 LatLng 리스트 출력 (위도/경도만)
-  for (final loc in latLngList) {
-    print("📍 LatLng: ${loc.latitude}, ${loc.longitude}");
-  }
-
-  return latLngList;
 }
 
 // 배송 정보 모델
