@@ -70,6 +70,7 @@ class AdminData {
       String? addr1,
       String? addr2,
       ) async {
+    print("‼️‼️[WeightAPI] 요청: type=$type, byproduct=$byproduct, province=$addr1 $addr2");
     final url = Uri.parse("$BASE_URL/api/sum-byprod").replace(
       queryParameters: {
         "type": type,
@@ -91,14 +92,14 @@ class AdminData {
 
       if (response.statusCode == 200) {
         final body = jsonDecode(utf8.decode(response.bodyBytes));
-        ////print("✅ getWeightData 파싱 결과: $body");
+        print("✅ getWeightData 파싱 결과: $body");
 
         if (addr2 != null) {
-          ////print("✅ getWeightData 리턴 (구 or 업체 단위): $body");
+          print("✅ getWeightData 리턴 (구 or 업체 단위): $body");
           return body as Map<String, dynamic>;
         }
 
-        ////print("✅ getWeightData 리턴 (시도 단위): ${body["results"]}");
+        print("✅ getWeightData 리턴 (시도 단위): ${body["results"]}");
         return body["results"] as Map<String, dynamic>;
       } else {
         throw Exception("API 실패: ${response.statusCode}");

@@ -4,7 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../pages/admin/global.dart';
 
-
+//여기서 주기적으로 area DB 최신 갱신하고, cache에 넣어두면 UI에도 반영 가능할 듯
 
 final Map<String, Map<String, LatLng>> _latLngCache = {};
 
@@ -41,7 +41,9 @@ Future<LatLng> getLatLngFromAddress(String addr1, String addr2) async {
     return _latLngCache[addr1]![addr2]!;
   }
 
-  final query = addr2.isEmpty ? addr1 : "$addr1 $addr2";
+  final normAddr1 = normalizeProvinceName(addr1);
+  final query = addr2.isEmpty ? normAddr1 : "$normAddr1 $addr2";
+
   final url = Uri.parse(
     'https://dapi.kakao.com/v2/local/search/address.json?query=$query',
   );
@@ -74,4 +76,26 @@ Future<LatLng> getLatLngFromAddress(String addr1, String addr2) async {
     print("❌ API 호출 실패: ${response.statusCode}");
     throw Exception('API 호출 실패: ${response.statusCode}');
   }
+}
+
+String normalizeProvinceName(String name) {
+  return {
+    '서울': '서울특별시',
+    '부산': '부산광역시',
+    '대구': '대구광역시',
+    '인천': '인천광역시',
+    '광주': '광주광역시',
+    '대전': '대전광역시',
+    '울산': '울산광역시',
+    '세종': '세종특별자치시',
+    '경기': '경기도',
+    '강원': '강원도',
+    '충북': '충청북도',
+    '충남': '충청남도',
+    '전북': '전라북도',
+    '전남': '전라남도',
+    '경북': '경상북도',
+    '경남': '경상남도',
+    '제주': '제주특별자치도',
+  }[name] ?? name;
 }

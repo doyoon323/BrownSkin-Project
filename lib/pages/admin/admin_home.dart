@@ -137,6 +137,7 @@ class _AdminHomePageState extends State<AdminHomePage>
       null,
     );
 
+
     _provinceMarkers = await markerHelper.generateProvinceMarkers(
       provinceWeights: provinceWeightData,
       threshold: threshold!,
@@ -155,7 +156,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // 5. 구별 좌표 preload 비동기로 시작
       preloadAllDistrictLatLng().then((_) async {
-        final stream = markerHelper.initDistrictMarkers(
+        final stream = markerHelper.updateDistrictMarkers(
           selectedType: selectedType,
           selectedByproductName: selectedByproductName,
           threshold: threshold!,
@@ -178,10 +179,10 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
   Future<void> lazyLoadDistrictMarker(double zoom) async {
-    if (zoom <= 9) return; //province 마커를 보이는 경우
+    //print("[LazyLoad] lazyLoadDistrictMarker() started with zoom=$zoom");
+    if (zoom <= 7) return; //province 마커를 보이는 경우
 
     final totalSw = Stopwatch()..start();
-    print('🔄 lazyLoadDistrictMarker START');
 
     final bounds = await _controller!.getVisibleRegion();
     final visibleDistricts = <MapEntry<String, String>>[];
@@ -197,19 +198,22 @@ class _AdminHomePageState extends State<AdminHomePage>
       }
     }
 
-    print('✅ 보이는 구 : ${visibleDistricts}');
-    print('✅ 보이는 구 개수: ${visibleDistricts.length}');
+
+    if (visibleDistricts.isEmpty) {
+      //print("[LazyLoad] No visible districts to load.");
+    }
 
     // 3. weight data province별로 미리 조회
     final Map<String, Map<String, dynamic>> provinceWeightDataMap = {};
 
     for (final province in visibleDistricts.map((e) => e.key).toSet()) {
-      final data = await adminData.getWeightData( //갱신된 데이터
+      var data = await adminData.getWeightData( //갱신된 데이터
         selectedType,
         selectedByproductName,
         province,
         null,
       );
+      print("😍 getWeight of $province: $data");
       provinceWeightDataMap[province] = data;
     }
 
@@ -218,12 +222,12 @@ class _AdminHomePageState extends State<AdminHomePage>
       final province = entry.key;
       final district = entry.value;
 
+
       final Set<Marker> markers = await markerHelper.generateSpecificDistrictMarkers(
         province: province,
         districts: [district], // 화면에 보이는 district만
         districtWeightData: provinceWeightDataMap[province]!,
         threshold: threshold!,
-        existingMarkers: _districtMarkers,
         onTap: _onDistrictMarkerTap,
       );
 
@@ -233,6 +237,8 @@ class _AdminHomePageState extends State<AdminHomePage>
     }
     totalSw.stop();
     print('🎉 lazyLoadDistrictMarker 완료 (${totalSw.elapsedMilliseconds} ms)');
+    //print("[Debug] Province markers=${_provinceMarkers.length}, District markers=${_districtMarkers.length}");
+
   }
 
   bool _latLngInBounds(LatLng point, LatLngBounds bounds) {
@@ -251,10 +257,7 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
   Future<void> reloadProvinceMarkers() async {
-    print('🔄 reloadProvinceMarkers 시작');
-    setState(() {
-      isLoading = true;
-    });
+    //print("[Reload] reloadProvinceMarkers() started");
 
     final sw = Stopwatch()..start();
 
@@ -274,48 +277,55 @@ class _AdminHomePageState extends State<AdminHomePage>
     );
 
     // 3. 교체
-    setState(() {
-      _provinceMarkers = markers;
-      currentMarkers = _provinceMarkers;
-      isLoading = false;
-    });
+    _provinceMarkers = markers;
+
+    //print("[Debug] Province markers=${_provinceMarkers.length}, District markers=${_districtMarkers.length}");
+    //print("[Reload] reloadProvinceMarkers() completed. Province markers count=${_provinceMarkers.length}");
 
     sw.stop();
   }
 
+
   Future<void> reloadDistrictMarkers() async {
-    print('🔄 reloadDistrictMarkers 시작');
+    //print("[Reload] reloadDistrictMarkers() started");
     final sw = Stopwatch()..start();
 
-    final Set<Marker> allDistrictMarkers = {};
+    //화면에 보이는 것 우선 반영
+    final zoom = await _controller?.getZoomLevel() ?? 7.0;
+    await lazyLoadDistrictMarker(zoom); // 필요 시 lazy load
+    //print("[Reload] lazyLoadDistrictMarker() completed");
 
-    for (final province in allAreas.keys) {
-      // weight 데이터
-      final districtWeightData = await adminData.getWeightData(
-        selectedType,
-        selectedByproductName,
-        province,
-        null,
-      );
+    //print("[Debug] Province markers=${_provinceMarkers.length}, District markers=${_districtMarkers.length}");
 
-
-      final markers = await markerHelper.generateDistrictMarkers(
-        province: province,
-        districtWeightData: districtWeightData,
+    /*
+    //남은 district all 로드하되, 필요한 것 중 이미 생성한 건  안 그려도 된다.
+    unawaited(Future(() async {
+      final stream = markerHelper.updateDistrictMarkers(
+        selectedType: selectedType,
+        selectedByproductName: selectedByproductName,
         threshold: threshold!,
-        existingMarkers: const {}, // 전체 재생성
+        existingMarkers: _districtMarkers,
         onTap: _onDistrictMarkerTap,
+        adminData: adminData,
       );
 
-      allDistrictMarkers.addAll(markers);
-    }
+      await for (final marker in stream) {
+        // 새 마커만 district에 추가
+        _districtMarkers.removeWhere((m) => m.markerId == marker.markerId);
+        _districtMarkers.add(marker);
+        //print("[Reload] Added/Updated marker ${marker.markerId.value}");
 
-    setState(() {
-      _districtMarkers = allDistrictMarkers;
-      currentMarkers = (_lastZoomLevel != null && _lastZoomLevel! > 7)
-          ? {..._provinceMarkers, ..._districtMarkers}
-          : _provinceMarkers;
-    });
+      }
+
+      setState(() {
+        currentMarkers = (zoom <= 7)
+            ? _provinceMarkers
+            : _districtMarkers;
+      });
+      //print("[Reload] reloadDistrictMarkers() completed. District markers count=${_districtMarkers.length}");
+    }));
+
+     */
 
     sw.stop();
     print('✅ reloadDistrictMarkers 완료 (${sw.elapsedMilliseconds} ms)');
@@ -324,10 +334,25 @@ class _AdminHomePageState extends State<AdminHomePage>
 
   Future<void> reloadMarkers() async {
     final zoom = await _controller?.getZoomLevel() ?? 7.0;
-    if (zoom <= 9) {
+    //print("[Reload] Start reloadMarkers() zoom=$zoom");
+
+
+    setState(() {
+      isLoading = true;
+    });
+
+    if (zoom <= 7) {
       await reloadProvinceMarkers();
+
+      setState(() {
+        _drawZoomMarker(zoom);
+        isLoading = false;
+      });
+
       //백그라운드
-      unawaited(Future(() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // 5. 구별 좌표 preload 비동기로 시작
+      preloadAllDistrictLatLng().then((_) async {
         final stream = markerHelper.updateDistrictMarkers(
           selectedType: selectedType,
           selectedByproductName: selectedByproductName,
@@ -337,17 +362,21 @@ class _AdminHomePageState extends State<AdminHomePage>
           adminData: adminData,
         );
 
-        final updated = <Marker>{};
         await for (final marker in stream) {
-          updated.add(marker);
+          _districtMarkers.removeWhere((m) => m.markerId == marker.markerId);
+          _districtMarkers.add(marker);
         }
-        setState(() {
-          _districtMarkers = updated;
-        });
-      }));
+      });
+    });
+
     } else {
       await reloadDistrictMarkers();
       await reloadProvinceMarkers();
+
+      setState(() {
+        _drawZoomMarker(zoom);
+        isLoading = false;
+      });
     }
   }
 
@@ -379,22 +408,18 @@ class _AdminHomePageState extends State<AdminHomePage>
           selectedIndex = result;
         });
         threshold = await adminData.getThreshold(selectedType, selectedByproductName);
-        await reloadProvinceMarkers();
-        await reloadDistrictMarkers();
+        await reloadMarkers();
       }
     }
 
 
 
   void _drawZoomMarker(double zoom) {
-    if (_lastZoomLevel == null ||
-        (zoom <= 7 && _lastZoomLevel! > 7) ||
-        (zoom > 7 && _lastZoomLevel! <= 7)) {
+    ////print("[Zoom] _drawZoomMarker() currentZoom=$zoom _lastZoomLevel=$_lastZoomLevel");
       setState(() {
         currentMarkers = zoom <= 7 ? _provinceMarkers : _districtMarkers;
+        ////print("[Zoom] Switched currentMarkers to ${zoom <= 7 ? "province" : "district"} markers");
       });
-    }
-    _lastZoomLevel = zoom;
   }
 
 
@@ -482,6 +507,8 @@ class _AdminHomePageState extends State<AdminHomePage>
             ],
             onPressed: (index) async {
               final newType = index == 0 ? "가공" : "수확";
+              ////print("[Filter] Toggle type to $newType");
+
               final filtered = byproductsCategory
                   .where((item) => item["type"] == newType)
                   .map((item) => item["name"]!)
@@ -499,8 +526,7 @@ class _AdminHomePageState extends State<AdminHomePage>
               });
 
               // 마커 새로 생성
-              await reloadProvinceMarkers();
-              await reloadDistrictMarkers();
+              await reloadMarkers();
             },
             children: const [
               Padding(
@@ -528,13 +554,14 @@ class _AdminHomePageState extends State<AdminHomePage>
               // threshold 먼저 받아오기
               final newThreshold = await adminData.getThreshold(selectedType, value);
 
+              ////print("[Filter] Change byproduct to $value");
+
               setState(() {
                 selectedByproductName = value;
                 threshold = newThreshold;
               });
+              await reloadMarkers();
 
-              await reloadProvinceMarkers();
-              await reloadDistrictMarkers();
             },
           ),
         ],
