@@ -117,26 +117,25 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         // locations를 timestamp 순으로 정렬
         List<LatLng> sortedLocations = sortLocationsByTimestamp(data['locations']);
 
-        bool updatedFlag = sortedLocations.isNotEmpty;
-
-        // 마지막 위치를 tempDeliveryInfo의 location으로 설정
-        if (updatedFlag) {
-          tempDeliveryInfo.transporterLocation = sortedLocations.last;
-        }
-
         setState(() {
-          _deliveryInfo = tempDeliveryInfo;
-          _sortedLocations += sortedLocations;
-          _currentStatus = _deliveryInfo!.status;
-          _isLoading = false;
-          _updateMarkers();
-          _updatePolylines();
-          // 업데이트 있으면 지도 카메라 이동
-          if (updatedFlag) {
+          if (sortedLocations.isNotEmpty) {
+            // 새 위치가 있으면 업데이트
+            _sortedLocations += sortedLocations;
+            _deliveryInfo!.transporterLocation = sortedLocations.last;
+
+            // 마커와 폴리라인 업데이트
+            _updateMarkers();
+            _updatePolylines();
+
+            // 지도 카메라 이동
             _mapController?.animateCamera(
               CameraUpdate.newLatLng(_deliveryInfo!.transporterLocation),
             );
           }
+
+          // 상태는 항상 업데이트 (새 위치가 없어도 상태 변경 가능)
+          _currentStatus = tempDeliveryInfo.status;
+          _isLoading = false;
         });
         print("_sortedLocations 업데이트: ${_sortedLocations.length}개의 위치");
       }
