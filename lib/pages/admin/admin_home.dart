@@ -54,7 +54,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   late final markerHelper;
 
 
-  double? _lastZoomLevel;
+  double? total_weight; //전국 무게량
   int selectedIndex = 0;
 
 
@@ -137,6 +137,7 @@ class _AdminHomePageState extends State<AdminHomePage>
       null,
     );
 
+    total_weight = adminData.lastTotalWeight; //초기 총량
 
     _provinceMarkers = await markerHelper.generateProvinceMarkers(
       provinceWeights: provinceWeightData,
@@ -278,7 +279,7 @@ class _AdminHomePageState extends State<AdminHomePage>
 
     // 3. 교체
     _provinceMarkers = markers;
-
+    total_weight = adminData.lastTotalWeight;
     //print("[Debug] Province markers=${_provinceMarkers.length}, District markers=${_districtMarkers.length}");
     //print("[Reload] reloadProvinceMarkers() completed. Province markers count=${_provinceMarkers.length}");
 
@@ -349,6 +350,7 @@ class _AdminHomePageState extends State<AdminHomePage>
         isLoading = false;
       });
 
+      /*
       //백그라운드
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // 5. 구별 좌표 preload 비동기로 시작
@@ -368,7 +370,7 @@ class _AdminHomePageState extends State<AdminHomePage>
         }
       });
     });
-
+       */
     } else {
       await reloadDistrictMarkers();
       await reloadProvinceMarkers();
@@ -467,9 +469,7 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
 
-
-
-
+// 개선된 Filter Bar
   Widget _buildFilterBar() {
     final filteredByproducts = byproductsCategory
         .where((item) => item["type"] == selectedType)
@@ -478,219 +478,424 @@ class _AdminHomePageState extends State<AdminHomePage>
         .toList();
 
     return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      height: 48,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+      margin: const EdgeInsets.only(top:4,left: 16, right: 16),
+      child: Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(16),
+        shadowColor: Colors.black.withOpacity(0.1),
+        child: Container(
+          padding: const EdgeInsets.all(7), // 기존 16 → 12로 줄이기
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              colors: [Colors.white, Colors.grey.shade50],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
-        ],
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  // 가공/수확 토글 버튼 (개선된 디자인)
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildToggleButton(
+                              "가공",
+                              selectedType == "가공",
+                                  () async => await _onTypeChanged("가공"),
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildToggleButton(
+                              "수확",
+                              selectedType == "수확",
+                                  () async => await _onTypeChanged("수확"),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // 드롭다운 (개선된 디자인)
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedByproductName,
+                          isExpanded: true,
+                          icon: Icon(Icons.keyboard_arrow_down_rounded,
+                              color: Colors.grey.shade600),
+                          style: TextStyle(
+                            color: Colors.grey.shade800,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          items: filteredByproducts.map((name) {
+                            return DropdownMenuItem(
+                              value: name,
+                              child: Text(name),
+                            );
+                          }).toList(),
+                          onChanged: (value) async {
+                            if (value == null) return;
+                            final newThreshold = await adminData.getThreshold(selectedType, value);
+                            setState(() {
+                              selectedByproductName = value;
+                              threshold = newThreshold;
+                            });
+                            await reloadMarkers();
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          // 가공/수확 버튼
-          ToggleButtons(
-            borderRadius: BorderRadius.circular(6),
-            selectedColor: Colors.white,
-            fillColor: Colors.green,
-            color: Colors.black87,
-            isSelected: [
-              selectedType == "가공",
-              selectedType == "수확",
-            ],
-            onPressed: (index) async {
-              final newType = index == 0 ? "가공" : "수확";
-              ////print("[Filter] Toggle type to $newType");
+    );
+  }
 
-              final filtered = byproductsCategory
-                  .where((item) => item["type"] == newType)
-                  .map((item) => item["name"]!)
-                  .toSet()
-                  .toList();
-              final newByproduct = filtered.isNotEmpty ? filtered.first : null;
-
-              // threshold 먼저 받아오기
-              final newThreshold = await adminData.getThreshold(newType, newByproduct);
-
-              setState(() {
-                selectedType = newType;
-                selectedByproductName = newByproduct;
-                threshold = newThreshold;
-              });
-
-              // 마커 새로 생성
-              await reloadMarkers();
-            },
-            children: const [
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text("가공"),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text("수확"),
-              ),
-            ],
+// 토글 버튼 위젯
+  Widget _buildToggleButton(String text, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.green.shade600 : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected ? [
+            BoxShadow(
+              color: Colors.green.shade600.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ] : null,
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.grey.shade600,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              fontSize: 14,
+            ),
           ),
-          const SizedBox(width: 12),
-          DropdownButton<String>(
-            value: selectedByproductName,
-            items: filteredByproducts.map((name) {
-              return DropdownMenuItem(
-                value: name,
-                child: Text(name),
-              );
-            }).toList(),
-            onChanged: (value) async {
-              if (value == null) return;
+        ),
+      ),
+    );
+  }
 
-              // threshold 먼저 받아오기
-              final newThreshold = await adminData.getThreshold(selectedType, value);
+// 타입 변경 헬퍼 메서드
+  Future<void> _onTypeChanged(String newType) async {
+    final filtered = byproductsCategory
+        .where((item) => item["type"] == newType)
+        .map((item) => item["name"]!)
+        .toSet()
+        .toList();
+    final newByproduct = filtered.isNotEmpty ? filtered.first : null;
+    final newThreshold = await adminData.getThreshold(newType, newByproduct);
 
-              ////print("[Filter] Change byproduct to $value");
+    setState(() {
+      selectedType = newType;
+      selectedByproductName = newByproduct;
+      threshold = newThreshold;
+    });
 
-              setState(() {
-                selectedByproductName = value;
-                threshold = newThreshold;
-              });
-              await reloadMarkers();
+    await reloadMarkers();
+  }
 
-            },
+// 개선된 Summary Cards
+  Widget _buildSummaryCards() {
+    final double disposalRate = 15.2;
+    final double recyclingRate = 84.8;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      height: 75,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _buildSummaryCard(
+            title: "총 무게량",
+            value: "${total_weight?.toStringAsFixed(1)}",
+            unit: "kt",
+            icon: Icons.scale_rounded,
+            gradient: LinearGradient(
+              colors: [Color(0xFF42A5F5),Color(0xFF1E88E5),],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            percentage: null,
+          ),
+          const SizedBox(width: 8),
+          _buildSummaryCard(
+            title: "폐기율",
+            value: disposalRate.toStringAsFixed(1),
+            unit: "%",
+            icon: Icons.delete_outline_rounded,
+            gradient: LinearGradient(
+              colors: [Color(0xFFF23920), Color(0xFFEB4231)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            percentage: disposalRate / 100,
+          ),
+          const SizedBox(width: 8),
+          _buildSummaryCard(
+            title: "자원순환율",
+            value: recyclingRate.toStringAsFixed(1),
+            unit: "%",
+            icon: Icons.recycling_rounded,
+            gradient: LinearGradient(
+              colors: [Color(0xFF32D957), Color(0xFF28B44B)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            percentage: recyclingRate / 100,
           ),
         ],
       ),
     );
   }
 
-
-  // 실행
-    @override
-    Widget build(BuildContext context) {
-      return Scaffold(
-        backgroundColor: Colors.grey.shade50,
-        appBar: AppBar(
-          title: const Text(
-            '부산물 데이터 관리',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+  Widget _buildSummaryCard({
+    required String title,
+    required String value,
+    required String unit,
+    required IconData icon,
+    required LinearGradient gradient,
+    double? percentage,
+  }) {
+    return Container(
+      width: 120,
+      height: 30, // 높이 살짝 줄임 (원하면 조절 가능)
+      child: Material(
+        elevation: 6,
+        borderRadius: BorderRadius.circular(16),
+        shadowColor: Colors.black.withOpacity(0.1),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: gradient,
           ),
-          backgroundColor: Colors.green.shade700,
-          elevation: 0,
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.green.shade600, Colors.green.shade800],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 타이틀
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
+              Expanded(
+                child: Stack(
+                  children: [
+                    // 값
+                    Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            value,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            unit,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.8),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // 퍼센트 원형 바 (오른쪽 하단)
+                    if (percentage != null)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: SizedBox(
+                          width: 30,
+                          height: 30,
+                          child: CircularProgressIndicator(
+                            value: percentage,
+                            strokeWidth: 2,
+                            backgroundColor: Colors.white.withOpacity(0.3),
+                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        body: Stack(
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+
+      body: SafeArea( // 🔹 반드시 SafeArea로 감싸기
+        child: Stack(
           children: [
             _buildMapSection(),
-
             if (isLoading)
               Positioned.fill(
                 child: Container(
-                  color: Colors.white,
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  color: Colors.white.withOpacity(0.9),
+                  child: Center(child: _buildLoadingWidget()),
                 ),
               ),
 
-            Align(
-              alignment: Alignment.topCenter,
+            // 🔻 AppBar 대신 필터바가 상단 차지
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
               child: _buildFilterBar(),
             ),
-          ],
-        ),
-        bottomNavigationBar: buildBottomNavigationBar(context),
-      );
-    }
 
-    Widget _buildLoadingWidget() {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.shade300,
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.green.shade600),
-                    strokeWidth: 3,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '데이터를 불러오는 중...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                ],
-              ),
+            // 🔻 SummaryCard 위치도 조정
+            Positioned(
+              top: 85, // 기존 140 → 필터 바 높이 고려해서 늘림
+              left: 0,
+              right: 0,
+              child: _buildSummaryCards(),
             ),
           ],
         ),
-      );
-    }
-    
-    Widget buildBottomNavigationBar(BuildContext context) {
-      return Container(
+      ),
+      bottomNavigationBar: buildBottomNavigationBar(context),
+    );
+  }
+
+// 개선된 로딩 위젯
+  Widget _buildLoadingWidget() {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.shade300,
-              blurRadius: 10,
-              offset: const Offset(0, -2),
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: selectedIndex,
-          onTap: (index) => _onItemTapped(context, index),
-          backgroundColor: Colors.white,
-          selectedItemColor: Colors.green.shade600,
-          unselectedItemColor: Colors.grey.shade500,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              label: '홈',
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade600),
+                strokeWidth: 4,
+              ),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_rounded),
-              label: '임계 설정',
+            const SizedBox(height: 24),
+            Text(
+              '데이터를 불러오는 중...',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '잠시만 기다려주세요',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+              ),
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
   }
+
+
+  Widget buildBottomNavigationBar(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade300,
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: BottomNavigationBar(
+        currentIndex: selectedIndex,
+        onTap: (index) => _onItemTapped(context, index),
+        backgroundColor: Colors.white,
+        selectedItemColor: Colors.green.shade600,
+        unselectedItemColor: Colors.grey.shade500,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: '홈',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_rounded),
+            label: '임계 설정',
+          ),
+        ],
+      ),
+    );
+  }
+}

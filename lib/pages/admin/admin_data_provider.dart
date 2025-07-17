@@ -6,6 +6,7 @@ import 'package:brownskin_app/common/constants.dart';
 
 class AdminData {
   final String token;
+  double? lastTotalWeight;
 
   AdminData({required this.token});
 
@@ -98,6 +99,8 @@ class AdminData {
           print("✅ getWeightData 리턴 (구 or 업체 단위): $body");
           return body as Map<String, dynamic>;
         }
+
+        lastTotalWeight = body["total_weight"];
 
         print("✅ getWeightData 리턴 (시도 단위): ${body["results"]}");
         return body["results"] as Map<String, dynamic>;
