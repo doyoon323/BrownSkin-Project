@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'package:brownskin_app/common/api_service.dart';
 import 'package:brownskin_app/common/status_utils.dart';
+import 'package:brownskin_app/pages/agriculture/delivery_tracking.dart';
 
 
 class DeliveryReqAgriculturePage extends StatefulWidget {
@@ -321,6 +322,27 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
                 color: Color(0xFF5D4037),
               ),
             ),
+            trailing: item['status']=='accepted' || item['status']=='transit'
+                ? ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DeliveryTrackingPage(
+                      token: widget.token,
+                      deliveryId: item['id'],
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.brown[400],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              child: const Text('배송 조회', style: TextStyle(fontSize: 13)),
+            )
+                : null,
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
