@@ -87,7 +87,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         });
       }
     } catch (e) {
-      print('배송 정보 로드 실패: $e');
+      debugPrint('배송 정보 로드 실패: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -100,10 +100,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   }
 
   Future<void> _updateDeliveryLocation() async {
-    print("🔄 _updateDeliveryLocation() called");
+    debugPrint("🔄 _updateDeliveryLocation() called");
     String url = "$BASE_URL/api/track-delivery?id=${widget.deliveryId}";
     if (_lastFetched != null) {
-      print("📅 마지막 업데이트 시간 요청에 추가: $_lastFetched");
+      debugPrint("📅 마지막 업데이트 시간 요청에 추가: $_lastFetched");
       url += "&last_fetched=${_lastFetched!.toIso8601String()}";
     }
     try {
@@ -137,10 +137,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
           _currentStatus = tempDeliveryInfo.status;
           _isLoading = false;
         });
-        print("_sortedLocations 업데이트: ${_sortedLocations.length}개의 위치");
+        debugPrint("_sortedLocations 업데이트: ${_sortedLocations.length}개의 위치");
       }
     } catch (e) {
-      print('배송 위치 업데이트 실패: $e');
+      debugPrint('배송 위치 업데이트 실패: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -290,7 +290,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             spreadRadius: 2,
             blurRadius: 5,
             offset: const Offset(0, 3),
@@ -463,14 +463,14 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         .toList()
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));  // timestamp 순 정렬
 
-    print("🔍 sortLocationsByTimestamp(): ${locations.length} locations sorted by timestamp");
+    debugPrint("🔍 sortLocationsByTimestamp(): ${locations.length} locations sorted by timestamp");
 
     // 마지막 업데이트 시간 저장
     if (locations.isNotEmpty) {
       _lastFetched = locations.last.timestamp;
-      print("📅 마지막 업데이트 시간 변경: $_lastFetched");
+      debugPrint("📅 마지막 업데이트 시간 변경: $_lastFetched");
     } else {
-      print("⚠️ 시간 업데이트 실패: 위치 정보가 없습니다.");
+      debugPrint("⚠️ 시간 업데이트 실패: 위치 정보가 없습니다.");
     }
 
     // LatLng 리스트로 변환
@@ -478,7 +478,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
 
     // 로그로 LatLng 리스트 출력 (위도/경도만)
     for (final loc in latLngList) {
-      print("📍 LatLng: ${loc.latitude}, ${loc.longitude}");
+      debugPrint("📍 LatLng: ${loc.latitude}, ${loc.longitude}");
     }
 
     return latLngList;
@@ -502,7 +502,7 @@ enum DeliveryStatus {
 
 // 주소로부터 위도/경도를 가져오는 함수
 Future<LatLng> getLatLngFromAddress(String addr1, String addr2) async {
-  print("🔍 getLatLngFromAddress(): $addr1 $addr2");
+  debugPrint("🔍 getLatLngFromAddress(): $addr1 $addr2");
 
   final url = Uri.parse(
       'https://dapi.kakao.com/v2/local/search/address.json?query=${addr1 + addr2}'
@@ -518,18 +518,18 @@ Future<LatLng> getLatLngFromAddress(String addr1, String addr2) async {
   if (response.statusCode == 200) {
     final body = jsonDecode(utf8.decode(response.bodyBytes));
     if (body['documents'].isEmpty) {
-      print("⚠️ 주소 결과 없음: $addr1 $addr2");
-      print("⚠️ Province '$addr1 $addr2' 마커 생성 실패");
+      debugPrint("⚠️ 주소 결과 없음: $addr1 $addr2");
+      debugPrint("⚠️ Province '$addr1 $addr2' 마커 생성 실패");
       return LatLng(0, 0);
     }
     final doc = body['documents'][0];
-    print("✅ 좌표 결과: ${doc['y']}, ${doc['x']}");
+    debugPrint("✅ 좌표 결과: ${doc['y']}, ${doc['x']}");
     return LatLng(
       double.parse(doc['y']),
       double.parse(doc['x']),
     );
   } else {
-    print("❌ API 호출 실패: ${response.statusCode}");
+    debugPrint("❌ API 호출 실패: ${response.statusCode}");
     throw Exception('API 호출 실패: ${response.statusCode}');
   }
 }
