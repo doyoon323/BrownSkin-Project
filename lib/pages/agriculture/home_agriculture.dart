@@ -332,6 +332,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     return filtered;
   }
 
+
+
   /// 요약 정보 계산
   Map<String, dynamic> getSummaryData() {
     if (donutData.isEmpty) {
@@ -361,13 +363,233 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     };
   }
 
+
+  void showHistoryPreviewUI(BuildContext context) {
+    final List<Map<String, dynamic>> historyData = [
+      {
+        "name": "배추",
+        "type": "수확",
+        "status": "수거",
+        "weight_diff_float": -300.0,
+        "current_weight_float": 550.0,
+        "time_stamp": "2024-02-01"
+      },
+      {
+        "name": "배추",
+        "type": "가공",
+        "status": "폐기",
+        "weight_diff_float": -150.0,
+        "current_weight_float": 400.0,
+        "time_stamp": "2024-01-22"
+      },
+
+      {
+        "name": "배추",
+        "type": "가공",
+        "status": "추가",
+        "weight_diff_float": 400.0,
+        "current_weight_float": 800.0,
+        "time_stamp": "2024-01-20"
+      },
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (_) => _buildHistoryBottomSheet("배추", historyData),
+    );
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case "추가":
+        return Icons.add;
+      case "수거":
+        return Icons.local_shipping;
+      case "폐기":
+        return Icons.delete;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case "추가":
+        return Colors.green;
+      case "폐기":
+        return Colors.red;
+      case "수거":
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+
+
+
+  Widget _buildHistoryBottomSheet(String name, List<Map<String, dynamic>> history) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      height: 400,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "$name 무게 이력",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 16),
+
+          /// 테이블 헤더
+          Row(
+            children: const [
+              Expanded(flex: 3, child: Text("날짜", style: TextStyle(fontWeight: FontWeight.w600))),
+              Expanded(flex: 2, child: Text("구분", style: TextStyle(fontWeight: FontWeight.w600))),
+              Expanded(flex: 2, child: Text("카테고리", style: TextStyle(fontWeight: FontWeight.w600))),
+              Expanded(flex: 2, child: Text("무게 (kg)", style: TextStyle(fontWeight: FontWeight.w600))),
+              Expanded(flex: 2, child: Text("잔여량", style: TextStyle(fontWeight: FontWeight.w600))),
+            ],
+          ),
+          SizedBox(height: 8),
+          Divider(height: 1, thickness: 1),
+
+          /// 내용 리스트
+          Expanded(
+            child: ListView.builder(
+              itemCount: history.length,
+              itemBuilder: (context, index) {
+                final entry = history[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      /// 날짜
+                      Expanded(
+                        flex: 3,
+                        child: Row(
+                          children: [
+                            //Icon(Icons.calendar_today, size: 16, color: Colors.grey[700]),
+                            SizedBox(width: 4),
+                            Text(entry["time_stamp"], style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+
+                      /// 구분
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 5, vertical: 2), // 작게 유지
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(entry["status"]).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10), // 살짝만 둥글게
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min, // 💥 핵심: 내용만큼만 차지
+                          children: [
+                            Icon(
+                              _getStatusIcon(entry["status"]),
+                              size: 12,
+                              color: _getStatusColor(entry["status"]),
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              entry["status"],
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: _getStatusColor(entry["status"]),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(width: 15),
+
+                      /// 카테고리
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 5, vertical: 2), // 작게 유지
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(entry["status"]).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10), // 살짝만 둥글게
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min, // 💥 핵심: 내용만큼만 차지
+                          children: [
+                            Icon(
+                              _getStatusIcon(entry["status"]),
+                              size: 12,
+                              color: _getStatusColor(entry["status"]),
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              entry["status"],
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: _getStatusColor(entry["status"]),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+
+
+                      SizedBox(width: 15),
+
+                      /// 무게 변화
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          "${entry["weight_diff_float"] > 0 ? "+" : ""}${entry["weight_diff_float"].toStringAsFixed(1)}",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: entry["weight_diff_float"] > 0 ? Colors.green : Colors.red,
+                          ),
+                        ),
+                      ),
+
+                      /// 현재 무게
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          "${entry["current_weight_float"].toStringAsFixed(1)}",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: Colors.brown[800],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 1. 도넛 차트 & 그리드 시각화
   Widget _buildCompactGridCard(Map<String, dynamic> item) {
     double percent = item["percent"];
     Color progressColor = getProgressColor(percent);
     Color backgroundColor = getBackgroundColor(percent);
 
-    return Container(
+    return GestureDetector(
+        onTap: () {
+          showHistoryPreviewUI(context);
+        },
+        child: Container(
       margin: EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: backgroundColor,
@@ -490,6 +712,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
           ],
         ),
       ),
+    )
     );
   }
 
@@ -831,7 +1054,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                       padding: EdgeInsets.symmetric(horizontal: 12),
                       items: [
                         DropdownMenuItem(value: "name", child: Text("이름순")),
-                        DropdownMenuItem(value: "percent", child: Text("진행률순")),
                         DropdownMenuItem(value: "status", child: Text("위험도순")),
                       ],
                       onChanged: (value) {
@@ -1050,7 +1272,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     );
   }
 
-  /// 하단 메뉴바 (미구현: 클릭 시 이동)
+
   Widget _buildBottomNavigationBar() {
     return Container(
       decoration: BoxDecoration(
