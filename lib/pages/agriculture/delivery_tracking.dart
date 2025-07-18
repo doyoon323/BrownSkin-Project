@@ -85,6 +85,13 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
           _currentStatus = _deliveryInfo!.status;
           _isLoading = false;
         });
+      } else if (response.statusCode == 404) {
+        // 배송 정보가 없거나 완료됨
+        debugPrint("🚫 fetch: 배송 정보가 없거나 완료되었습니다. _deliveryInfo를 null로 설정합니다.");
+        setState(() {
+          _deliveryInfo = null;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       debugPrint('배송 정보 로드 실패: $e');
@@ -138,6 +145,13 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
           _isLoading = false;
         });
         debugPrint("_sortedLocations 업데이트: ${_sortedLocations.length}개의 위치");
+      } else if (response.statusCode == 404) {
+        // 배송이 없거나 완료됨
+        debugPrint("🚫 update: 배송 정보가 없거나 완료되었습니다. 상태를 완료로 변경합니다.");
+        setState(() {
+          _currentStatus = DeliveryStatus.completed;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       debugPrint('배송 위치 업데이트 실패: $e');
@@ -255,30 +269,41 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // 배송 상태 섹션
-                _buildDeliveryStatusSection(),
-                // 지도 섹션
-                Expanded(
-                  child: GoogleMap(
-                    onMapCreated: (GoogleMapController controller) {
-                      _mapController = controller;
-                      _updateMarkers();
-                      _updatePolylines();
-                    },
-                    initialCameraPosition: CameraPosition(
-                      target: _deliveryInfo!.transporterLocation,
-                      zoom: 14.0,
+          : _deliveryInfo == null
+              ? const Center(
+                  child: Text(
+                    '해당 배송이 없거나 완료되었습니다!',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
                     ),
-                    markers: _markers,
-                    polylines: _polylines,
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: true,
                   ),
+                )
+              : Column(
+                  children: [
+                    // 배송 상태 섹션
+                    _buildDeliveryStatusSection(),
+                    // 지도 섹션
+                    Expanded(
+                      child: GoogleMap(
+                        onMapCreated: (GoogleMapController controller) {
+                          _mapController = controller;
+                          _updateMarkers();
+                          _updatePolylines();
+                        },
+                        initialCameraPosition: CameraPosition(
+                          target: _deliveryInfo!.transporterLocation,
+                          zoom: 14.0,
+                        ),
+                        markers: _markers,
+                        polylines: _polylines,
+                        myLocationEnabled: true,
+                        myLocationButtonEnabled: true,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
     );
   }
 
@@ -491,7 +516,7 @@ enum DeliveryStatus {
   //pickupInProgress('수거 이동 중', '수거지로 이동 중입니다', Colors.purple),
   transit('전처리사 이동 중', '전처리사로 이동 중입니다', Colors.blue),
   //outForDelivery('배송 중', '최종 배송지로 이동 중입니다', Colors.teal),
-  delivered('배송 완료', '배송이 완료되었습니다', Colors.green);
+  completed('배송 완료', '배송이 완료되었습니다', Colors.green);
 
   const DeliveryStatus(this.displayName, this.description, this.color);
   
