@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
+import 'package:intl/intl.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:brownskin_app/pages/agriculture/deliveryReq_agriculture.dart';
 
@@ -364,34 +365,96 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   }
 
 
-  void showHistoryPreviewUI(BuildContext context) {
-    final List<Map<String, dynamic>> historyData = [
-      {
-        "name": "배추",
-        "type": "수확",
-        "status": "수거",
-        "weight_diff_float": -300.0,
-        "current_weight_float": 550.0,
-        "time_stamp": "2024-02-01"
-      },
-      {
-        "name": "배추",
-        "type": "가공",
-        "status": "폐기",
-        "weight_diff_float": -150.0,
-        "current_weight_float": 400.0,
-        "time_stamp": "2024-01-22"
-      },
+  Map<String,DateTime> last_fetch_history = {};
 
-      {
-        "name": "배추",
-        "type": "가공",
-        "status": "추가",
-        "weight_diff_float": 400.0,
-        "current_weight_float": 800.0,
-        "time_stamp": "2024-01-20"
-      },
-    ];
+  Future<List<Map<String, dynamic>>> getHistoryData(String type, String name) async {
+    var url = BASE_URL + "/api/dispose-history?type=$type&name=$name";
+
+    DateTime now = DateTime.now();
+    String key = "$type $name";
+
+    String fetchFrom;
+    if (last_fetch_history.containsKey(key)) {
+      fetchFrom = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(last_fetch_history[key]!);
+    } else {
+      DateTime thirtyDaysAgo = now.subtract(Duration(days: 30));
+      fetchFrom = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(thirtyDaysAgo);
+    }
+
+    url += "&fetch_from=$fetchFrom";
+    final uri = Uri.parse(url);
+
+
+    final headers = {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Authorization": "Token $token",
+    };
+
+    final response = await http.get(uri, headers: headers);
+
+    if (response.statusCode != 200) {
+      throw Exception('서버 요청 실패: 상태코드 ${response.statusCode}');
+    }
+
+    final rawData = jsonDecode(utf8.decode(response.bodyBytes),);
+
+
+    if (rawData.isEmpty) {
+      throw Exception("데이터 없음");
+    }
+
+    final List<Map<String, dynamic>> filteredData = rawData.map<Map<String, dynamic>>((item) {
+      return Map<String, dynamic>.from(item);
+    }).toList();
+
+    final List<Map<String, dynamic>> result = filteredData.map((entry) => {
+      'type': entry['type'],
+      'name': entry['name'],
+      'weight_diff_float': entry['weight_diff_float'],
+      'current_weight_float': entry['current_weight_float'],
+      'status': entry['status'] == "disposed" ? "추가" : entry['status'] == "abondoned" ? "페기" : "수거",
+      'timestamp': entry['timestamp'].substring(0, 10),
+    }).toList();
+
+
+    if (filteredData.isNotEmpty) {
+      // 서버 데이터의 timestamp 중 가장 최신을 찾음
+      filteredData.sort((a, b) => DateTime.parse(b['timestamp']).compareTo(DateTime.parse(a['timestamp'])));
+      last_fetch_history[key] = DateTime.parse(filteredData.first['timestamp']);
+    } else {
+      last_fetch_history[key] = now;
+    }
+
+
+    print("👾👾👾👾👾$result");
+    return result;
+  }
+
+
+  Map<String, List<Map<String, dynamic>>> cachedHistory = {};
+
+  void showHistoryPreviewUI(BuildContext context, String type, String name) async {
+    final newData = await getHistoryData(type, name);
+    String key = "$type $name";
+    if (!cachedHistory.containsKey(key)) {
+      cachedHistory[key] = [];
+    }
+
+    // 1. 기존 캐시 id 집합 만들기
+    final existingIds = cachedHistory[key]!.map((e) => e['id']).toSet();
+
+    // 2. 새 데이터 중 기존에 없는 것만 필터링
+    final uniqueNewData = newData.where((entry) => !existingIds.contains(entry['id'])).toList();
+
+    // 3. 누적 (최신순 유지 위해 앞에 새 데이터를 붙임)
+    cachedHistory[key] = [...uniqueNewData, ...cachedHistory[key]!];
+
+    // 4. 30일 이전 데이터 제거
+    DateTime limitDate = DateTime.now().subtract(Duration(days: 30));
+    cachedHistory[key] = cachedHistory[key]!.where((entry) {
+      DateTime entryDate = DateTime.parse(entry['timestamp']);
+      return entryDate.isAfter(limitDate) || entryDate.isAtSameMomentAs(limitDate);
+    }).toList();
 
     showModalBottomSheet(
       context: context,
@@ -400,9 +463,10 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       isScrollControlled: true,
-      builder: (_) => _buildHistoryBottomSheet("배추", historyData),
+      builder: (_) => _buildHistoryBottomSheet(name, cachedHistory[key]!),
     );
   }
+
 
   IconData _getStatusIcon(String status) {
     switch (status) {
@@ -451,9 +515,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             children: const [
               Expanded(flex: 3, child: Text("날짜", style: TextStyle(fontWeight: FontWeight.w600))),
               Expanded(flex: 2, child: Text("구분", style: TextStyle(fontWeight: FontWeight.w600))),
-              Expanded(flex: 2, child: Text("카테고리", style: TextStyle(fontWeight: FontWeight.w600))),
               Expanded(flex: 2, child: Text("무게 (kg)", style: TextStyle(fontWeight: FontWeight.w600))),
-              Expanded(flex: 2, child: Text("잔여량", style: TextStyle(fontWeight: FontWeight.w600))),
+              Expanded(flex: 2, child: Text("현재 잔여량", style: TextStyle(fontWeight: FontWeight.w600))),
             ],
           ),
           SizedBox(height: 8),
@@ -474,9 +537,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                         flex: 3,
                         child: Row(
                           children: [
-                            //Icon(Icons.calendar_today, size: 16, color: Colors.grey[700]),
+                            Icon(Icons.calendar_today, size: 16, color: Colors.grey[700]),
                             SizedBox(width: 4),
-                            Text(entry["time_stamp"], style: TextStyle(fontSize: 13)),
+                            Text(entry["timestamp"], style: TextStyle(fontSize: 13)),
                           ],
                         ),
                       ),
@@ -511,38 +574,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
                       SizedBox(width: 15),
 
-                      /// 카테고리
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 5, vertical: 2), // 작게 유지
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(entry["status"]).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(10), // 살짝만 둥글게
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min, // 💥 핵심: 내용만큼만 차지
-                          children: [
-                            Icon(
-                              _getStatusIcon(entry["status"]),
-                              size: 12,
-                              color: _getStatusColor(entry["status"]),
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              entry["status"],
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                color: _getStatusColor(entry["status"]),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-
-
-                      SizedBox(width: 15),
-
                       /// 무게 변화
                       Expanded(
                         flex: 2,
@@ -551,7 +582,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
-                            color: entry["weight_diff_float"] > 0 ? Colors.green : Colors.red,
+                            color: entry["weight_diff_float"] > 0 ? Colors.green : entry["status"] == 'disposed' ? Color(0xFFED2939) : Colors.red,
                           ),
                         ),
                       ),
@@ -587,7 +618,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
     return GestureDetector(
         onTap: () {
-          showHistoryPreviewUI(context);
+          showHistoryPreviewUI(context,item['type'], item['name']);
         },
         child: Container(
       margin: EdgeInsets.all(4),

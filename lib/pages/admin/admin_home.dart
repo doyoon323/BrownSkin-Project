@@ -47,7 +47,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   Set<Marker> _districtMarkers = {}; //관리자가 가진 모든 구 정보
   Set<Marker> currentMarkers = {}; //현재 지도에 띄울 마커
   GoogleMapController? _controller;
-  final LatLng _center = const LatLng(35.5,127.8); //지도를 켰을 때 중심 좌표
+  final LatLng _center = const LatLng(36.5,127.8); //지도를 켰을 때 중심 좌표
 
   final polygonService = PolygonService(); // 지역별 경계선
   late final adminData = AdminData(token: widget.token);
@@ -107,7 +107,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   /// AllAreas, Province마커 생성을 완료하고, district preload를 해둔다
   Future<void> initData() async {
     final totalStopwatch = Stopwatch()..start();
-    print('⚡ initData 시작');
+    //print('⚡ initData 시작');
 
     // 1. 지역 데이터 로드
     final sw1 = Stopwatch()..start();
@@ -115,14 +115,14 @@ class _AdminHomePageState extends State<AdminHomePage>
     //DB에서 시도 목록을 받아온다.
     allAreas = await adminData.updateRegionData();
     sw1.stop();
-    print('✅ updateRegionData 완료: ${sw1.elapsedMilliseconds} ms');
+    //print('✅ updateRegionData 완료: ${sw1.elapsedMilliseconds} ms');
 
 
     // 2. 임계값 로드
     final sw2 = Stopwatch()..start();
     threshold = await adminData.getThreshold(selectedType, selectedByproductName);
     sw2.stop();
-    print('✅ getThreshold 완료: ${sw2.elapsedMilliseconds} ms');
+    //print('✅ getThreshold 완료: ${sw2.elapsedMilliseconds} ms');
 
     // 3. Marker Helper 생성
     markerHelper = AdminMarker(token: widget.token);
@@ -146,7 +146,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     );
 
     sw3.stop();
-    print('✅ generateProvinceMarkers 완료: ${sw3.elapsedMilliseconds} ms');
+    //print('✅ generateProvinceMarkers 완료: ${sw3.elapsedMilliseconds} ms');
 
     // 6. UI 표시
     setState(() {
@@ -174,13 +174,13 @@ class _AdminHomePageState extends State<AdminHomePage>
     });
 
     totalStopwatch.stop();
-    print('🎉 initData 총 소요 시간: ${totalStopwatch.elapsedMilliseconds} ms');
+    //print('🎉 initData 총 소요 시간: ${totalStopwatch.elapsedMilliseconds} ms');
   }
 
 
 
   Future<void> lazyLoadDistrictMarker(double zoom) async {
-    //print("[LazyLoad] lazyLoadDistrictMarker() started with zoom=$zoom");
+    ////print("[LazyLoad] lazyLoadDistrictMarker() started with zoom=$zoom");
     if (zoom <= 7) return; //province 마커를 보이는 경우
 
     final totalSw = Stopwatch()..start();
@@ -201,7 +201,7 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
     if (visibleDistricts.isEmpty) {
-      //print("[LazyLoad] No visible districts to load.");
+      ////print("[LazyLoad] No visible districts to load.");
     }
 
     // 3. weight data province별로 미리 조회
@@ -214,7 +214,7 @@ class _AdminHomePageState extends State<AdminHomePage>
         province,
         null,
       );
-      print("😍 getWeight of $province: $data");
+      //print("😍 getWeight of $province: $data");
       provinceWeightDataMap[province] = data;
     }
 
@@ -237,8 +237,8 @@ class _AdminHomePageState extends State<AdminHomePage>
       }
     }
     totalSw.stop();
-    print('🎉 lazyLoadDistrictMarker 완료 (${totalSw.elapsedMilliseconds} ms)');
-    //print("[Debug] Province markers=${_provinceMarkers.length}, District markers=${_districtMarkers.length}");
+    //print('🎉 lazyLoadDistrictMarker 완료 (${totalSw.elapsedMilliseconds} ms)');
+    ////print("[Debug] Province markers=${_provinceMarkers.length}, District markers=${_districtMarkers.length}");
 
   }
 
@@ -258,7 +258,7 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
   Future<void> reloadProvinceMarkers() async {
-    //print("[Reload] reloadProvinceMarkers() started");
+    ////print("[Reload] reloadProvinceMarkers() started");
 
     final sw = Stopwatch()..start();
 
@@ -280,23 +280,23 @@ class _AdminHomePageState extends State<AdminHomePage>
     // 3. 교체
     _provinceMarkers = markers;
     total_weight = adminData.lastTotalWeight;
-    //print("[Debug] Province markers=${_provinceMarkers.length}, District markers=${_districtMarkers.length}");
-    //print("[Reload] reloadProvinceMarkers() completed. Province markers count=${_provinceMarkers.length}");
+    ////print("[Debug] Province markers=${_provinceMarkers.length}, District markers=${_districtMarkers.length}");
+    ////print("[Reload] reloadProvinceMarkers() completed. Province markers count=${_provinceMarkers.length}");
 
     sw.stop();
   }
 
 
   Future<void> reloadDistrictMarkers() async {
-    //print("[Reload] reloadDistrictMarkers() started");
+    ////print("[Reload] reloadDistrictMarkers() started");
     final sw = Stopwatch()..start();
 
     //화면에 보이는 것 우선 반영
     final zoom = await _controller?.getZoomLevel() ?? 7.0;
     await lazyLoadDistrictMarker(zoom); // 필요 시 lazy load
-    //print("[Reload] lazyLoadDistrictMarker() completed");
+    ////print("[Reload] lazyLoadDistrictMarker() completed");
 
-    //print("[Debug] Province markers=${_provinceMarkers.length}, District markers=${_districtMarkers.length}");
+    ////print("[Debug] Province markers=${_provinceMarkers.length}, District markers=${_districtMarkers.length}");
 
     /*
     //남은 district all 로드하되, 필요한 것 중 이미 생성한 건  안 그려도 된다.
@@ -314,7 +314,7 @@ class _AdminHomePageState extends State<AdminHomePage>
         // 새 마커만 district에 추가
         _districtMarkers.removeWhere((m) => m.markerId == marker.markerId);
         _districtMarkers.add(marker);
-        //print("[Reload] Added/Updated marker ${marker.markerId.value}");
+        ////print("[Reload] Added/Updated marker ${marker.markerId.value}");
 
       }
 
@@ -323,19 +323,19 @@ class _AdminHomePageState extends State<AdminHomePage>
             ? _provinceMarkers
             : _districtMarkers;
       });
-      //print("[Reload] reloadDistrictMarkers() completed. District markers count=${_districtMarkers.length}");
+      ////print("[Reload] reloadDistrictMarkers() completed. District markers count=${_districtMarkers.length}");
     }));
 
      */
 
     sw.stop();
-    print('✅ reloadDistrictMarkers 완료 (${sw.elapsedMilliseconds} ms)');
+    //print('✅ reloadDistrictMarkers 완료 (${sw.elapsedMilliseconds} ms)');
   }
 
 
   Future<void> reloadMarkers() async {
     final zoom = await _controller?.getZoomLevel() ?? 7.0;
-    //print("[Reload] Start reloadMarkers() zoom=$zoom");
+    ////print("[Reload] Start reloadMarkers() zoom=$zoom");
 
 
     setState(() {
@@ -417,10 +417,10 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
   void _drawZoomMarker(double zoom) {
-    ////print("[Zoom] _drawZoomMarker() currentZoom=$zoom _lastZoomLevel=$_lastZoomLevel");
+    //////print("[Zoom] _drawZoomMarker() currentZoom=$zoom _lastZoomLevel=$_lastZoomLevel");
       setState(() {
         currentMarkers = zoom <= 7 ? _provinceMarkers : _districtMarkers;
-        ////print("[Zoom] Switched currentMarkers to ${zoom <= 7 ? "province" : "district"} markers");
+        //////print("[Zoom] Switched currentMarkers to ${zoom <= 7 ? "province" : "district"} markers");
       });
   }
 

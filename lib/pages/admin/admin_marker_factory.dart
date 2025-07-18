@@ -20,7 +20,7 @@ class AdminMarker {
     required Future<void> Function(LatLng) onTap,
   })
   async {
-    print("✅ generateProvinceMarkers() 병렬 처리 시작");
+    //print("✅ generateProvinceMarkers() 병렬 처리 시작");
     final stopwatch = Stopwatch()..start();
 
     final futures = allAreas.keys.map((province) async {
@@ -29,7 +29,7 @@ class AdminMarker {
         // 좌표 가져오기 (-> 추후 서버에 위치정보 저장하여 api의 호출 수를 줄이는 방안으로 최적화 필요)
         LatLng latLng = await getLatLngFromAddress(province, "");
         if (latLng.latitude == 0 && latLng.longitude == 0) {
-          print("⚠️ [$province] 좌표 없음 (skip)");
+          //print("⚠️ [$province] 좌표 없음 (skip)");
           return null;
         }
         // weight 계산
@@ -64,14 +64,14 @@ class AdminMarker {
         );
         return marker;
       } catch (e) {
-        print("⚠️ [$province] 에러: $e (${itemStopwatch.elapsed.inMilliseconds} ms)");
+        //print("⚠️ [$province] 에러: $e (${itemStopwatch.elapsed.inMilliseconds} ms)");
         return null;
       }
     }).toList();
 
     final results = await Future.wait(futures);
     final markers = results.whereType<Marker>().toSet();
-    print("🎉 generateProvinceMarkers() 총 소요 시간: ${stopwatch.elapsed.inMilliseconds} ms (마커 ${markers.length}개)");
+    //print("🎉 generateProvinceMarkers() 총 소요 시간: ${stopwatch.elapsed.inMilliseconds} ms (마커 ${markers.length}개)");
     return markers;
   }
 
@@ -89,24 +89,24 @@ class AdminMarker {
     required AdminData adminData,
   }) async* {
     final stopwatch = Stopwatch()..start();
-    //print("[Update] Start updateDistrictMarkers()");
-    //print("[Update] selectedType=$selectedType, selectedByproductName=$selectedByproductName");
+    ////print("[Update] Start updateDistrictMarkers()");
+    ////print("[Update] selectedType=$selectedType, selectedByproductName=$selectedByproductName");
 
     for (final province in allAreas.keys) {
-      //print("[Update] Loading weight data for province=$province");
+      ////print("[Update] Loading weight data for province=$province");
       final weightData = await adminData.getWeightData(
         selectedType,
         selectedByproductName,
         province,
         null,
       );
-      //print("[Update] province=$province, raw result=${weightData['results']}");
+      ////print("[Update] province=$province, raw result=${weightData['results']}");
 
       final districtWeightMap = weightData['results'] as Map<String, dynamic>?;
 
       // ✅ weight 데이터가 없으면 dummy 마커 생성
       if (districtWeightMap == null || districtWeightMap.isEmpty) {
-        //print("[Update] province=$province has no district data. Creating dummy markers...");
+        ////print("[Update] province=$province has no district data. Creating dummy markers...");
 
         for (final district in allAreas[province] ?? []) {
           final markerId = MarkerId("$province $district");
@@ -134,17 +134,17 @@ class AdminMarker {
             anchor: Offset(0.5, 0.5),
             onTap: () => onTap(latLng),
           );
-          //print("[Update] Dummy marker yielded for $province $district");
+          ////print("[Update] Dummy marker yielded for $province $district");
         }
 
         continue; // 다음 province로 이동
       }
 
-      //print("[Update] province=$province district count=${districtWeightMap.length}");
+      ////print("[Update] province=$province district count=${districtWeightMap.length}");
 
       for (final district in districtWeightMap.keys) {
         final markerId = MarkerId("$province $district");
-        //print("[Update] Processing $province $district");
+        ////print("[Update] Processing $province $district");
 
 
         final existing = existingMarkers.firstWhereOrNull(
@@ -154,20 +154,20 @@ class AdminMarker {
         double newWeight = (districtWeightMap[district] as num?)?.toDouble() ?? 0.0;
 
         if (existing != null) {
-          //print("[Update] Existing marker weight=${existing.zIndex}, new weight=$newWeight");
+          ////print("[Update] Existing marker weight=${existing.zIndex}, new weight=$newWeight");
         } else {
-          //print("[Update] No existing marker");
+          ////print("[Update] No existing marker");
         }
 
-        //print("[Debug][Check] province=$province, district=$district, weight(raw)=${districtWeightMap[district]}");
-        //print("[Debug][Check] markerLabel=${newWeight.toInt()}, zIndex=$newWeight");
+        ////print("[Debug][Check] province=$province, district=$district, weight(raw)=${districtWeightMap[district]}");
+        ////print("[Debug][Check] markerLabel=${newWeight.toInt()}, zIndex=$newWeight");
 
         bool shouldRebuild = true;
         if (existing != null) {
           final oldWeight = existing.zIndex;
           if ((oldWeight - newWeight).abs() < 0.01) {
             shouldRebuild = false;
-            //print("[Update] Skipping rebuild: weight change insignificant");
+            ////print("[Update] Skipping rebuild: weight change insignificant");
           }
         }
 
@@ -175,7 +175,7 @@ class AdminMarker {
 
         final latLng = await getLatLngFromAddress(province, district);
         if (latLng.latitude == 0 && latLng.longitude == 0) {
-          //print("[Update] Skipping $province $district: invalid LatLng");
+          ////print("[Update] Skipping $province $district: invalid LatLng");
           continue;
         }
 
@@ -192,7 +192,7 @@ class AdminMarker {
           percentage: percent,
         );
 
-        //print("[Update] Yielding new marker for $province $district weight=$newWeight");
+        ////print("[Update] Yielding new marker for $province $district weight=$newWeight");
         yield Marker(
           markerId: markerId,
           position: latLng,
@@ -205,7 +205,7 @@ class AdminMarker {
     }
 
     stopwatch.stop();
-    print("✅ updateDistrictMarkers 완료 (${stopwatch.elapsedMilliseconds} ms)");
+    //print("✅ updateDistrictMarkers 완료 (${stopwatch.elapsedMilliseconds} ms)");
   }
 
   /// 구에 해당하는 모든 마커를 생성하는 함수
@@ -264,12 +264,12 @@ class AdminMarker {
 
         markers.add(marker);
       } catch (e) {
-        print("⚠️ getLatLngFromAddress 실패: $e");
+        //print("⚠️ getLatLngFromAddress 실패: $e");
         continue;
       }
     }
     stopwatch.stop();
-    print("✅ generateDistrictMarkers($province) 완료 (${stopwatch.elapsedMilliseconds} ms, 새 마커 ${markers.length}개)");
+    //print("✅ generateDistrictMarkers($province) 완료 (${stopwatch.elapsedMilliseconds} ms, 새 마커 ${markers.length}개)");
     return markers;
   }
 
@@ -284,14 +284,14 @@ class AdminMarker {
   }) async {
     final Set<Marker> markers = {};
 
-    //print("😆😆geenrateSpecifictDistrict : $province $districts");
-    //print("😆😆data is : $districtWeightData");
+    ////print("😆😆geenrateSpecifictDistrict : $province $districts");
+    ////print("😆😆data is : $districtWeightData");
 
 
     for (final district in districts) {
       final markerId = MarkerId("$province $district");
       final double weight = (districtWeightData[district] as num?)?.toDouble() ?? 0.0;
-      //print("😆 new marker - markerId=$markerId, weihght : $weight ");
+      ////print("😆 new marker - markerId=$markerId, weihght : $weight ");
 
 
       final LatLng latLng = await getLatLngFromAddress(province, district);
