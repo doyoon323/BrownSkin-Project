@@ -364,8 +364,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     };
   }
 
-
-  Map<String,DateTime> last_fetch_history = {};
+  Map<String, DateTime> last_fetch_history = {};
 
   Future<List<Map<String, dynamic>>> getHistoryData(String type, String name) async {
     var url = BASE_URL + "/api/dispose-history?type=$type&name=$name";
@@ -376,14 +375,16 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     String fetchFrom;
     if (last_fetch_history.containsKey(key)) {
       fetchFrom = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(last_fetch_history[key]!);
+      print("🟡 Using last_fetch for $key: $fetchFrom");
     } else {
       DateTime thirtyDaysAgo = now.subtract(Duration(days: 30));
       fetchFrom = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(thirtyDaysAgo);
+      print("🟡 No last_fetch for $key, using 30 days ago: $fetchFrom");
     }
 
     url += "&fetch_from=$fetchFrom";
+    print("🔗 Request URL: $url");
     final uri = Uri.parse(url);
-
 
     final headers = {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -391,19 +392,25 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     };
 
     final response = await http.get(uri, headers: headers);
+    print("🟢 Response status: ${response.statusCode}");
 
     if (response.statusCode != 200) {
+      print("🔴 서버 요청 실패 상태 코드: ${response.statusCode}");
       throw Exception('서버 요청 실패: 상태코드 ${response.statusCode}');
     }
 
-    final rawData = jsonDecode(utf8.decode(response.bodyBytes),);
+    final rawBody = utf8.decode(response.bodyBytes);
+    print("🟢 Raw response body: $rawBody");
 
+    final rawData = jsonDecode(rawBody);
 
     if (rawData.isEmpty) {
+      print("⚠️ 데이터 없음");
       throw Exception("데이터 없음");
     }
 
     final List<Map<String, dynamic>> filteredData = rawData.map<Map<String, dynamic>>((item) {
+      print("🟢 개별 데이터 timestamp: ${item['timestamp']}");
       return Map<String, dynamic>.from(item);
     }).toList();
 
@@ -414,47 +421,52 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
       'current_weight_float': entry['current_weight_float'],
       'status': entry['status'] == "disposed" ? "추가" : entry['status'] == "abondoned" ? "페기" : "수거",
       'timestamp': entry['timestamp'].substring(0, 10),
+      'timestampFull': entry['timestamp'], // 중복 체크용 (시간 포함)
     }).toList();
 
-
     if (filteredData.isNotEmpty) {
-      // 서버 데이터의 timestamp 중 가장 최신을 찾음
+      // 최신 timestamp 업데이트
       filteredData.sort((a, b) => DateTime.parse(b['timestamp']).compareTo(DateTime.parse(a['timestamp'])));
       last_fetch_history[key] = DateTime.parse(filteredData.first['timestamp']);
+      print("🟢 last_fetch_history[$key] updated: ${last_fetch_history[key]}");
     } else {
       last_fetch_history[key] = now;
+      print("🟢 last_fetch_history[$key] set to now: $now");
     }
 
-
-    print("👾👾👾👾👾$result");
+    print("👾 최종 결과: $result");
     return result;
   }
-
 
   Map<String, List<Map<String, dynamic>>> cachedHistory = {};
 
   void showHistoryPreviewUI(BuildContext context, String type, String name) async {
+    print("🟡 showHistoryPreviewUI called with type=$type, name=$name");
     final newData = await getHistoryData(type, name);
     String key = "$type $name";
+
     if (!cachedHistory.containsKey(key)) {
       cachedHistory[key] = [];
+      print("🟡 cachedHistory[$key] 초기화됨");
     }
 
-    // 1. 기존 캐시 id 집합 만들기
-    final existingIds = cachedHistory[key]!.map((e) => e['id']).toSet();
+    final existingKeys = cachedHistory[key]!.map((e) => "${e['timestampFull']}_${e['type']}_${e['name']}").toSet();
 
-    // 2. 새 데이터 중 기존에 없는 것만 필터링
-    final uniqueNewData = newData.where((entry) => !existingIds.contains(entry['id'])).toList();
+    final uniqueNewData = newData.where((entry) {
+      final compositeKey = "${entry['timestampFull']}_${entry['type']}_${entry['name']}";
+      return !existingKeys.contains(compositeKey);
+    }).toList();
 
-    // 3. 누적 (최신순 유지 위해 앞에 새 데이터를 붙임)
     cachedHistory[key] = [...uniqueNewData, ...cachedHistory[key]!];
+    print("🟡 cachedHistory[$key] 누적된 데이터 개수: ${cachedHistory[key]!.length}");
 
-    // 4. 30일 이전 데이터 제거
     DateTime limitDate = DateTime.now().subtract(Duration(days: 30));
     cachedHistory[key] = cachedHistory[key]!.where((entry) {
       DateTime entryDate = DateTime.parse(entry['timestamp']);
       return entryDate.isAfter(limitDate) || entryDate.isAtSameMomentAs(limitDate);
     }).toList();
+
+    print("🟡 cachedHistory[$key] 30일 이내 데이터 개수: ${cachedHistory[key]!.length}");
 
     showModalBottomSheet(
       context: context,
