@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:brownskin_app/pages/admin/global.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
@@ -15,7 +16,7 @@ class AdminData {
     try {
       final response = await http.get(
         Uri.parse(url),
-        headers: {'Authorization': 'Token ${this.token}'},
+        headers: {'Authorization': 'Token ${token}'},
       );
 
       if (response.statusCode == 200) {
@@ -29,7 +30,7 @@ class AdminData {
         throw Exception('지역 정보 불러오기 실패 : ${response.statusCode}');
       }
     } catch (e) {
-      print("getProvinceData 예외 발생: $e");
+      debugPrint("getProvinceData 예외 발생: $e");
       return {};
     }
   }
@@ -41,7 +42,7 @@ class AdminData {
     try {
       final response = await http.get(
         Uri.parse(url),
-        headers: {'Authorization': 'Token ${this.token}'},
+        headers: {'Authorization': 'Token ${token}'},
       );
       if (response.statusCode == 200) {
         final body = jsonDecode(utf8.decode(response.bodyBytes));
@@ -53,7 +54,7 @@ class AdminData {
         throw Exception('시군구 정보 불러오기 실패 : ${response.statusCode}');
       }
     } catch (e) {
-      print("getDistrictData 예외 발생: $e");
+      debugPrint("getDistrictData 예외 발생: $e");
       return [];
     }
   }
@@ -73,7 +74,7 @@ class AdminData {
     try {
       final response = await http.get(
         url,
-        headers: {'Authorization': 'Token ${this.token}'},
+        headers: {'Authorization': 'Token ${token}'},
       );
       if (response.statusCode == 200) {
         final body = jsonDecode(utf8.decode(response.bodyBytes));
@@ -87,7 +88,7 @@ class AdminData {
         throw Exception("API 실패: ${response.statusCode}");
       }
     } catch (e) {
-      print("getProvinceWeightData() 예외: $e");
+      debugPrint("getProvinceWeightData() 예외: $e");
       return {};
     }
   }
@@ -99,12 +100,12 @@ class AdminData {
 
     final response = await http.get(
       Uri.parse(url),
-      headers: {'Authorization': 'Token ${this.token}'},
+      headers: {'Authorization': 'Token ${token}'},
     );
 
     if (response.statusCode == 200) {
       final body = jsonDecode(utf8.decode(response.bodyBytes));
-      print("✅ Threshold API 응답: $body");
+      debugPrint("✅ Threshold API 응답: $body");
       return (body['weight_float'] as num?)?.toDouble() ?? -1;
     }
     else {
@@ -114,9 +115,9 @@ class AdminData {
 
   /// 갱신한 시도별 구 목록 return
   Future<Map<String, List<String>>> updateRegionData() async {
-    print("✅ updateRegionData 호출됨");
+    debugPrint("✅ updateRegionData 호출됨");
     final Map<String, List<String>> updated = await fetchProvinceData();
-    print("✅ 시도 데이터: $updated");
+    debugPrint("✅ 시도 데이터: $updated");
 
     final provinceList = updated.keys.toList();
     final futures = provinceList.map((province) => fetchDistrictData(province));
@@ -125,7 +126,7 @@ class AdminData {
     for (int i = 0; i < provinceList.length; i++) {
       updated[provinceList[i]] = results[i];
     }
-    print("✅ 구까지 포함된 데이터: $updated");
+    debugPrint("✅ 구까지 포함된 데이터: $updated");
     return updated;
   }
   }

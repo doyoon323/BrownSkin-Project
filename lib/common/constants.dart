@@ -1,7 +1,9 @@
 //const String BASE_URL = 'http://127.0.0.1:8000';
 //const String BASE_URL = 'http://10.0.2.2:8000'; //맥북 로컬
 
-const String BASE_URL = 'http://54.180.99.127:8000'; //클라우드 서버(ec2)
+// ignore_for_file: constant_identifier_names
+
+const String BASE_URL = 'http://brownskin.duckdns.org:8000'; //클라우드 서버(ec2)
 
 
 final byproductsCategory = [

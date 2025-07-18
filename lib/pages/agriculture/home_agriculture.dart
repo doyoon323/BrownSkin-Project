@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
+import 'package:intl/intl.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:brownskin_app/pages/agriculture/deliveryReq_agriculture.dart';
 
@@ -332,6 +333,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     return filtered;
   }
 
+
+
   /// 요약 정보 계산
   Map<String, dynamic> getSummaryData() {
     if (donutData.isEmpty) {
@@ -361,13 +364,275 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     };
   }
 
+  Map<String, DateTime> last_fetch_history = {};
+
+  Future<List<Map<String, dynamic>>> getHistoryData(String type, String name) async {
+    var url = BASE_URL + "/api/dispose-history?type=$type&name=$name";
+
+    DateTime now = DateTime.now();
+    String key = "$type $name";
+
+    String fetchFrom;
+    if (last_fetch_history.containsKey(key)) {
+      fetchFrom = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(last_fetch_history[key]!);
+      print("🟡 Using last_fetch for $key: $fetchFrom");
+    } else {
+      DateTime thirtyDaysAgo = now.subtract(Duration(days: 30));
+      fetchFrom = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(thirtyDaysAgo);
+      print("🟡 No last_fetch for $key, using 30 days ago: $fetchFrom");
+    }
+
+    url += "&fetch_from=$fetchFrom";
+    print("🔗 Request URL: $url");
+    final uri = Uri.parse(url);
+
+    final headers = {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Authorization": "Token $token",
+    };
+
+    final response = await http.get(uri, headers: headers);
+    print("🟢 Response status: ${response.statusCode}");
+
+    if (response.statusCode != 200) {
+      print("🔴 서버 요청 실패 상태 코드: ${response.statusCode}");
+      throw Exception('서버 요청 실패: 상태코드 ${response.statusCode}');
+    }
+
+    final rawBody = utf8.decode(response.bodyBytes);
+    print("🟢 Raw response body: $rawBody");
+
+    final rawData = jsonDecode(rawBody);
+
+    if (rawData.isEmpty) {
+      print("⚠️ 데이터 없음");
+      throw Exception("데이터 없음");
+    }
+
+    final List<Map<String, dynamic>> filteredData = rawData.map<Map<String, dynamic>>((item) {
+      print("🟢 개별 데이터 timestamp: ${item['timestamp']}");
+      return Map<String, dynamic>.from(item);
+    }).toList();
+
+    final List<Map<String, dynamic>> result = filteredData.map((entry) => {
+      'type': entry['type'],
+      'name': entry['name'],
+      'weight_diff_float': entry['weight_diff_float'],
+      'current_weight_float': entry['current_weight_float'],
+      'status': entry['status'] == "disposed" ? "추가" : entry['status'] == "abondoned" ? "페기" : "수거",
+      'timestamp': entry['timestamp'].substring(0, 10),
+      'timestampFull': entry['timestamp'], // 중복 체크용 (시간 포함)
+    }).toList();
+
+    if (filteredData.isNotEmpty) {
+      // 최신 timestamp 업데이트
+      filteredData.sort((a, b) => DateTime.parse(b['timestamp']).compareTo(DateTime.parse(a['timestamp'])));
+      last_fetch_history[key] = DateTime.parse(filteredData.first['timestamp']);
+      print("🟢 last_fetch_history[$key] updated: ${last_fetch_history[key]}");
+    } else {
+      last_fetch_history[key] = now;
+      print("🟢 last_fetch_history[$key] set to now: $now");
+    }
+
+    print("👾 최종 결과: $result");
+    return result;
+  }
+
+  Map<String, List<Map<String, dynamic>>> cachedHistory = {};
+
+  void showHistoryPreviewUI(BuildContext context, String type, String name) async {
+    print("🟡 showHistoryPreviewUI called with type=$type, name=$name");
+    final newData = await getHistoryData(type, name);
+    String key = "$type $name";
+
+    if (!cachedHistory.containsKey(key)) {
+      cachedHistory[key] = [];
+      print("🟡 cachedHistory[$key] 초기화됨");
+    }
+
+    final existingKeys = cachedHistory[key]!.map((e) => "${e['timestampFull']}_${e['type']}_${e['name']}").toSet();
+
+    final uniqueNewData = newData.where((entry) {
+      final compositeKey = "${entry['timestampFull']}_${entry['type']}_${entry['name']}";
+      return !existingKeys.contains(compositeKey);
+    }).toList();
+
+    cachedHistory[key] = [...uniqueNewData, ...cachedHistory[key]!];
+    print("🟡 cachedHistory[$key] 누적된 데이터 개수: ${cachedHistory[key]!.length}");
+
+    DateTime limitDate = DateTime.now().subtract(Duration(days: 30));
+    cachedHistory[key] = cachedHistory[key]!.where((entry) {
+      DateTime entryDate = DateTime.parse(entry['timestamp']);
+      return entryDate.isAfter(limitDate) || entryDate.isAtSameMomentAs(limitDate);
+    }).toList();
+
+    print("🟡 cachedHistory[$key] 30일 이내 데이터 개수: ${cachedHistory[key]!.length}");
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (_) => _buildHistoryBottomSheet(name, cachedHistory[key]!),
+    );
+  }
+
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case "추가":
+        return Icons.add;
+      case "수거":
+        return Icons.local_shipping;
+      case "폐기":
+        return Icons.delete;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case "추가":
+        return Colors.green;
+      case "폐기":
+        return Colors.red;
+      case "수거":
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+
+
+
+  Widget _buildHistoryBottomSheet(String name, List<Map<String, dynamic>> history) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      height: 400,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "$name 무게 이력",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 16),
+
+          /// 테이블 헤더
+          Row(
+            children: const [
+              Expanded(flex: 3, child: Text("날짜", style: TextStyle(fontWeight: FontWeight.w600))),
+              Expanded(flex: 2, child: Text("구분", style: TextStyle(fontWeight: FontWeight.w600))),
+              Expanded(flex: 2, child: Text("무게 (kg)", style: TextStyle(fontWeight: FontWeight.w600))),
+              Expanded(flex: 2, child: Text("현재 잔여량", style: TextStyle(fontWeight: FontWeight.w600))),
+            ],
+          ),
+          SizedBox(height: 8),
+          Divider(height: 1, thickness: 1),
+
+          /// 내용 리스트
+          Expanded(
+            child: ListView.builder(
+              itemCount: history.length,
+              itemBuilder: (context, index) {
+                final entry = history[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      /// 날짜
+                      Expanded(
+                        flex: 3,
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today, size: 16, color: Colors.grey[700]),
+                            SizedBox(width: 4),
+                            Text(entry["timestamp"], style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+
+                      /// 구분
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 5, vertical: 2), // 작게 유지
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(entry["status"]).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10), // 살짝만 둥글게
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min, // 💥 핵심: 내용만큼만 차지
+                          children: [
+                            Icon(
+                              _getStatusIcon(entry["status"]),
+                              size: 12,
+                              color: _getStatusColor(entry["status"]),
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              entry["status"],
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: _getStatusColor(entry["status"]),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(width: 15),
+
+                      /// 무게 변화
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          "${entry["weight_diff_float"] > 0 ? "+" : ""}${entry["weight_diff_float"].toStringAsFixed(1)}",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: entry["weight_diff_float"] > 0 ? Colors.green : entry["status"] == 'disposed' ? Color(0xFFED2939) : Colors.red,
+                          ),
+                        ),
+                      ),
+
+                      /// 현재 무게
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          "${entry["current_weight_float"].toStringAsFixed(1)}",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: Colors.brown[800],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 1. 도넛 차트 & 그리드 시각화
   Widget _buildCompactGridCard(Map<String, dynamic> item) {
     double percent = item["percent"];
     Color progressColor = getProgressColor(percent);
     Color backgroundColor = getBackgroundColor(percent);
 
-    return Container(
+    return GestureDetector(
+        onTap: () {
+          showHistoryPreviewUI(context,item['type'], item['name']);
+        },
+        child: Container(
       margin: EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: backgroundColor,
@@ -490,6 +755,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
           ],
         ),
       ),
+    )
     );
   }
 
@@ -831,7 +1097,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                       padding: EdgeInsets.symmetric(horizontal: 12),
                       items: [
                         DropdownMenuItem(value: "name", child: Text("이름순")),
-                        DropdownMenuItem(value: "percent", child: Text("진행률순")),
                         DropdownMenuItem(value: "status", child: Text("위험도순")),
                       ],
                       onChanged: (value) {
@@ -1050,7 +1315,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     );
   }
 
-  /// 하단 메뉴바 (미구현: 클릭 시 이동)
+
   Widget _buildBottomNavigationBar() {
     return Container(
       decoration: BoxDecoration(

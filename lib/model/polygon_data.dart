@@ -55,9 +55,9 @@ class PolygonService {
       Polygon(
         polygonId: PolygonId(id),
         points: outerRing,
-        strokeColor: Color(0xFFF2F2F2).withOpacity(0.8),
+        strokeColor: Color(0xFFF2F2F2) ,
         strokeWidth: 2,
-        fillColor: (color ?? Colors.green).withOpacity(1.0),
+        fillColor: (color ?? Colors.green) ,
       ),
     );
   }

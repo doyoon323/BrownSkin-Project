@@ -41,7 +41,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   @override
   void initState() {
     super.initState();
-    print("✅ initState() 호출됨 ${allAreas}");
+    debugPrint("✅ initState() 호출됨 $allAreas");
 
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -217,7 +217,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withOpacity(0.3),
+            color: Colors.green ,
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -228,7 +228,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white ,
               borderRadius: BorderRadius.circular(50),
             ),
             child: const Icon(
@@ -252,7 +252,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white ,
               height: 1.5,
             ),
           ),
@@ -283,7 +283,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green ,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -351,7 +351,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   }
 
   Future<void> getThreshold(String? type, String? name) async {
-    String url = "$BASE_URL/api/threshold?"+"type=$type&"+"name=$name";
+    String url = "$BASE_URL/api/threshold?""type=$type&"+"name=$name";
     final response = await http.get(
       Uri.parse(url),
       headers: {'Authorization': 'Token ${widget.token}'},
@@ -448,7 +448,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withOpacity(0.1),
+                  color: const Color(0xFF10B981) ,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -474,10 +474,10 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withOpacity(0.1),
+                color: const Color(0xFF10B981) ,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFF10B981).withOpacity(0.3),
+                  color: const Color(0xFF10B981) ,
                 ),
               ),
               child: Row(
@@ -580,10 +580,10 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color:  Colors.green.withOpacity(0.1),
+                color:  Colors.green ,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color:  Colors.green.withOpacity(0.3),
+                  color:  Colors.green ,
                 ),
               ),
               child: Row(
@@ -618,9 +618,9 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
         selectedByproductName != null &&
         _currentWeightController.text.isNotEmpty;
 
-    print('selectedType: $selectedType');
-    print('selectedByproductName: $selectedByproductName');
-    print('_currentWeightController.text: ${_currentWeightController.text}');
+    debugPrint('selectedType: $selectedType');
+    debugPrint('selectedByproductName: $selectedByproductName');
+    debugPrint('_currentWeightController.text: ${_currentWeightController.text}');
     return Container(
       width: double.infinity,
       height: 56,
@@ -635,7 +635,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
         boxShadow: canSubmit
             ? [
           BoxShadow(
-            color: const Color(0xFF667EEA).withOpacity(0.3),
+            color: const Color(0xFF667EEA) ,
             blurRadius: 15,
             offset: const Offset(0, 6),
           ),
@@ -697,7 +697,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF10B981).withOpacity(0.3),
+                  color: const Color(0xFF10B981) ,
                   blurRadius: 15,
                   offset: const Offset(0, 6),
                 ),
@@ -708,7 +708,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white ,
                     borderRadius: BorderRadius.circular(50),
                   ),
                   child: const Icon(

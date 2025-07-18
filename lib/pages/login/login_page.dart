@@ -3,11 +3,12 @@ import 'package:flutter/foundation.dart'; //이거 두 개 경로 그대로 가�
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'dart:convert';
-import 'signup_page.dart';
-import 'agriculture/home_agriculture.dart';
-import 'admin/admin_home.dart';
-import 'transporter/home_transporter.dart';
-import 'preprocessor/home_preprocessor.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:brownskin_app/pages/signup/signup_page.dart';
+import 'package:brownskin_app/pages/agriculture/home_agriculture.dart';
+import 'package:brownskin_app/pages/admin/admin_home.dart';
+import 'package:brownskin_app/pages/transporter/home_transporter.dart';
+import 'package:brownskin_app/pages/preprocessor/home_preprocessor.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -41,15 +42,19 @@ class _LoginPageState extends State<LoginPage> {
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
         String token = data['token'];
+        if (kDebugMode) debugPrint('로그인 성공, 토큰: $token');
 
-        if (kDebugMode) print('로그인 성공, 토큰: $token');
+        // SharedPreferences에 토큰 저장
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', token);
 
+        //화면 이동
         await _checkRoleAndMove(token); // 역할에 따라 화면 분기
       } else {
         _showMessage('로그인 실패: ${response.statusCode}');
       }
     } catch (e) {
-      if (kDebugMode) print('네트워크 오류: $e');
+      if (kDebugMode) debugPrint('네트워크 오류: $e');
       _showMessage('네트워크 오류 발생');
     }
   }
@@ -95,7 +100,7 @@ class _LoginPageState extends State<LoginPage> {
         _showMessage('프로필 조회 실패: ${response.body}');
       }
     } catch (e) {
-      if (kDebugMode) print('프로필 조회 오류: $e');
+      if (kDebugMode) debugPrint('프로필 조회 오류: $e');
       _showMessage('네트워크 오류 발생');
     }
   }

@@ -114,7 +114,7 @@ class _AdminHomePageState extends State<AdminHomePage>
 // threshold 유효성 체크
       double percent;
       if (threshold <= 0) {
-        print("⚠️ 임계치 값이 유효하지 않아 색상 계산을 건너뜁니다.");
+        debugPrint("⚠️ 임계치 값이 유효하지 않아 색상 계산을 건너뜁니다.");
         percent = 0.0;
       } else {
         percent = (weight / threshold).clamp(0.0, 1.0);
@@ -128,7 +128,7 @@ class _AdminHomePageState extends State<AdminHomePage>
         color = getGradientColorsByPercentage(percent);
       }
 
-      print("$province weight: $weight and threshold: $threshold, so percent is $percent\n Color is ${color
+      debugPrint("$province weight: $weight and threshold: $threshold, so percent is $percent\n Color is ${color
               .toString()}");
 
       final BitmapDescriptor icon = await createCustomMarkerBitmap(
@@ -230,7 +230,7 @@ class _AdminHomePageState extends State<AdminHomePage>
           weight = (provinceWeightData["total_weight"] as num).toDouble();
         }
 
-        print("$province $district weight: $weight");
+        debugPrint("$province $district weight: $weight");
 
         final percent = (weight! / threshold).clamp(0.0, 1.0);
 
@@ -238,12 +238,12 @@ class _AdminHomePageState extends State<AdminHomePage>
         List<Color> color = getGradientColorsByPercentage(percent);
 
         if (threshold <= 0) {
-          print("⚠️ 임계치 값이 유효하지 않아 색상 계산을 건너뜁니다.");
+          debugPrint("⚠️ 임계치 값이 유효하지 않아 색상 계산을 건너뜁니다.");
           color[0] = Colors.grey;
           color[1] = Colors.grey;
         }
 
-        print(
+        debugPrint(
             "$province $district weight: $weight and threshold : $threshold, so percent is $percent\n Color is ${color
                 .toString()}");
 
@@ -307,8 +307,8 @@ class _AdminHomePageState extends State<AdminHomePage>
         center,
         radius,
         [
-          colorStart.withOpacity(1.0),    // 바깥 색
-          colorEnd.withOpacity(1.0), // 중심 색
+          colorStart ,    // 바깥 색
+          colorEnd , // 중심 색
         ],
         [0.0, 1.0],
       );
@@ -349,7 +349,7 @@ class _AdminHomePageState extends State<AdminHomePage>
           ),
         ),
         TextSpan(
-          text: "$label",
+          text: label,
           style: TextStyle(
             fontSize: baseFontSize,
             color: const Color(0xFFF2F2F2),
@@ -494,7 +494,7 @@ class _AdminHomePageState extends State<AdminHomePage>
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black ,
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
