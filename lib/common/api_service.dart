@@ -31,4 +31,31 @@ class ApiService {
 
     return [];
   }
+
+
+  static Future<Map<String, dynamic>> fetchMap({
+    required String url,
+    required String token,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {"Authorization": "Token $token"},
+      );
+      if (response.statusCode == 200) {
+        final parsed = jsonDecode(utf8.decode(response.bodyBytes));
+        if (parsed is Map<String, dynamic>) {
+          return parsed;
+        } else {
+          print('Response is not a Map as expected.');
+        }
+      } else {
+        print('GET request failed ($url): ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Exception during GET request ($url): $e');
+    }
+    return {};
+  }
+
 }
