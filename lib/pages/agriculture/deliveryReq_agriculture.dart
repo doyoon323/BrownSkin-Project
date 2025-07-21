@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:brownskin_app/common/constants.dart';
 import 'package:brownskin_app/common/api_service.dart';
 import 'package:brownskin_app/common/status_utils.dart';
-import 'package:brownskin_app/pages/agriculture/delivery_tracking.dart';
 import 'package:brownskin_app/common/themes.dart';
 import 'package:brownskin_app/common/widgets.dart';
+import 'package:brownskin_app/pages/agriculture/delivery_tracking.dart';
 
 
 class DeliveryReqAgriculturePage extends StatefulWidget {
@@ -308,6 +308,27 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
 
           borderColor: AppColors.primaryBrown,
           elevation: 2,
+          trailing: item['status']=='accepted' || item['status']=='transit'
+                ? ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DeliveryTrackingPage(
+                      token: widget.token,
+                      deliveryId: item['id'],
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.brown[400],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              child: const Text('배송 조회', style: TextStyle(fontSize: 13)),
+            )
+                : null,
         );      
       },
     );
