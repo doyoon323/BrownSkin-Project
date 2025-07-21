@@ -1,9 +1,12 @@
+// ignore_for_file: file_names
+
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'package:brownskin_app/common/api_service.dart';
 import 'package:brownskin_app/common/status_utils.dart';
 import 'package:brownskin_app/pages/agriculture/delivery_tracking.dart';
+import 'package:brownskin_app/common/themes.dart';
+import 'package:brownskin_app/common/widgets.dart';
 
 
 class DeliveryReqAgriculturePage extends StatefulWidget {
@@ -16,17 +19,18 @@ class DeliveryReqAgriculturePage extends StatefulWidget {
   State<DeliveryReqAgriculturePage> createState() => _DeliveryReqAgriculturePageState();
 }
 
-//State 클래스 변수 선언
+//STate 함수 안의 변수들 선언하기
 class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage> { 
   String currentTab = '수거 요청'; //현재 선택 탭(수거 요청 or 나의 요청 이력)
   String? selectedType; //선택된 부산물 유형
   Map<String, dynamic>? selectedByproduct; //선택된 개별 품목
+  final String role = 'disposer';
   final TextEditingController weightController = TextEditingController(); //무게 입력 필드 제어
 
   List<Map<String, dynamic>> myRequests = []; //진행중 요청 목록
   List<Map<String, dynamic>> completedRequests = []; //완료 및 거절 목록
 
-  final String role = 'disposer';
+  
 
   @override //초기 데이터 로딩(화면 생성 시, 내역 조회)
   void initState() {
@@ -35,7 +39,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     fetchCompletedRequests();
   }
 
-//진행중 요청 조회
+//fetchmyRequest=진행중 요청 조회
   Future<void> fetchMyRequests() async {
   final rawList = await ApiService.fetchList(
     url: '$BASE_URL/api/my-delivery',
@@ -46,8 +50,8 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
 
   setState(() {
     myRequests = rawList.map<Map<String, dynamic>>((item) {
-      String dateText = item['req_date'] ?? '';
-      if (item['status'] == 'transit') {
+      String dateText = item['req_date'] ?? ''; //기본은 기본
+      if (item['status'] == 'transit') { //배송중일 때 배송 시작일 보여줌
         dateText = item['transit_date'] ?? '';
       }
       return {
@@ -62,39 +66,27 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
   });
 }
 
-  //완료 및 거절 요청 조회
+  //fetchCompletedRquests=완료 및 거절 요청 조회
   Future<void> fetchCompletedRequests() async {
-  final completedList = await ApiService.fetchList(
-    url: '$BASE_URL/api/my-history?status=completed',
-    token: widget.token,
-  );
-
-  final deniedList = await ApiService.fetchList(
-    url: '$BASE_URL/api/my-history?status=denied',
+  final all = await ApiService.fetchList(
+    url: '$BASE_URL/api/my-history',
     token: widget.token,
   );
 
   if (!mounted) return;
 
   setState(() {
-    completedRequests = [
-      ...completedList.map((item) => {
+    completedRequests = all.map<Map<String, dynamic>>((item) {
+      return { //서버데이터를 리스트타일 형태로 가공
         'id': item['id'],
         'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
-        'status': 'completed',
+        'status': getStatusLabelForRole(role, item['status']),
+        'rawStatus': item['status'],
         'date': item['complete_date'] ?? '',
         'transporter': item['transporter'],
         'preprocessor': item['preprocessor'],
-      }),
-      ...deniedList.map((item) => {
-        'id': item['id'],
-        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
-        'status': 'denied',
-        'date': item['complete_date'] ?? '',
-        'transporter': item['transporter'],
-        'preprocessor': item['preprocessor'],
-      }),
-    ];
+      };
+    }).toList();
   });
 }
 
@@ -108,7 +100,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
       child: Builder(
         builder: (context) {
 
-          //탭 변경 감지
+          //탭 변경 감지해서 변경할때마다 새로고침(tabcontroller로 탭 인덱스 추적)
           final TabController tabController = DefaultTabController.of(context);
           tabController.addListener(() {
             if (tabController.indexIsChanging) return;
@@ -119,37 +111,33 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
           });
 
           return Scaffold(
-            backgroundColor: Colors.brown[50],
+            backgroundColor: AppColors.backgroundBrown,
+            //상단앱바
             appBar: AppBar(
-              title: const Text(
-                '수거 요청 관리',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-              backgroundColor: Colors.brown[700],
-              elevation: 0,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.refresh, color: Colors.white),
-                  onPressed: () async {
-                      await fetchMyRequests();
-                      await fetchCompletedRequests();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('새로고침 완료')),
-                        );
-                      },
-                    ),
-                  ],
               iconTheme: const IconThemeData(color: Colors.white),
-              bottom: const TabBar(
+              title: Text('수거 요청 관리', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              backgroundColor: AppColors.primaryBrown,
+              elevation: 4,
+              shadowColor: AppColors.darkBrown ,
+              actions: [ //상단에 새로고침버튼, 로그아웃버튼(공통위젯폴더)
+                buildLogoutIconButton(context),
+                buildRefreshIconButton(context, () async {
+                  await fetchMyRequests();
+                  await fetchCompletedRequests();
+                }),       
+              ],
+              bottom: TabBar(
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white70,
                 indicatorColor: Colors.white,
+                labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 tabs: [
                   Tab(text: '수거 요청 보내기'),
                   Tab(text: '나의 요청 이력'),
                 ],
               ),
             ),
+
             body: TabBarView(
               children: [
                 _buildRequestForm(),
@@ -171,13 +159,14 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
         children: [
           _buildDropdownSection(), //유형 선택
           const SizedBox(height: 20),
-          if (selectedType != null) _buildProductSection(), //품목 및 무게 입력
+          if (selectedType != null) _buildProductSection(), //유형 선택하고 나면 품목 및 무게 입력
         ],
       ),
     );
   }
 
   Widget _buildDropdownSection() { //유형선택 드롭다운(수확, 가공)
+    //디자인
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -185,13 +174,14 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.brown.withOpacity(0.1),
+            color: Colors.brown ,
             spreadRadius: 1,
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
+      //선택하는 부분UI
       child: DropdownButtonFormField<String>( 
         value: selectedType,
         hint: const Text("부산물 유형 선택"),
@@ -221,7 +211,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.brown.withOpacity(0.1),
+                color: Colors.brown ,
                 spreadRadius: 1,
                 blurRadius: 8,
                 offset: const Offset(0, 2),
@@ -253,7 +243,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.brown.withOpacity(0.1),
+                color: Colors.brown ,
                 spreadRadius: 1,
                 blurRadius: 8,
                 offset: const Offset(0, 2),
@@ -276,15 +266,16 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: sendDeliveryRequest,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.brown[600],
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('수거 요청 보내기'),
+                child: ActionButtonGroup(
+                  buttons: [
+                    ActionButtonData(
+                      label: '수거 요청 보내기',
+                      onPressed: sendDeliveryRequest,
+                      backgroundColor: AppColors.primaryBrown, 
+                    ),
+                  ],
                 ),
-              ),
+              ),         
             ],
           ),
         ),
@@ -294,77 +285,37 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
 
   //나의 요청 이력 
   Widget _buildMyRequestList() { 
-    final allList = [...myRequests, ...completedRequests]; //진행중+완료/거절 내역 모두 합침
-    if (allList.isEmpty) {
-      return const Center(child: Text('요청 이력이 없습니다.'));
-    }
-    return ListView.builder( //카드 형태 리스트
+
+    //진행중+완료/거절 내역 모두 합침
+    final allList = [...myRequests, ...completedRequests]; 
+    //비어있습니다 표시
+    if (allList.isEmpty) return buildEmptyPlaceholder();
+    //카드 형태 리스트
+    return ListView.builder( 
       padding: const EdgeInsets.all(12),
       itemCount: allList.length,
       itemBuilder: (context, index) {
         final item = allList[index];
 
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 6),
+        return InfoCard(
+          title: item['item'],
+          subtitle:
+              "배송사: ${item['transporter']['company_name']} (${item['transporter']['addr1']} ${item['transporter']['addr2']} ${item['transporter']['addrDetail']})\n"
+              "전처리사: ${item['preprocessor']['company_name']} (${item['preprocessor']['addr1']} ${item['preprocessor']['addr2']} ${item['preprocessor']['addrDetail']})\n"
+              "상태: ${getStatusLabelForRole(role, item['status'])}\n"
+              "${getDateLabelForRole(role, item['rawStatus'] ?? item['status'])}: ${item['date'] ?? '-'}", 
+              
+
+          borderColor: AppColors.primaryBrown,
           elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: Colors.brown[100]!, width: 1),
-          ),
-          color: Colors.white,
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(16),
-            title: Text(
-              item['item'],
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Color(0xFF5D4037),
-              ),
-            ),
-            trailing: item['status']=='accepted' || item['status']=='transit'
-                ? ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DeliveryTrackingPage(
-                      token: widget.token,
-                      deliveryId: item['id'],
-                    ),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.brown[400],
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-              child: const Text('배송 조회', style: TextStyle(fontSize: 13)),
-            )
-                : null,
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                "배송사: ${item['transporter']['company_name']} (${item['transporter']['addr1']} ${item['transporter']['addr2']} ${item['transporter']['addrDetail']})\n"
-                "전처리사: ${item['preprocessor']['company_name']} (${item['preprocessor']['addr1']} ${item['preprocessor']['addr2']} ${item['preprocessor']['addrDetail']})\n"
-                "상태: ${getStatusLabelForRole(role, item['status'])}\n"
-                "${getDateLabelForRole(role, item['status'])}: ${item['date']}",
-                style: TextStyle(
-                    color: Colors.brown[600],
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-          ),
-        );
+        );      
       },
     );
   }
 
-  //수거 요청 전송 로직
+  //수거 요청 전송 함수
   Future<void> sendDeliveryRequest() async {
+    final messenger = ScaffoldMessenger.of(context);
 
     //유효성 검사
     if (selectedType == null || selectedByproduct == null || weightController.text.trim().isEmpty) {
@@ -382,19 +333,20 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
       return;
     }
 
-    //API 요청
-    final url = Uri.parse('$BASE_URL/api/dispose-req');
-    final response = await http.post(url, headers: {
-      "Authorization": "Token ${widget.token}",
-      "Content-Type": "application/x-www-form-urlencoded",
-    }, body: {
-      "type": selectedType!,
-      "name": selectedByproduct!["name"],
-      "weight": weightController.text.trim(),
-    });
+    //API호출_수거요청 보내기
+    final response = await ApiService.postWithToken(
+      endpoint: '/api/dispose-req',
+      token: widget.token,
+      body: {
+        "type": selectedType!,
+        "name": selectedByproduct!["name"],
+        "weight": weightController.text.trim(),
+      },
+    );
+
 
     //정상 처리
-    if (response.statusCode >= 200 && response.statusCode < 300) {
+    if (response != null && response.statusCode >= 200 && response.statusCode < 300) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -413,8 +365,8 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
         weightController.clear();
       });
     } else {//에러처리
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("요청 실패: ${response.body}")),
+      messenger.showSnackBar(
+        SnackBar(content: Text("요청 실패: ${response?.body ?? '응답 없음'}")),
       );
     }
   }

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:brownskin_app/pages/admin/global.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 
@@ -16,7 +16,7 @@ class AdminData {
     try {
       final response = await http.get(
         Uri.parse(url),
-        headers: {'Authorization': 'Token ${this.token}'},
+        headers: {'Authorization': 'Token $token'},
       );
 
       if (response.statusCode == 200) {
@@ -42,7 +42,7 @@ class AdminData {
     try {
       final response = await http.get(
         Uri.parse(url),
-        headers: {'Authorization': 'Token ${this.token}'},
+        headers: {'Authorization': 'Token $token'},
       );
       //////print("✅ fetchDistrictData 응답 코드: ${response.statusCode}");
       //////print("✅ fetchDistrictData 응답 body: ${utf8.decode(response.bodyBytes)}");
@@ -86,7 +86,7 @@ class AdminData {
     try {
       final response = await http.get(
         url,
-        headers: {'Authorization': 'Token ${this.token}'},
+        headers: {'Authorization': 'Token $token'},
       );
       //////print("✅ getWeightData 응답 코드: ${response.statusCode}");
       //////print("✅ getWeightData 응답 body: ${utf8.decode(response.bodyBytes)}");
@@ -120,7 +120,7 @@ class AdminData {
 
     final response = await http.get(
       Uri.parse(url),
-      headers: {'Authorization': 'Token ${this.token}'},
+      headers: {'Authorization': 'Token $token'},
     );
 
     if (response.statusCode == 200) {

@@ -6,61 +6,103 @@ import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'package:brownskin_app/common/api_service.dart';
 import 'package:brownskin_app/common/status_utils.dart';
+import 'package:brownskin_app/common/themes.dart';
+import 'package:brownskin_app/common/widgets.dart';
 
 
-
-//StatefulWidget: 배송사 홈화면 위젯
 class TransporterHomePage extends StatefulWidget {
   final String token;
-  const TransporterHomePage({required this.token, super.key}); //토큰: 로그인 인증 토큰, API 호출 시 필요
+  const TransporterHomePage({required this.token, super.key});
 
-//Stete 클래스 생성
   @override
   State<TransporterHomePage> createState() => _TransporterHomePageState();
 }
 
-//Stete 클래스: 주요 상태 및 변수 선언
-class _TransporterHomePageState extends State<TransporterHomePage> {
-  String currentTab = '수거 요청'; //현재 선택된 탭
-  List<Map<String, dynamic>> allRequests = []; //진행중 요청들
-  List<Map<String, dynamic>> completedRequests = []; //완료,거절 요청들
+//주요 필드, 변수 설명
+class _TransporterHomePageState extends State<TransporterHomePage> with SingleTickerProviderStateMixin{
+  List<Map<String, dynamic>> allRequests = [];
+  List<Map<String, dynamic>> completedRequests = [];
+  final String role = 'transporter';
+  late TabController _tabController;
+  final List<String> tabTitles = ['수거 요청', '수거 대기', '배송중', '완료/거절'];
 
-final String role = 'transporter';
+  //데이터 초기 호출_앱 실행 시점
+
+@override
+void initState() {
+  super.initState();
+
+  _tabController = TabController(length: tabTitles.length, vsync: this);
+  _tabController.addListener(() {
+    if (!_tabController.indexIsChanging) {
+      if (_tabController.index == 3) {
+        fetchCompletedDeliveries();
+      } else {
+        fetchMyDeliveries();
+      }
+    }
+  });
+
+  fetchMyDeliveries();
+  fetchCompletedDeliveries();
+
+  // 위치정보 주기적으로 전송
+  Timer.periodic(const Duration(minutes: 3), (timer) {
+    _postLocation();
+  });
+}
+
+@override
+void dispose() {
+  _tabController.dispose();
+  super.dispose();
+}
 
 
-//초기 데이터 로딩
-  @override
-  void initState() {
-    super.initState();
-    fetchMyDeliveries(); //진행중 요청 로딩
-    fetchCompletedDeliveries(); //완료, 거절 요청 로딩
-    Timer.periodic(const Duration(minutes: 3), (timer) {
-      _postLocation();
+  //FetchMydeliveries->요청, 진행중
+  Future<void> fetchMyDeliveries() async {
+    final rawList = await ApiService.fetchList(
+      url: '$BASE_URL/api/my-delivery',
+      token: widget.token,
+    );
+    if (!mounted) return;
+
+    setState(() {
+      allRequests = rawList.map<Map<String, dynamic>>((item) {
+        String dateText = item['req_date'] ?? '';
+        if (item['status'] == 'transit') {
+          dateText = item['transit_date'] ?? ''; //배송중이면 날짜 배송시작일로
+        }
+        return { //서버데이터를 리스트타일 표시용 데이터로 가공
+          'id': item['id'],
+          'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
+          'status': getStatusLabelForRole(role, item['status']),
+          'rawStatus': item['status'],
+          'date': dateText,
+          'disposer': item['disposer'],
+          'preprocessor': item['preprocessor'],
+        };
+      }).toList();
     });
   }
 
-//진행중 요청 불러오기
-  Future<void> fetchMyDeliveries() async {
-  final rawList = await ApiService.fetchList(
-    url: '$BASE_URL/api/my-delivery',
+  //fetchCompletedDeliveries->완료, 거절건
+  Future<void> fetchCompletedDeliveries() async {
+  final all = await ApiService.fetchList(
+    url: '$BASE_URL/api/my-history',
     token: widget.token,
   );
 
   if (!mounted) return;
 
   setState(() {
-    allRequests = rawList.map<Map<String, dynamic>>((item) {
-      String dateText = item['req_date'] ?? '';
-      if (item['status'] == 'transit') {
-        dateText = item['transit_date'] ?? '';
-      }
-
-      return {
+    completedRequests = all.map<Map<String, dynamic>>((item) {
+      return { //서버데이터를 리스트타일 형태로 가공
         'id': item['id'],
         'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
         'status': getStatusLabelForRole(role, item['status']),
         'rawStatus': item['status'],
-        'date': dateText,
+        'date': item['complete_date'] ?? '',
         'disposer': item['disposer'],
         'preprocessor': item['preprocessor'],
       };
@@ -68,323 +110,151 @@ final String role = 'transporter';
   });
 }
 
-//완료, 거절 요청 불러오기
-  Future<void> fetchCompletedDeliveries() async {
-  final completedList = await ApiService.fetchList(
-    url: '$BASE_URL/api/my-history?status=completed',
-    token: widget.token,
-  );
-  final deniedList = await ApiService.fetchList(
-    url: '$BASE_URL/api/my-history?status=denied',
-    token: widget.token,
-  );
 
-  if (!mounted) return;
-
-  setState(() {
-    completedRequests = [
-      ...completedList.map<Map<String, dynamic>>((item) => {
-        'id': item['id'],
-        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
-        'status': '배송 완료',
-        'rawStatus': 'completed',
-        'date': item['complete_date'] ?? '',
-        'disposer': item['disposer'],
-        'preprocessor': item['preprocessor'],
-      }),
-      ...deniedList.map<Map<String, dynamic>>((item) => {
-        'id': item['id'],
-        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
-        'status': '거절',
-        'rawStatus': 'denied',
-        'date': item['complete_date'] ?? '',
-        'disposer': item['disposer'],
-        'preprocessor': item['preprocessor'],
-      }),
-    ];
-  });
-}
-
-//여기부터는 UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar( //상단 앱 바
-        title: const Text('배송사 홈', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: const Color.fromARGB(255, 99, 77, 70),
-        elevation: 2,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: () async {
-                await fetchMyDeliveries();
-                await fetchCompletedDeliveries();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('새로고침 완료')),
-                );
-             },
-            ),
-          ],
-      ),
-      backgroundColor: const Color(0xFFF5F5F5), //배경색
-      body: Column(
-        children: [
-          Container( //탭 버튼 영역
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(color: Colors.grey.withOpacity(0.2), spreadRadius: 1, blurRadius: 3, offset: const Offset(0, 2)),
-              ],
-            ),
-            child: Row(
-              children: [
-                _buildTabButton('수거 요청'),
-                _buildTabButton('수거 대기'),
-                _buildTabButton('배송중'),
-                _buildTabButton('완료'),
-              ],
-            ),
-          ),
-          Expanded( //요청 리스트 표시
-            child: (currentTab == '완료' ? completedRequests : allRequests.where((e) => e['status'] == currentTab)).isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.inbox_outlined, size: 64, color: Colors.brown[300]),
-                        const SizedBox(height: 16),
-                        Text('요청이 없습니다.', style: TextStyle(fontSize: 18, color: Colors.brown[600], fontWeight: FontWeight.w500)),
-                      ],
-                    ),
-                  )
-                : ListView(
-                    padding: const EdgeInsets.all(8),
-                    children: (currentTab == '완료' ? completedRequests : allRequests.where((e) => e['status'] == currentTab))
-                        .map(_buildRequestItem)
-                        .toList(),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
+      backgroundColor: AppColors.backgroundBrown,
 
-  Widget _buildTabButton(String title) { //탭 버튼 위젯
-    bool isSelected = currentTab == title;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () async { //클릭 시 데이터 로딩(새로고침)
-          switch (title) {
-            case '수거 요청':
-            case '수거 대기':
-            case '배송중':
+      //상단 앱바(제목, 새로고침)
+      appBar: AppBar(
+          title: Text('배송 시스템', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          backgroundColor: AppColors.primaryBrown,
+          elevation: 4,
+          shadowColor: AppColors.darkBrown ,
+          actions: [ //상단에 새로고침버튼, 로그아웃버튼(공통위젯폴더)
+            buildLogoutIconButton(context),
+            buildRefreshIconButton(context, () async {
               await fetchMyDeliveries();
-              break;
-            case '완료':
               await fetchCompletedDeliveries();
-              break;
-          }
-          setState(() {
-            currentTab = title;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFD2B48C) : Colors.white,
-            border: Border(
-              bottom: BorderSide(color: isSelected ? const Color(0xFF8B4513) : Colors.transparent, width: 3),
-            ),
-          ),
-          child: Center(
-            child: Text(
-              title,
-              style: TextStyle(
-                color: isSelected ? const Color(0xFF8B4513) : Colors.brown[400],
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                fontSize: 14,
-              ),
-            ),
+            }),          
+          ],
+          bottom: TabBar(
+            controller: _tabController,
+            indicatorColor: Colors.white,
+            indicatorWeight: 3,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            tabs: ['수거 요청', '수거 대기', '배송중', '완료/거절'].map((title) => Tab(text: title)).toList(),
           ),
         ),
+
+      //각 탭에 따라서 표시할 요청 나눔
+      body: TabBarView(
+        controller: _tabController,
+        children: tabTitles.map((title) => _buildRequestList(title)).toList(),        
       ),
+
     );
   }
 
-  //요청 카드
+  //배송건들 카드 생성
   Widget _buildRequestItem(Map<String, dynamic> item) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.brown[100]!, width: 1)),
-      color: Colors.white,
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        title: Text(item['item'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF5D4037))), //제목: 품목명, 타입, 무게
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Text(
-            "배출사: ${item['disposer']['company_name']} (${item['disposer']['addr1']} ${item['disposer']['addr2']} ${item['disposer']['addrDetail']})\n"
-            "전처리사: ${item['preprocessor']['company_name']} (${item['preprocessor']['addr1']} ${item['preprocessor']['addr2']} ${item['preprocessor']['addrDetail']})\n"
-            "상태: ${getStatusLabelForRole(role, item['rawStatus'])}\n"
-            "${getDateLabelForRole(role, item['rawStatus'])}: ${item['date']}",
-            style: TextStyle(color: Colors.brown[600], fontSize: 13, height: 1.4),
-          ),
-        ),
-        trailing: _buildActionButton(item),
-      ),
+  final String title = item['item'];
+ ///카드위젯
+  final String subtitle =
+      "배출사: ${item['disposer']['company_name']} (${item['disposer']['addr1']} ${item['disposer']['addr2']} ${item['disposer']['addrDetail']})\n"
+      "전처리사: ${item['preprocessor']['company_name']} (${item['preprocessor']['addr1']} ${item['preprocessor']['addr2']} ${item['preprocessor']['addrDetail']})\n"
+      "상태: ${getStatusLabelForRole(role, item['rawStatus'])}\n"
+      "${getDateLabelForRole(role, item['rawStatus'])}: ${item['date']}";
+
+  return InfoCard(
+    title: title,
+    subtitle: subtitle,
+    trailing: _buildActionButton(item),
+    borderColor: AppColors.primaryBrown,
+    backgroundColor: Colors.white,
+    elevation: 6,
+  );
+}
+
+//배송카드 공간
+
+Widget _buildRequestList(String tabTitle) {
+  List<Map<String, dynamic>> list = tabTitle == '완료/거절'
+      ? completedRequests
+      : allRequests.where((e) => getStatusLabelForRole(role, e['rawStatus']) == tabTitle).toList();
+
+//비어있습니다 표시
+  if (list.isEmpty) return buildEmptyPlaceholder();
+  
+  return ListView(
+    padding: const EdgeInsets.all(12),
+    children: list.map(_buildRequestItem).toList(),
+  );
+}
+
+  //우측 작은 버튼 함수
+Widget _buildActionButton(Map<String, dynamic> item) {
+  final int id = item['id'];
+  final String status = item['rawStatus'];
+
+  if (status == 'pending') {
+    return ActionButtonGroup(
+      buttons: [
+        ActionButtonData(label: '수락', onPressed: () => acceptDelivery(id)),
+        ActionButtonData(label: '거절', onPressed: () => denyDelivery(id), backgroundColor: Colors.red.shade700),
+      ],
+    );
+  } else if (status == 'accepted') {
+    return ActionButtonGroup(
+      buttons: [
+        ActionButtonData(label: '수거 완료', onPressed: () => transitDelivery(id)),
+      ],
+    );
+  } else if (status == 'transit') {
+    return ActionButtonGroup(
+      buttons: [
+        ActionButtonData(label: '배송 완료', onPressed: () => completeDelivery(id)),
+      ],
     );
   }
+  return const SizedBox(); // 나머지 상태는 버튼 없음
+}
 
-  //요청 상태에 따른 버튼(이거 누르면 다음으로 넘어감)
-  Widget _buildActionButton(Map<String, dynamic> item) {
-    if (item['rawStatus'] == 'pending') {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ElevatedButton(
-            onPressed: () => _acceptDelivery(item['id']),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B4513), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 2),
-            child: const Text('수락', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () => _denyDelivery(item['id']),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFA52A2A), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 2),
-            child: const Text('거절', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      );
-    } else if (item['rawStatus'] == 'accepted') {
-      return ElevatedButton(
-        onPressed: () => _transitDelivery(item['id']),
-        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFA0522D), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 2),
-        child: const Text('수거 완료', style: TextStyle(fontWeight: FontWeight.bold)),
-      );
-    } else if (item['rawStatus'] == 'transit') {
-      return ElevatedButton(
-        onPressed: () => _completeDelivery(item['id']),
-        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFCD853F), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 2),
-        child: const Text('배송 완료', style: TextStyle(fontWeight: FontWeight.bold)),
-      );
-    }
-    return const SizedBox();
+  //각 API 호출 함수들(버튼에서)
+  Future<void> _acceptDelivery(int id) async { //수락
+    await ApiService.postWithToken(
+      endpoint: '/api/accept-delivery',
+      token: widget.token,
+      body: {"id": "$id"},
+    );
+    fetchMyDeliveries();
+  }
+  Future<void> _denyDelivery(int id) async { //거절
+    await ApiService.postWithToken(
+    endpoint: '/api/deny-delivery',
+    token: widget.token,
+    body: {"id": "$id"},
+    );
+    await fetchMyDeliveries();
+    await fetchCompletedDeliveries(); 
+    //거절건은 진행 중 목록에서 빠지고, 완료 목록에 들어가야 하므로 두 개 새로고침
   }
 
-//수락 API 호출
-  Future<void> _acceptDelivery(int id) async {
-    final url = Uri.parse('$BASE_URL/api/accept-delivery');
-    final headers = {
-      "Authorization": "Token ${widget.token}",
-      "Content-Type": "application/x-www-form-urlencoded",
-    };
-    try {
-      final response = await http.post(url, headers: headers, body: {"id": "$id"});
-      if (response.statusCode == 200) {
-        fetchMyDeliveries();
-      } else {
-        print('수락 실패: ${response.body}');
-      }
-    } catch (e) {
-      print('네트워크 오류: $e');
-    }
+  Future<void> _transitDelivery(int id) async { //수거완료(배송중)
+    await ApiService.postWithToken(
+      endpoint: '/api/transit-delivery',
+      token: widget.token,
+      body: {"id": "$id"},
+    );
+    fetchMyDeliveries();
   }
 
-//거절 API 호출
-  Future<void> _denyDelivery(int id) async {
-    final url = Uri.parse('$BASE_URL/api/deny-delivery');
-    final headers = {
-      "Authorization": "Token ${widget.token}",
-      "Content-Type": "application/x-www-form-urlencoded",
-    };
-    try {
-      final response = await http.post(url, headers: headers, body: {"id": "$id"});
-      if (response.statusCode == 200) {
-        await fetchMyDeliveries();
-        await fetchCompletedDeliveries();
-      } else {
-        print('거절 실패: ${response.body}');
-      }
-    } catch (e) {
-      print('네트워크 오류: $e');
-    }
+  Future<void> _completeDelivery(int id) async { //배송완료
+    await ApiService.postWithToken(
+      endpoint: '/api/complete-delivery',
+      token: widget.token,
+      body: {"id": "$id"},
+    );
+    await fetchMyDeliveries();
+    await fetchCompletedDeliveries(); 
+    //얘도 두 번
+    //이게 뭐냐면, post로 서버에 상태 변경한 뒤에, 
+    //1)mydelivery 새로고침해서 진행중 요청에서 빠지고, 
+    //2)myhistory 새고해서 거기에 포함돼야 함. 
+    //즉 두 곳에서 데이터가 바뀌니까 둘 다 호출해야됨
   }
 
-//수거 완료 API 호출
-  Future<void> _transitDelivery(int id) async {
-    final url = Uri.parse('$BASE_URL/api/transit-delivery');
-    final headers = {
-      "Authorization": "Token ${widget.token}",
-      "Content-Type": "application/x-www-form-urlencoded",
-    };
-    try {
-      final response = await http.post(url, headers: headers, body: {"id": "$id"});
-      if (response.statusCode == 200) {
-        fetchMyDeliveries();
-      } else {
-        print('수거 완료 실패: ${response.body}');
-      }
-    } catch (e) {
-      print('네트워크 오류: $e');
-    }
-  }
-
-//배송 완료 API 호출
-  Future<void> _completeDelivery(int id) async {
-    final url = Uri.parse('$BASE_URL/api/complete-delivery');
-    final headers = {
-      "Authorization": "Token ${widget.token}",
-      "Content-Type": "application/x-www-form-urlencoded",
-    };
-    try {
-      final response = await http.post(url, headers: headers, body: {"id": "$id"});
-      if (response.statusCode == 200) {
-        await fetchMyDeliveries();
-        await fetchCompletedDeliveries();
-      } else {
-        print('배송 완료 실패: ${response.body}');
-      }
-    } catch (e) {
-      print('네트워크 오류: $e');
-    }
-  }
-
-  //위치 전송 API 호출
-  Future<void> _postLocation() async {
-    // 위치 정보 획득 가능한지 확인
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('Location services are disabled.');
-    }
-    // 위치 추적 퍼미션 확인
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return Future.error('permissions are denied');
-      }
-    }
-    // 현재 위치 구하기
-    Position position = await Geolocator.getCurrentPosition();
-    // 요청 보내기
-    final url = Uri.parse('$BASE_URL/api/update-location');
-    final headers = {
-      "Authorization": "Token ${widget.token}",
-      "Content-Type": "application/x-www-form-urlencoded",
-    };
-    final bodys = {
-      "latitude": position.latitude.toString(),
-      "longitude": position.longitude.toString(),
-    };
-    try {
-      final response = await http.post(url, headers: headers, body: bodys);
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        print('위치 post 성공: ${response.body}');
-      } else {
-        print('위치 post 실패: ${response.body}');
-      }
-    } catch (e) {
-      print('네트워크 오류: $e');
-    }
-  }
 }

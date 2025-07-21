@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'dart:convert';
-import 'login_page.dart';
+import 'package:brownskin_app/pages/login/login_page.dart';
 import 'package:flutter/foundation.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -176,7 +176,7 @@ class _SignUpPageState extends State<SignUpPage> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black,
                   blurRadius: 20,
                   offset: const Offset(0, 4),
                 ),

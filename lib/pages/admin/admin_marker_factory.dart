@@ -458,7 +458,7 @@ class AdminMarker {
           ),
         ),
         TextSpan(
-          text: "$label",
+          text: label,
           style: TextStyle(
             fontSize: baseFontSize,
             color: const Color(0xFFF2F2F2),

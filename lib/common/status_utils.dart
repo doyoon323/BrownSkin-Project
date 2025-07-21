@@ -10,7 +10,7 @@ String getStatusLabelForRole(String role, String status) {
 
   const preprocessor = {
     'pending': '입고',
-    'accepted': '작업 중',
+    'accepted': '작업중',
     'completed': '작업 완료',
   };
 
@@ -31,10 +31,11 @@ String getDateLabelForRole(String role, String status) {
   }
 
   // 농가, 배송사 공통
-  if (status == 'pending' || status == 'accepted') return '수거 요청일';
-  if (status == 'transit') return '배송 시작일';
-  if (status == 'completed') return '배송 완료일';
-  if (status == 'denied') return '거절일';
-
+  else {
+    if (status == 'pending' || status == 'accepted') return '수거 요청일';
+    if (status == 'transit') return '배송 시작일';
+    if (status == 'completed') return '배송 완료일';
+    if (status == 'denied') return '거절일';
+  }
   return '날짜';
 }

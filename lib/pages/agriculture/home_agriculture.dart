@@ -42,7 +42,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     _timer = Timer.periodic(
         Duration(minutes: 15),
             (timer) {
-              if (!userByproduct.isEmpty) {
+              if (userByproduct.isNotEmpty) {
                 fetchUserByProduct();
                 updateData(userByproduct);
               }
@@ -250,7 +250,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
         try {
           tempList.add(transformItem(type, item, defaultThreshold));
         } catch (e) {
-          print("${type}_${item['name']} 파싱 실패: $e");
+          debugPrint("${type}_${item['name']} 파싱 실패: $e");
         }
       }
     }
@@ -367,7 +367,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   Map<String, DateTime> last_fetch_history = {};
 
   Future<List<Map<String, dynamic>>> getHistoryData(String type, String name) async {
-    var url = BASE_URL + "/api/dispose-history?type=$type&name=$name";
+    var url = "$BASE_URL/api/dispose-history?type=$type&name=$name";
 
     DateTime now = DateTime.now();
     String key = "$type $name";

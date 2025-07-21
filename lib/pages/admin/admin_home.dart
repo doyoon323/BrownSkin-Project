@@ -44,7 +44,7 @@ class _AdminHomePageState extends State<AdminHomePage>
 
   //Maps
   Set<Marker> _provinceMarkers = {}; //관리자가 가진 모든 시도 정보
-  Set<Marker> _districtMarkers = {}; //관리자가 가진 모든 구 정보
+  final Set<Marker> _districtMarkers = {}; //관리자가 가진 모든 구 정보
   Set<Marker> currentMarkers = {}; //현재 지도에 띄울 마커
   GoogleMapController? _controller;
   final LatLng _center = const LatLng(36.5,127.8); //지도를 켰을 때 중심 좌표
