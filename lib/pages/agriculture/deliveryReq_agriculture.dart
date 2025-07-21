@@ -289,7 +289,6 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     final allList = [...myRequests, ...completedRequests]; 
     //비어있습니다 표시
     if (allList.isEmpty) return buildEmptyPlaceholder();
-    print(allList);
     //카드 형태 리스트
     return ListView.builder( 
       padding: const EdgeInsets.all(12),

@@ -351,7 +351,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   }
 
   Future<void> getThreshold(String? type, String? name) async {
-    String url = "$BASE_URL/api/threshold?""type=$type&"+"name=$name";
+    String url = "$BASE_URL/api/threshold?""type=$type&""name=$name";
     final response = await http.get(
       Uri.parse(url),
       headers: {'Authorization': 'Token ${widget.token}'},

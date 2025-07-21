@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:brownskin_app/model/polygon_data.dart';
 
@@ -20,8 +19,8 @@ void main() {
           .map((p) => p.polygonId.value.split('-').first)
           .toSet();
 
-      debugPrint('로드된 시도 개수: ${uniqueProvinceNames.length}');
-      debugPrint('시도 이름 목록: $uniqueProvinceNames');
+      print('로드된 시도 개수: ${uniqueProvinceNames.length}');
+      print('시도 이름 목록: $uniqueProvinceNames');
 
       expect(uniqueProvinceNames.length, 17, reason: '시도 개수가 17개인지 확인');
     });

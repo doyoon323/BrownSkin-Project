@@ -16,7 +16,7 @@ class AdminData {
     try {
       final response = await http.get(
         Uri.parse(url),
-        headers: {'Authorization': 'Token ${token}'},
+        headers: {'Authorization': 'Token $token'},
       );
 
       if (response.statusCode == 200) {
@@ -42,7 +42,7 @@ class AdminData {
     try {
       final response = await http.get(
         Uri.parse(url),
-        headers: {'Authorization': 'Token ${token}'},
+        headers: {'Authorization': 'Token $token'},
       );
       if (response.statusCode == 200) {
         final body = jsonDecode(utf8.decode(response.bodyBytes));
@@ -74,7 +74,7 @@ class AdminData {
     try {
       final response = await http.get(
         url,
-        headers: {'Authorization': 'Token ${token}'},
+        headers: {'Authorization': 'Token $token'},
       );
       if (response.statusCode == 200) {
         final body = jsonDecode(utf8.decode(response.bodyBytes));
@@ -100,7 +100,7 @@ class AdminData {
 
     final response = await http.get(
       Uri.parse(url),
-      headers: {'Authorization': 'Token ${token}'},
+      headers: {'Authorization': 'Token $token'},
     );
 
     if (response.statusCode == 200) {

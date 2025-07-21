@@ -42,7 +42,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     _timer = Timer.periodic(
         Duration(minutes: 15),
             (timer) {
-              if (!userByproduct.isEmpty) {
+              if (userByproduct.isNotEmpty) {
                 fetchUserByProduct();
                 updateData(userByproduct);
               }
@@ -250,7 +250,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
         try {
           tempList.add(transformItem(type, item, defaultThreshold));
         } catch (e) {
-          print("${type}_${item['name']} 파싱 실패: $e");
+          debugPrint("${type}_${item['name']} 파싱 실패: $e");
         }
       }
     }
@@ -367,7 +367,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   Map<String, DateTime> last_fetch_history = {};
 
   Future<List<Map<String, dynamic>>> getHistoryData(String type, String name) async {
-    var url = BASE_URL + "/api/dispose-history?type=$type&name=$name";
+    var url = "$BASE_URL/api/dispose-history?type=$type&name=$name";
 
     DateTime now = DateTime.now();
     String key = "$type $name";
@@ -375,15 +375,15 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     String fetchFrom;
     if (last_fetch_history.containsKey(key)) {
       fetchFrom = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(last_fetch_history[key]!);
-      print("🟡 Using last_fetch for $key: $fetchFrom");
+      debugPrint("🟡 Using last_fetch for $key: $fetchFrom");
     } else {
       DateTime thirtyDaysAgo = now.subtract(Duration(days: 30));
       fetchFrom = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(thirtyDaysAgo);
-      print("🟡 No last_fetch for $key, using 30 days ago: $fetchFrom");
+      debugPrint("🟡 No last_fetch for $key, using 30 days ago: $fetchFrom");
     }
 
     url += "&fetch_from=$fetchFrom";
-    print("🔗 Request URL: $url");
+    debugPrint("🔗 Request URL: $url");
     final uri = Uri.parse(url);
 
     final headers = {
