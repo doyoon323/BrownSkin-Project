@@ -5,6 +5,7 @@
 
 const String BASE_URL = 'http://brownskin.duckdns.org:8000'; //클라우드 서버(ec2)
 
+const String weight_uints = "kt";
 
 final byproductsCategory = [
   // 전체 품목
