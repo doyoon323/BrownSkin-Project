@@ -268,9 +268,9 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
                 width: double.infinity,
                 child: ActionButtonGroup(
                   buttons: [
-                    ActionButtonData(
+                    ActionButtonData( //팝업 띄우기
                       label: '수거 요청 보내기',
-                      onPressed: sendDeliveryRequest,
+                      onPressed: showConfirmDialog,
                       backgroundColor: AppColors.primaryBrown, 
                     ),
                   ],
@@ -334,6 +334,59 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     );
   }
 
+  //무게 전송 전 확인팝업
+void showConfirmDialog() {
+  final weightText = weightController.text.trim();
+  final productName = selectedByproduct?["name"] ?? '';
+  final typeLabel = selectedType ?? '';
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.all(20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: const TextStyle(fontSize: 16, color: Colors.black),
+                children: [
+                  const TextSpan(text: '[ ', style: TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: typeLabel, style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold)),
+                  const TextSpan(text: ' ] '),
+                  TextSpan(text: productName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: ' ${weightText}kg', style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold)),
+                  const TextSpan(text: '\n배송사에 수거 요청해요'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('취소'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    sendDeliveryRequest();
+                  },
+                  child: const Text('수거요청'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
   //수거 요청 전송 함수
   Future<void> sendDeliveryRequest() async {
     final messenger = ScaffoldMessenger.of(context);
@@ -392,3 +445,4 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     }
   }
 }
+
