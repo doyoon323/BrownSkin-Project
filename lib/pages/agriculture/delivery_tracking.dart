@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'dart:ui' as ui;
 import 'package:geolocator/geolocator.dart';
+import 'package:brownskin_app/common/themes.dart';
 
 class DeliveryTrackingPage extends StatefulWidget {
   final String token;
@@ -120,7 +121,17 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        DeliveryInfo tempDeliveryInfo = await DeliveryInfo.fromJson(data);
+        DeliveryStatus tempStatus = DeliveryStatus.values.firstWhere(
+          (status) => status.name == data['status'],
+          orElse: () => DeliveryStatus.accepted,
+        );
+
+        // 배송 상태가 accepted에서 transit으로 변경되면 transit_date 받기
+        if (tempStatus == DeliveryStatus.transit && _currentStatus != DeliveryStatus.transit) {
+          debugPrint("🚚 배송 상태가 accepted에서 transit으로 변경되었습니다. transit_date를 업데이트합니다.");
+          _deliveryInfo!.transitDate = data['transit_date'];
+        }
+
         // locations를 timestamp 순으로 정렬
         List<LatLng> sortedLocations = sortLocationsByTimestamp(data['locations']);
 
@@ -130,10 +141,6 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             _sortedLocations += sortedLocations;
             _deliveryInfo!.transporterLocation = sortedLocations.last;
 
-            // 마커와 폴리라인 업데이트
-            _updateMarkers();
-            _updatePolylines();
-
             // 지도 카메라 이동
             _mapController?.animateCamera(
               CameraUpdate.newLatLng(_deliveryInfo!.transporterLocation),
@@ -141,13 +148,33 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
           }
 
           // 상태는 항상 업데이트 (새 위치가 없어도 상태 변경 가능)
-          _currentStatus = tempDeliveryInfo.status;
+          _currentStatus = tempStatus;
+
+          // 마커와 폴리라인 업데이트
+          _updateMarkers();
+          _updatePolylines();
           _isLoading = false;
         });
         debugPrint("_sortedLocations 업데이트: ${_sortedLocations.length}개의 위치");
       } else if (response.statusCode == 404) {
         // 배송이 없거나 완료됨
         debugPrint("🚫 update: 배송 정보가 없거나 완료되었습니다. 상태를 완료로 변경합니다.");
+        url = "$BASE_URL/api/track-delivery-complete?delivery_id=${widget.deliveryId}";
+        try {
+          final response = await http.get(
+            Uri.parse(url),
+            headers: {'Authorization': 'Token ${widget.token}'},
+          );
+          if (response.statusCode == 200) {
+            debugPrint("✅ 배송 완료 상태 업데이트 성공");
+            _deliveryInfo?.completeDate = json.decode(response.body)['complete_date'] ?? 'N/A';
+          } else {
+            debugPrint("❌ 배송 완료 상태 업데이트 실패: ${response.statusCode}");
+          }
+        } catch (e) {
+          debugPrint('배송 완료 상태 업데이트 실패: $e');
+        }
+
         setState(() {
           _currentStatus = DeliveryStatus.completed;
           _isLoading = false;
@@ -263,8 +290,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('실시간 추적 - 배송 번호 #${widget.deliveryId}'),
-        backgroundColor: Colors.blue[600],
+        title: Text(
+          '실시간 추적 - 배송 번호 #${widget.deliveryId}',
+          style: AppTextStyles.homeTitle,
+        ),
+        backgroundColor: AppColors.primaryBrown,
         foregroundColor: Colors.white,
       ),
       body: _isLoading
@@ -347,13 +377,14 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: AppColors.darkBrown,
                         ),
                       ),
                       Text(
                         _currentStatus.description,
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: AppColors.lightBrown,
                         ),
                       ),
                     ],
@@ -406,6 +437,28 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         final isCompleted = status.index <= _currentStatus.index;
         final isCurrent = status == _currentStatus;
         
+        // 각 상태별 날짜 가져오기
+        String? statusDate;
+        switch (status) {
+          case DeliveryStatus.accepted:
+            statusDate = "수거 요청일: ${_deliveryInfo!.reqDate}";
+            break;
+          case DeliveryStatus.transit:
+            if (_deliveryInfo?.transitDate != 'N/A') {
+              statusDate = "수거일: ${_deliveryInfo!.transitDate}";
+            } else {
+              statusDate = null;
+            }
+            break;
+          case DeliveryStatus.completed:
+            if (_deliveryInfo?.completeDate != 'N/A') {
+              statusDate = "완료일: ${_deliveryInfo!.completeDate}";
+            } else {
+              statusDate = null;
+            }
+            break;
+        }
+
         return Row(
           children: [
             Container(
@@ -424,12 +477,26 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  status.displayName,
-                  style: TextStyle(
-                    fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                    color: isCompleted ? Colors.black : Colors.grey[600],
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      status.displayName,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                        color: isCompleted ? AppColors.darkBrown : AppColors.lightBrown,
+                      ),
+                    ),
+                    if (statusDate != null)
+                      Text(
+                        statusDate,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.lightBrown,
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -445,7 +512,15 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         const Divider(),
         _buildInfoRow('타입/이름', "${_deliveryInfo!.byprodType} / ${_deliveryInfo!.byprodName}"),
         _buildInfoRow('무게', "${_deliveryInfo!.byprodWeight} kg"),
+        /* 밑은 이제 _buildStatusTimeline에서 표시하므로 불필요
         _buildInfoRow('요청 날짜', _deliveryInfo!.reqDate),
+        ?_currentStatus != DeliveryStatus.accepted
+          ? _buildInfoRow('수거 날짜', _deliveryInfo!.transitDate)
+          : null,
+        ?_currentStatus == DeliveryStatus.completed
+          ? _buildInfoRow('완료 날짜', _deliveryInfo!.completeDate)
+          : null,
+        */
         _buildInfoRow('수거지', _deliveryInfo!.disposerAddress),
         _buildInfoRow('배송지', _deliveryInfo!.preprocessorAddress),
         _buildInfoRow('배송 업체', _deliveryInfo!.transporterName),
@@ -512,11 +587,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
 
 // 배송 상태 enum
 enum DeliveryStatus {
-  accepted('수락됨', '배송 요청이 수락되었습니다', Colors.orange),
+  accepted('수락됨', '배송 요청이 수락되었습니다', Colors.teal),
   //pickupInProgress('수거 이동 중', '수거지로 이동 중입니다', Colors.purple),
-  transit('전처리사 이동 중', '전처리사로 이동 중입니다', Colors.blue),
+  transit('전처리사 이동 중', '전처리사로 이동 중입니다', Colors.orange),
   //outForDelivery('배송 중', '최종 배송지로 이동 중입니다', Colors.teal),
-  completed('배송 완료', '배송이 완료되었습니다', Colors.green);
+  completed('배송 완료', '배송이 완료되었습니다', Colors.blue);
 
   const DeliveryStatus(this.displayName, this.description, this.color);
   
@@ -572,6 +647,8 @@ class DeliveryInfo {
   final String byprodName;
   final double byprodWeight;
   final String reqDate;
+  String transitDate;
+  String completeDate;
   DeliveryStatus status;
 
   DeliveryInfo({
@@ -586,6 +663,8 @@ class DeliveryInfo {
     required this.byprodName,
     required this.byprodWeight,
     required this.reqDate,
+    required this.transitDate,
+    required this.completeDate,
     required this.status,
   });
 
@@ -603,6 +682,8 @@ class DeliveryInfo {
       byprodName: json['name'],
       byprodWeight: json['weight_float'].toDouble(),
       reqDate: json['req_date'],
+      transitDate: json['transit_date'] ?? 'N/A', // transit_date가 없을 경우 'N/A'로 설정
+      completeDate: json['complete_date'] ?? 'N/A', // complete_date가 없을 경우 'N/A'로 설정
       status: DeliveryStatus.values.firstWhere(
         (status) => status.name == json['status'],
         orElse: () => DeliveryStatus.accepted,
@@ -730,3 +811,4 @@ Future<BitmapDescriptor> createCustomMarkerBitmap({
 
   return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
 }
+

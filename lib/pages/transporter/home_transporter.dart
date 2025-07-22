@@ -24,6 +24,8 @@ class _TransporterHomePageState extends State<TransporterHomePage> with SingleTi
   final String role = 'transporter';
   late TabController _tabController;
   final List<String> tabTitles = ['수거 요청', '수거 대기', '배송중', '완료/거절'];
+  // 위치 정보 주기적으로 업데이트하는 타이머
+  Timer? _locationUpdateTimer;
 
   //데이터 초기 호출_앱 실행 시점
 
@@ -46,7 +48,7 @@ void initState() {
   fetchCompletedDeliveries();
 
   // 위치정보 주기적으로 전송
-  Timer.periodic(const Duration(minutes: 3), (timer) {
+  _locationUpdateTimer = Timer.periodic(const Duration(minutes: 3), (timer) {
     _postLocation();
   });
 }
@@ -54,6 +56,7 @@ void initState() {
 @override
 void dispose() {
   _tabController.dispose();
+  _locationUpdateTimer?.cancel(); // 위치 업데이트 타이머 해제
   super.dispose();
 }
 
