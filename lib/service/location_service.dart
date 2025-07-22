@@ -10,8 +10,6 @@ import '../pages/admin/global.dart';
 final Map<String, Map<String, LatLng>> _latLngCache = {};
 
 Future<void> preloadAllDistrictLatLng({int batchSize = 10}) async {
-  print("🌱 District 좌표 Preload 시작");
-  final sw = Stopwatch()..start();
   final tasks = <Future>[];
 
   for (final entry in allAreas.entries) {
@@ -19,7 +17,7 @@ Future<void> preloadAllDistrictLatLng({int batchSize = 10}) async {
     for (final district in entry.value) {
       tasks.add(getLatLngFromAddress(province, district));
 
-      // 일정 갯수마다 대기
+      // 일정 개수마다 대기
       if (tasks.length >= batchSize) {
         await Future.wait(tasks);
         tasks.clear();
@@ -27,16 +25,12 @@ Future<void> preloadAllDistrictLatLng({int batchSize = 10}) async {
     }
   }
   // 남은 작업 처리
-  if (tasks.isNotEmpty) {
-    await Future.wait(tasks);
-  }
-  sw.stop();
-  print("🎉 District 좌표 Preload 총 소요 시간: ${sw.elapsedMilliseconds} ms");
+  if (tasks.isNotEmpty) await Future.wait(tasks);
 }
 
 
 
-Future<LatLng> getLatLngFromAddress(String addr1, String addr2) async {
+Future<LatLng?> getLatLngFromAddress(String addr1, String addr2) async {
   // 1. 캐시 확인
   if (_latLngCache[addr1]?.containsKey(addr2) == true) {
     return _latLngCache[addr1]![addr2]!;
@@ -60,7 +54,7 @@ Future<LatLng> getLatLngFromAddress(String addr1, String addr2) async {
     final body = jsonDecode(utf8.decode(response.bodyBytes));
     if (body['documents'].isEmpty) {
       print("⚠️ 주소 결과 없음: $query");
-      return LatLng(0, 0);
+      return null;
     }
 
     final doc = body['documents'][0];

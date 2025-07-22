@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:brownskin_app/common/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/common/constants.dart';
 import 'package:http/http.dart' as http;
@@ -19,6 +20,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   final TextEditingController _targetGoalController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
+  String get token => widget.token;
 
   // page2 용 변수
   String? selectedType;
@@ -41,35 +43,15 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   @override
   void initState() {
     super.initState();
-    debugPrint("✅ initState() 호출됨 $allAreas");
-
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _successAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-
-    _slideAnimation = Tween<double>(begin: 30.0, end: 0.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
-    );
-
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _successAnimationController, curve: Curves.elasticOut),
-    );
+    _animationController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this,);
+    _successAnimationController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this,);
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),);
+    _slideAnimation = Tween<double>(begin: 30.0, end: 0.0).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),);
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(CurvedAnimation(parent: _successAnimationController, curve: Curves.elasticOut),);
 
     _animationController.forward();
 
-    _currentWeightController.addListener(() {
-      setState(() {});
-    });
+    _currentWeightController.addListener(() {setState(() {});});
   }
 
   @override
@@ -84,15 +66,9 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   Future<bool> setThreshold(String? weight) async {
     if (weight == null || weight.isEmpty) return false;
 
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
-
     try {
-      String url = "$BASE_URL/api/threshold";
       final request = await http.post(
-        Uri.parse(url),
+        Uri.parse("$BASE_URL/api/threshold"),
         headers: {'Authorization': 'Token ${widget.token}'},
         body: {
           'type': selectedType,
@@ -100,41 +76,52 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
           'weight': weight
         },
       );
-
-      if (request.statusCode == 200) {
-        await getThreshold(selectedType,selectedByproductName);
-        setState(() {
-          isLoading = false;
-          isSuccess = true;
-        });
-        _successAnimationController.forward();
-        return true;
-      } else {
-        setState(() {
-          isLoading = false;
-          errorMessage = '임계값 설정에 실패했습니다.';
-        });
+      if (request.statusCode != 200) {
+        errorMessage = '임계값 설정에 실패했습니다.';
         return false;
       }
+      await getThreshold(selectedType,selectedByproductName);
+      isSuccess = true;
+      _successAnimationController.forward();
+      return true;
     } catch (e) {
-      setState(() {
-        isLoading = false;
-        errorMessage = '네트워크 오류가 발생했습니다.';
-      });
-      return false;
+      errorMessage = '네트워크 오류가 발생했습니다.';
     }
+    return false;
   }
+
+
+  Future<void> getThreshold(String? type, String? name) async {
+    final raw = await ApiService.fetchMap(url: "$BASE_URL/api/threshold?"+"type=$type&"+"name=$name", token: token);
+    if (raw["weight_float"] != null)  currentThreshold = raw["weight_float"].toString();
+    else  currentThreshold = null;
+  }
+
 
   void _onItemTapped(BuildContext context, int index) {
-    setState(() {
-      selectedIndex = index;
-    });
-
-    if (index == 0) {
-      Navigator.pop(context, 0);
-    }
+    setState(() {selectedIndex = index;});
+    if (index == 0) Navigator.pop(context, 0);
   }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /* UI 구현 */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -350,21 +337,6 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
     );
   }
 
-  Future<void> getThreshold(String? type, String? name) async {
-    String url = "$BASE_URL/api/threshold?""type=$type&""name=$name";
-    final response = await http.get(
-      Uri.parse(url),
-      headers: {'Authorization': 'Token ${widget.token}'},
-    );
-     final raw = json.decode(response.body)["weight_float"];
-
-     if (raw != null){
-       currentThreshold = raw.toString();
-     }
-     else{
-       currentThreshold = null;
-     }
-  }
 
   Widget _buildEnhancedDropdown({
     required String label,
@@ -448,7 +420,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981) ,
+                  color: const Color(0xFF10B981).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -474,10 +446,10 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981) ,
+                color: const Color(0xFF10B981).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFF10B981) ,
+                  color: const Color(0xFF10B981).withOpacity(0.3),
                 ),
               ),
               child: Row(
@@ -580,10 +552,10 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color:  Colors.green ,
+                color:  Colors.green.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color:  Colors.green ,
+                  color:  Colors.green.withOpacity(0.3),
                 ),
               ),
               child: Row(
@@ -617,10 +589,6 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
     bool canSubmit = selectedType != null &&
         selectedByproductName != null &&
         _currentWeightController.text.isNotEmpty;
-
-    debugPrint('selectedType: $selectedType');
-    debugPrint('selectedByproductName: $selectedByproductName');
-    debugPrint('_currentWeightController.text: ${_currentWeightController.text}');
     return Container(
       width: double.infinity,
       height: 56,
@@ -752,7 +720,10 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   void _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
       String weightValue = _currentWeightController.text;
+
+      setState(() { isLoading = true; });
       bool result = await setThreshold(weightValue);
+      setState(() {isLoading = false;});
 
       if (result) {
         ScaffoldMessenger.of(context).showSnackBar(

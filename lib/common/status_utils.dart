@@ -1,3 +1,6 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+
 /// 역할별 상태 → 한글 라벨 변환
 String getStatusLabelForRole(String role, String status) {
   const common = {
@@ -39,3 +42,61 @@ String getDateLabelForRole(String role, String status) {
   }
   return '날짜';
 }
+
+
+/* 농가 */
+IconData getStatusIcon(String status) {
+  switch (status) {
+    case "추가": return Icons.add;
+    case "수거": return Icons.local_shipping;
+    case "폐기": return Icons.delete;
+    default: return Icons.help_outline;
+  }
+}
+
+Color getStatusColor(String status) {
+  switch (status) {
+    case "추가": return Colors.green;
+    case "폐기": return Colors.red;
+    case "수거": return Colors.blue;
+    default: return Colors.grey;
+  }
+}
+
+
+/// 진행률에 따른 색상 및 상태 관리
+Color getProgressColor(double percent) {
+  if (percent >= 0.9) return Colors.red.shade600;
+  if (percent >= 0.7) return Colors.orange.shade600;
+  if (percent >= 0.5) return Colors.yellow.shade700;
+  return Colors.green.shade600;
+}
+
+Color getBackgroundColor(double percent) {
+  if (percent >= 0.9) return Colors.red.shade50;
+  if (percent >= 0.7) return Colors.orange.shade50;
+  if (percent >= 0.5) return Colors.yellow.shade50;
+  return Colors.green.shade50;
+}
+
+IconData getStatusIcon_Progress(double percent) {
+  if (percent >= 0.9) return Icons.warning_rounded;
+  if (percent >= 0.7) return Icons.trending_up_rounded;
+  if (percent >= 0.5) return Icons.info_outline_rounded;
+  return Icons.check_circle_outline_rounded;
+}
+
+String getStatusText(double percent) {
+  if (percent >= 0.9) return "위험";
+  if (percent >= 0.7) return "주의";
+  if (percent >= 0.5) return "보통";
+  return "안전";
+}
+
+int getStatusPriority(double percent) {
+  if (percent >= 0.9) return 4;
+  if (percent >= 0.7) return 3;
+  if (percent >= 0.5) return 2;
+  return 1;
+}
+

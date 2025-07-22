@@ -1,7 +1,6 @@
 import 'package:brownskin_app/model/polygon_data.dart';
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/common/constants.dart';
-import 'dart:ui' as ui;
 
 import 'dart:async';
 import 'package:brownskin_app/pages/admin/setThreshold_admin.dart';
@@ -24,14 +23,11 @@ class AdminHomePage extends StatefulWidget {
 
 class _AdminHomePageState extends State<AdminHomePage>
     with TickerProviderStateMixin {
-/// refactoring ver 2.0   - 1. 줌인할 때 범위에 해당하는 마커만 먼저 그리기 2. 5분분마다 자동으로 화면 갱신하기
-
-  ///refactoring ver 3.0(예정) : 업체가 줄어들어 마커가 삭제되어야하는 케이스
+  ///refactoring ver 3.0(예정) : 업체가 줄어들어 마커가 삭제되어야하는 케이스, 5분마다 데이터 자동 갱신 (or 새로고침 버튼 도입?)
 
   // dropdown 저장용 변수
   String selectedType = "수확"; // default = 수확
   String? selectedByproductName = "사과"; // default = 사과
-
 
 
   //UI 구성
@@ -49,8 +45,8 @@ class _AdminHomePageState extends State<AdminHomePage>
   GoogleMapController? _controller;
   final LatLng _center = const LatLng(36.5,127.8); //지도를 켰을 때 중심 좌표
 
-  final polygonService = PolygonService(); // 지역별 경계선
-  late final adminData = AdminData(token: widget.token);
+  late final polygonService; // 지역별 경계선
+  late final adminData;
   late final markerHelper;
 
 
@@ -61,40 +57,27 @@ class _AdminHomePageState extends State<AdminHomePage>
 //마커 절반 먼저 그리고 ,
   late final Future<void> Function(LatLng) _onProvinceMarkerTap = (LatLng latLng) async {
     const targetZoom = 10.0;
-    await _controller?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: latLng, zoom: targetZoom),
-      ),
-    );
+    await _controller?.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: latLng, zoom: targetZoom)));
   };
 
   late final Future<void> Function(LatLng) _onDistrictMarkerTap = (LatLng latLng) async {
     const targetZoom = 12.0;
-    await _controller?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: latLng, zoom: targetZoom),
-      ),
-    );
+    await _controller?.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: latLng, zoom: targetZoom)));
   };
 
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _chartAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
+    _animationController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this,);
+    _chartAnimationController = AnimationController(duration: const Duration(milliseconds: 1200), vsync: this,);
+
+    markerHelper = AdminMarker(token: widget.token);
+    adminData= AdminData(token: widget.token);
+    polygonService = PolygonService();
 
     initData();
-
-    polygonService.createPolygonsFromConsts().then((_){
-      setState(() {});
-    });
+    polygonService.createPolygonsFromConsts().then((_){setState(() {});});
   }
 
   @override
@@ -106,47 +89,17 @@ class _AdminHomePageState extends State<AdminHomePage>
 
   /// AllAreas, Province마커 생성을 완료하고, district preload를 해둔다
   Future<void> initData() async {
-    final totalStopwatch = Stopwatch()..start();
-    //print('⚡ initData 시작');
-
-    // 1. 지역 데이터 로드
-    final sw1 = Stopwatch()..start();
-
-    //DB에서 시도 목록을 받아온다.
     allAreas = await adminData.updateRegionData();
-    sw1.stop();
-    //print('✅ updateRegionData 완료: ${sw1.elapsedMilliseconds} ms');
-
-
-    // 2. 임계값 로드
-    final sw2 = Stopwatch()..start();
     threshold = await adminData.getThreshold(selectedType, selectedByproductName);
-    sw2.stop();
-    //print('✅ getThreshold 완료: ${sw2.elapsedMilliseconds} ms');
 
-    // 3. Marker Helper 생성
-    markerHelper = AdminMarker(token: widget.token);
-
-    // 4. 도별 마커 생성
-    final sw3 = Stopwatch()..start();
-
-    final provinceWeightData = await adminData.getWeightData(
-      selectedType,
-      selectedByproductName,
-      null,
-      null,
-    );
-
-    total_weight = adminData.lastTotalWeight; //초기 총량
-
+    final provinceWeightData = await adminData.getWeightData(selectedType, selectedByproductName, null, null);
+    total_weight = adminData.lastTotalWeight;
     _provinceMarkers = await markerHelper.generateProvinceMarkers(
       provinceWeights: provinceWeightData,
       threshold: threshold!,
       onTap: _onProvinceMarkerTap,
     );
 
-    sw3.stop();
-    //print('✅ generateProvinceMarkers 완료: ${sw3.elapsedMilliseconds} ms');
 
     // 6. UI 표시
     setState(() {
@@ -155,35 +108,26 @@ class _AdminHomePageState extends State<AdminHomePage>
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // 5. 구별 좌표 preload 비동기로 시작
       preloadAllDistrictLatLng().then((_) async {
-        final stream = markerHelper.updateDistrictMarkers(
+        final stream = markerHelper.graduallyDistrictMarkers(
           selectedType: selectedType,
           selectedByproductName: selectedByproductName,
           threshold: threshold!,
-          existingMarkers: _districtMarkers,
           onTap: _onDistrictMarkerTap,
           adminData: adminData,
         );
 
         await for (final marker in stream) {
-          _districtMarkers.removeWhere((m) => m.markerId == marker.markerId);
           _districtMarkers.add(marker);
         }
       });
     });
-
-    totalStopwatch.stop();
-    //print('🎉 initData 총 소요 시간: ${totalStopwatch.elapsedMilliseconds} ms');
   }
 
 
 
   Future<void> lazyLoadDistrictMarker(double zoom) async {
-    ////print("[LazyLoad] lazyLoadDistrictMarker() started with zoom=$zoom");
-    if (zoom <= 7) return; //province 마커를 보이는 경우
-
-    final totalSw = Stopwatch()..start();
+    if (zoom <= 7) return;
 
     final bounds = await _controller!.getVisibleRegion();
     final visibleDistricts = <MapEntry<String, String>>[];
@@ -191,30 +135,21 @@ class _AdminHomePageState extends State<AdminHomePage>
     for (final entry in allAreas.entries) {
       final province = entry.key;
       for (final district in entry.value) {
-        final LatLng pos = await getLatLngFromAddress(province, district); /// 개선점 - 중복 api 호출 해결
+        final LatLng? pos = await getLatLngFromAddress(province, district); /// 개선점 - 중복 api 호출 해결
+        if (pos == null) continue;
 
-        if (_latLngInBounds(pos, bounds)) {
+        if (_latLngInBounds(pos, bounds))
           visibleDistricts.add(MapEntry(province, district));
-        }
       }
     }
 
-
-    if (visibleDistricts.isEmpty) {
-      ////print("[LazyLoad] No visible districts to load.");
-    }
+    if (visibleDistricts.isEmpty) return;
 
     // 3. weight data province별로 미리 조회
     final Map<String, Map<String, dynamic>> provinceWeightDataMap = {};
 
     for (final province in visibleDistricts.map((e) => e.key).toSet()) {
-      var data = await adminData.getWeightData( //갱신된 데이터
-        selectedType,
-        selectedByproductName,
-        province,
-        null,
-      );
-      //print("😍 getWeight of $province: $data");
+      var data = await adminData.getWeightData( selectedType, selectedByproductName, province, null,);
       provinceWeightDataMap[province] = data;
     }
 
@@ -222,7 +157,6 @@ class _AdminHomePageState extends State<AdminHomePage>
     for (final entry in visibleDistricts) {
       final province = entry.key;
       final district = entry.value;
-
 
       final Set<Marker> markers = await markerHelper.generateSpecificDistrictMarkers(
         province: province,
@@ -232,14 +166,12 @@ class _AdminHomePageState extends State<AdminHomePage>
         onTap: _onDistrictMarkerTap,
       );
 
-      if (markers.isNotEmpty) {
-        _districtMarkers.addAll(markers);
+      if (markers.isEmpty)  continue;
+      for (final newMarker in markers) {
+        _districtMarkers.removeWhere((m) => m.markerId == newMarker.markerId);
+        _districtMarkers.add(newMarker);
       }
     }
-    totalSw.stop();
-    //print('🎉 lazyLoadDistrictMarker 완료 (${totalSw.elapsedMilliseconds} ms)');
-    ////print("[Debug] Province markers=${_provinceMarkers.length}, District markers=${_districtMarkers.length}");
-
   }
 
   bool _latLngInBounds(LatLng point, LatLngBounds bounds) {
@@ -258,16 +190,8 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
   Future<void> reloadProvinceMarkers() async {
-    ////print("[Reload] reloadProvinceMarkers() started");
-
-    final sw = Stopwatch()..start();
-
     // weight 데이터 로드
-    final provinceWeightData = await adminData.getWeightData(
-      selectedType,
-      selectedByproductName,
-      null,
-      null,
+    final provinceWeightData = await adminData.getWeightData(selectedType, selectedByproductName, null, null,
     );
 
     // 2. 시도 마커 새로 생성
@@ -280,26 +204,13 @@ class _AdminHomePageState extends State<AdminHomePage>
     // 3. 교체
     _provinceMarkers = markers;
     total_weight = adminData.lastTotalWeight;
-    ////print("[Debug] Province markers=${_provinceMarkers.length}, District markers=${_districtMarkers.length}");
-    ////print("[Reload] reloadProvinceMarkers() completed. Province markers count=${_provinceMarkers.length}");
-
-    sw.stop();
   }
 
 
   Future<void> reloadDistrictMarkers() async {
-    ////print("[Reload] reloadDistrictMarkers() started");
-    final sw = Stopwatch()..start();
-
-    //화면에 보이는 것 우선 반영
     final zoom = await _controller?.getZoomLevel() ?? 7.0;
     await lazyLoadDistrictMarker(zoom); // 필요 시 lazy load
-    ////print("[Reload] lazyLoadDistrictMarker() completed");
 
-    ////print("[Debug] Province markers=${_provinceMarkers.length}, District markers=${_districtMarkers.length}");
-
-    /*
-    //남은 district all 로드하되, 필요한 것 중 이미 생성한 건  안 그려도 된다.
     unawaited(Future(() async {
       final stream = markerHelper.updateDistrictMarkers(
         selectedType: selectedType,
@@ -311,75 +222,29 @@ class _AdminHomePageState extends State<AdminHomePage>
       );
 
       await for (final marker in stream) {
-        // 새 마커만 district에 추가
         _districtMarkers.removeWhere((m) => m.markerId == marker.markerId);
         _districtMarkers.add(marker);
-        ////print("[Reload] Added/Updated marker ${marker.markerId.value}");
-
       }
-
-      setState(() {
-        currentMarkers = (zoom <= 7)
-            ? _provinceMarkers
-            : _districtMarkers;
-      });
-      ////print("[Reload] reloadDistrictMarkers() completed. District markers count=${_districtMarkers.length}");
     }));
-
-     */
-
-    sw.stop();
-    //print('✅ reloadDistrictMarkers 완료 (${sw.elapsedMilliseconds} ms)');
   }
 
 
   Future<void> reloadMarkers() async {
     final zoom = await _controller?.getZoomLevel() ?? 7.0;
-    ////print("[Reload] Start reloadMarkers() zoom=$zoom");
-
-
-    setState(() {
-      isLoading = true;
-    });
+    setState(() { isLoading = true;});
 
     if (zoom <= 7) {
       await reloadProvinceMarkers();
-
-      setState(() {
-        _drawZoomMarker(zoom);
-        isLoading = false;
-      });
-
-      /*
-      //백그라운드
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // 5. 구별 좌표 preload 비동기로 시작
-      preloadAllDistrictLatLng().then((_) async {
-        final stream = markerHelper.updateDistrictMarkers(
-          selectedType: selectedType,
-          selectedByproductName: selectedByproductName,
-          threshold: threshold!,
-          existingMarkers: _districtMarkers,
-          onTap: _onDistrictMarkerTap,
-          adminData: adminData,
-        );
-
-        await for (final marker in stream) {
-          _districtMarkers.removeWhere((m) => m.markerId == marker.markerId);
-          _districtMarkers.add(marker);
-        }
-      });
-    });
-       */
+      reloadDistrictMarkers(); //race condition 고려해야함
     } else {
       await reloadDistrictMarkers();
-      await reloadProvinceMarkers();
-
-      setState(() {
-        _drawZoomMarker(zoom);
-        isLoading = false;
-      });
+      reloadProvinceMarkers(); //race condition 고려해야함
     }
+
+    setState(() {
+      isLoading = false;
+      _drawZoomMarker(zoom);
+    });
   }
 
 
@@ -387,28 +252,16 @@ class _AdminHomePageState extends State<AdminHomePage>
       setState(() {
         selectedIndex = index;
       });
-      // 홈
-      if (index == 0) {
-        return;
-      }
-      // 임계 설정
-      else if (index == 1) {
-        final result = await Navigator.push<int>(
-          context,
-          MaterialPageRoute(
-              builder: (context) => SetThresholdAdminPage(token: widget.token)
-          ),
-        );
-        // 복귀했울 때 result 없으면 홈으로
-        if (result == null) {
-          setState(() {
-            selectedIndex = 0;
-          });
+
+      if (index == 0) return; // 홈
+      else if (index == 1) {// 임계 설정
+        final result = await Navigator.push<int>(context, MaterialPageRoute(builder: (context) => SetThresholdAdminPage(token: widget.token)));
+
+        if (result == null) {// 복귀했을 때 result 없으면 홈으로
+          setState(() {selectedIndex = 0;});
           return;
         }
-        setState(() {
-          selectedIndex = result;
-        });
+        setState(() {selectedIndex = result;});
         threshold = await adminData.getThreshold(selectedType, selectedByproductName);
         await reloadMarkers();
       }
@@ -417,14 +270,10 @@ class _AdminHomePageState extends State<AdminHomePage>
 
 
   void _drawZoomMarker(double zoom) {
-    //////print("[Zoom] _drawZoomMarker() currentZoom=$zoom _lastZoomLevel=$_lastZoomLevel");
       setState(() {
         currentMarkers = zoom <= 7 ? _provinceMarkers : _districtMarkers;
-        //////print("[Zoom] Switched currentMarkers to ${zoom <= 7 ? "province" : "district"} markers");
       });
   }
-
-
 
 
 
@@ -454,10 +303,6 @@ class _AdminHomePageState extends State<AdminHomePage>
       zoomControlsEnabled: true,
     );
   }
-
-
-
-
 
 
 
