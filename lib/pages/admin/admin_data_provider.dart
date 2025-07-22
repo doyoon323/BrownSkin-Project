@@ -1,5 +1,6 @@
 import 'package:brownskin_app/common/api_service.dart';
 import 'package:brownskin_app/common/constants.dart';
+import 'package:brownskin_app/pages/admin/global.dart';
 
 
 class AdminData {
@@ -9,24 +10,17 @@ class AdminData {
   AdminData({required this.token});
 
 
-  /// 실제 업체가 존재하는 시도 데이터 동적 로드
-  Future<Map<String, List<String>>> fetchProvinceData() async {
-    final body = await ApiService.fetchMap(url:  "$BASE_URL/api/addr-list", token: token);
-    final List<dynamic> result = body['addr1_list'];
-
-    return {for (final province in result) province.toString(): []};
-  }
-
-
   /// 실제 업체가 존재하는 구 데이터 동적 로드
   Future<List<String>> fetchDistrictData(String province) async {
-    final body = await ApiService.fetchMap(url:  "$BASE_URL/api/addr-list?addr1=$province", token: token);
+    final body = await ApiService.fetchMap(
+        url: "$BASE_URL/api/addr-list?addr1=$province", token: token);
     final List<dynamic> result = body['addr2_list'];
     return result.map((e) => e.toString()).toList();
   }
 
   /// 해당 지역의 total_weight 반환
-  Future<Map<String, dynamic>> getWeightData(String type, String? byproduct, String? addr1, String? addr2,) async {
+  Future<Map<String, dynamic>> getWeightData(String type, String? byproduct,
+      String? addr1, String? addr2,) async {
     final url = Uri.parse("$BASE_URL/api/sum-byprod").replace(
       queryParameters: {
         "type": type,
@@ -36,8 +30,9 @@ class AdminData {
       },
     );
 
-    final Map<String, dynamic> body = await ApiService.fetchMap(url: url.toString(), token: token);
-    if (addr2 != null)  return body;
+    final Map<String, dynamic> body = await ApiService.fetchMap(
+        url: url.toString(), token: token);
+    if (addr2 != null) return body;
 
     lastTotalWeight = body["total_weight"];
     return body["results"] ?? {};
@@ -46,22 +41,41 @@ class AdminData {
 
   /// 현재 선택된 카테고리의 임계치 반환
   Future<double> getThreshold(String type, String? byproduct) async {
-    final body = await ApiService.fetchMap(url: "$BASE_URL/api/threshold?type=$type&name=$byproduct", token: token);
-    if (body['weight_float'] is num) return (body['weight_float'] as num).toDouble();
-    else return -1;
+    final body = await ApiService.fetchMap(
+        url: "$BASE_URL/api/threshold?type=$type&name=$byproduct",
+        token: token);
+    if (body['weight_float'] is num)
+      return (body['weight_float'] as num).toDouble();
+    else
+      return -1;
   }
 
   /// 갱신한 시도별 구 목록 return
   Future<Map<String, List<String>>> updateRegionData() async {
-    final Map<String, List<String>> updated = await fetchProvinceData();
+    final sw = Stopwatch()
+      ..start();
+    print('[PERF] 🔸 updateRegionData 시작');
 
+    final Map<String, List<String>> updated = allAreas;
     final provinceList = updated.keys.toList();
-    final futures = provinceList.map((province) => fetchDistrictData(province));
-    final results = await Future.wait(futures);
 
-    for (int i = 0; i < provinceList.length; i++)
+    int count = 0;
+    final results = <List<String>>[];
+
+    for (final province in provinceList) {
+      final subSw = Stopwatch()
+        ..start();
+      final districts = await fetchDistrictData(province);
+
+      results.add(districts);
+      count++;
+    }
+
+    for (int i = 0; i < provinceList.length; i++) {
       updated[provinceList[i]] = results[i];
+    }
 
+    print('[PERF] ✅ updateRegionData 완료: 총 ${sw.elapsedMilliseconds}ms (${count}개 지역)');
     return updated;
   }
 }

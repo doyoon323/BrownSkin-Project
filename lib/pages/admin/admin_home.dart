@@ -50,7 +50,7 @@ class _AdminHomePageState extends State<AdminHomePage>
   late final markerHelper;
 
 
-  double? total_weight; //전국 무게량
+  double? total_weight = 0; //전국 무게량
   int selectedIndex = 0;
 
 
@@ -69,15 +69,16 @@ class _AdminHomePageState extends State<AdminHomePage>
   @override
   void initState() {
     super.initState();
+
     _animationController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this,);
+
     _chartAnimationController = AnimationController(duration: const Duration(milliseconds: 1200), vsync: this,);
 
     markerHelper = AdminMarker(token: widget.token);
-    adminData= AdminData(token: widget.token);
+    adminData = AdminData(token: widget.token);
     polygonService = PolygonService();
-
     initData();
-    polygonService.createPolygonsFromConsts().then((_){setState(() {});});
+    polygonService.createPolygonsFromConsts().then((_) {setState(() {});});
   }
 
   @override
@@ -89,24 +90,28 @@ class _AdminHomePageState extends State<AdminHomePage>
 
   /// AllAreas, Province마커 생성을 완료하고, district preload를 해둔다
   Future<void> initData() async {
-    allAreas = await adminData.updateRegionData();
     threshold = await adminData.getThreshold(selectedType, selectedByproductName);
 
-    final provinceWeightData = await adminData.getWeightData(selectedType, selectedByproductName, null, null);
-    total_weight = adminData.lastTotalWeight;
+    final provinceWeightData = await adminData.getWeightData(
+        selectedType, selectedByproductName, null, null);
+
     _provinceMarkers = await markerHelper.generateProvinceMarkers(
       provinceWeights: provinceWeightData,
       threshold: threshold!,
       onTap: _onProvinceMarkerTap,
     );
+    total_weight = adminData.lastTotalWeight;
 
-
-    // 6. UI 표시
+    // UI 반영
     setState(() {
       currentMarkers = _provinceMarkers;
       isLoading = false;
     });
 
+//병목의 원인 -> shared 사용해볼것
+    allAreas = await adminData.updateRegionData();
+
+    // 비동기 처리
     WidgetsBinding.instance.addPostFrameCallback((_) {
       preloadAllDistrictLatLng().then((_) async {
         final stream = markerHelper.graduallyDistrictMarkers(
@@ -122,6 +127,9 @@ class _AdminHomePageState extends State<AdminHomePage>
         }
       });
     });
+
+
+    //비동기 함수 사용시 mount 사용하라는데 ? 조사해보고 코드 추가할 것
   }
 
 
@@ -187,7 +195,6 @@ class _AdminHomePageState extends State<AdminHomePage>
         lng >= southWest.longitude &&
         lng <= northEast.longitude;
   }
-
 
   Future<void> reloadProvinceMarkers() async {
     // weight 데이터 로드
@@ -287,9 +294,9 @@ class _AdminHomePageState extends State<AdminHomePage>
       ),
       onMapCreated: (controller) async {
         _controller = controller;
-        final String style = await DefaultAssetBundle.of(context)
-            .loadString('assets/map_style.json');
-        _controller?.setMapStyle(style);
+
+        final String style = await DefaultAssetBundle.of(context).loadString('assets/map_style.json');
+        await _controller?.setMapStyle(style);
         _drawZoomMarker(7);
       },
 
