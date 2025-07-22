@@ -124,6 +124,13 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
           (status) => status.name == data['status'],
           orElse: () => DeliveryStatus.accepted,
         );
+
+        // 배송 상태가 accepted에서 transit으로 변경되면 transit_date 받기
+        if (tempStatus == DeliveryStatus.transit && _currentStatus != DeliveryStatus.transit) {
+          debugPrint("🚚 배송 상태가 accepted에서 transit으로 변경되었습니다. transit_date를 업데이트합니다.");
+          _deliveryInfo!.transitDate = data['transit_date'];
+        }
+
         // locations를 timestamp 순으로 정렬
         List<LatLng> sortedLocations = sortLocationsByTimestamp(data['locations']);
 
@@ -449,6 +456,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         _buildInfoRow('타입/이름', "${_deliveryInfo!.byprodType} / ${_deliveryInfo!.byprodName}"),
         _buildInfoRow('무게', "${_deliveryInfo!.byprodWeight} kg"),
         _buildInfoRow('요청 날짜', _deliveryInfo!.reqDate),
+        ?_currentStatus != DeliveryStatus.accepted
+          ? _buildInfoRow('수거 날짜', _deliveryInfo!.transitDate)
+          : null,
         _buildInfoRow('수거지', _deliveryInfo!.disposerAddress),
         _buildInfoRow('배송지', _deliveryInfo!.preprocessorAddress),
         _buildInfoRow('배송 업체', _deliveryInfo!.transporterName),
@@ -575,6 +585,7 @@ class DeliveryInfo {
   final String byprodName;
   final double byprodWeight;
   final String reqDate;
+  String transitDate;
   DeliveryStatus status;
 
   DeliveryInfo({
@@ -589,6 +600,7 @@ class DeliveryInfo {
     required this.byprodName,
     required this.byprodWeight,
     required this.reqDate,
+    required this.transitDate,
     required this.status,
   });
 
@@ -606,6 +618,7 @@ class DeliveryInfo {
       byprodName: json['name'],
       byprodWeight: json['weight_float'].toDouble(),
       reqDate: json['req_date'],
+      transitDate: json['transit_date'] ?? 'N/A', // transit_date가 없을 경우 'N/A'로 설정
       status: DeliveryStatus.values.firstWhere(
         (status) => status.name == json['status'],
         orElse: () => DeliveryStatus.accepted,
