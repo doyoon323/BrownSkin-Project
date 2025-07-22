@@ -120,7 +120,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        DeliveryInfo tempDeliveryInfo = await DeliveryInfo.fromJson(data);
+        DeliveryStatus tempStatus = DeliveryStatus.values.firstWhere(
+          (status) => status.name == data['status'],
+          orElse: () => DeliveryStatus.accepted,
+        );
         // locations를 timestamp 순으로 정렬
         List<LatLng> sortedLocations = sortLocationsByTimestamp(data['locations']);
 
@@ -130,10 +133,6 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             _sortedLocations += sortedLocations;
             _deliveryInfo!.transporterLocation = sortedLocations.last;
 
-            // 마커와 폴리라인 업데이트
-            _updateMarkers();
-            _updatePolylines();
-
             // 지도 카메라 이동
             _mapController?.animateCamera(
               CameraUpdate.newLatLng(_deliveryInfo!.transporterLocation),
@@ -141,7 +140,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
           }
 
           // 상태는 항상 업데이트 (새 위치가 없어도 상태 변경 가능)
-          _currentStatus = tempDeliveryInfo.status;
+          _currentStatus = tempStatus;
+
+          // 마커와 폴리라인 업데이트
+          _updateMarkers();
+          _updatePolylines();
           _isLoading = false;
         });
         debugPrint("_sortedLocations 업데이트: ${_sortedLocations.length}개의 위치");
