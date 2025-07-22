@@ -175,11 +175,11 @@ Widget buildEmptyPlaceholder() {
 
 
 // 5. 로그아웃 버튼 (페이지 어디서든 재사용 가능)
-Widget buildLogoutIconButton(BuildContext context) {
+Widget buildLogoutIconButton(BuildContext context, {Color? backgroundColor}) {
   return Container(
     margin: const EdgeInsets.only(right: 8),
     decoration: BoxDecoration(
-      color: AppColors.darkBrown,
+      color: backgroundColor ?? AppColors.darkBrown,
       borderRadius: BorderRadius.circular(8),
     ),
     child: IconButton(

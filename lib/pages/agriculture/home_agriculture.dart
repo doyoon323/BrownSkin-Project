@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
@@ -8,7 +7,6 @@ import 'package:percent_indicator/percent_indicator.dart';
 import 'package:brownskin_app/pages/agriculture/deliveryReq_agriculture.dart';
 
 import '../../common/api_service.dart';
-import '../../widgets/bottom_nav.dart';
 import '../../common/status_utils.dart';
 
 class AgriHome extends StatefulWidget {
