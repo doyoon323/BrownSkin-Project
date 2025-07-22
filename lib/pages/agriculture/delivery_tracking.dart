@@ -158,6 +158,22 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       } else if (response.statusCode == 404) {
         // 배송이 없거나 완료됨
         debugPrint("🚫 update: 배송 정보가 없거나 완료되었습니다. 상태를 완료로 변경합니다.");
+        url = "$BASE_URL/api/track-delivery-complete?delivery_id=${widget.deliveryId}";
+        try {
+          final response = await http.get(
+            Uri.parse(url),
+            headers: {'Authorization': 'Token ${widget.token}'},
+          );
+          if (response.statusCode == 200) {
+            debugPrint("✅ 배송 완료 상태 업데이트 성공");
+            _deliveryInfo?.completeDate = json.decode(response.body)['complete_date'] ?? 'N/A';
+          } else {
+            debugPrint("❌ 배송 완료 상태 업데이트 실패: ${response.statusCode}");
+          }
+        } catch (e) {
+          debugPrint('배송 완료 상태 업데이트 실패: $e');
+        }
+
         setState(() {
           _currentStatus = DeliveryStatus.completed;
           _isLoading = false;
@@ -459,6 +475,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         ?_currentStatus != DeliveryStatus.accepted
           ? _buildInfoRow('수거 날짜', _deliveryInfo!.transitDate)
           : null,
+        ?_currentStatus == DeliveryStatus.completed
+          ? _buildInfoRow('완료 날짜', _deliveryInfo!.completeDate)
+          : null,
         _buildInfoRow('수거지', _deliveryInfo!.disposerAddress),
         _buildInfoRow('배송지', _deliveryInfo!.preprocessorAddress),
         _buildInfoRow('배송 업체', _deliveryInfo!.transporterName),
@@ -586,6 +605,7 @@ class DeliveryInfo {
   final double byprodWeight;
   final String reqDate;
   String transitDate;
+  String completeDate;
   DeliveryStatus status;
 
   DeliveryInfo({
@@ -601,6 +621,7 @@ class DeliveryInfo {
     required this.byprodWeight,
     required this.reqDate,
     required this.transitDate,
+    required this.completeDate,
     required this.status,
   });
 
@@ -619,6 +640,7 @@ class DeliveryInfo {
       byprodWeight: json['weight_float'].toDouble(),
       reqDate: json['req_date'],
       transitDate: json['transit_date'] ?? 'N/A', // transit_date가 없을 경우 'N/A'로 설정
+      completeDate: json['complete_date'] ?? 'N/A', // complete_date가 없을 경우 'N/A'로 설정
       status: DeliveryStatus.values.firstWhere(
         (status) => status.name == json['status'],
         orElse: () => DeliveryStatus.accepted,
