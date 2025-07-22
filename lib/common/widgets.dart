@@ -186,7 +186,7 @@ Widget buildLogoutIconButton(BuildContext context) {
       icon: const Icon(Icons.logout, color: Colors.white),
       tooltip: '로그아웃',
       onPressed: () async {
-        final navigator = Navigator.of(context); // ✅ context 안전하게 캐싱
+        final navigator = Navigator.of(context);
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('token');

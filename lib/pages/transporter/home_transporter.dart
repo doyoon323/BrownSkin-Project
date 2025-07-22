@@ -25,6 +25,15 @@ class _TransporterHomePageState extends State<TransporterHomePage> with SingleTi
   late TabController _tabController;
   final List<String> tabTitles = ['수거 요청', '수거 대기', '배송중', '완료/거절'];
 
+  Color getBorderColorByStatus(String status) {
+  switch (status) {
+    case 'denied':
+      return Colors.red;
+    default:
+      return AppColors.primaryBrown;
+  }
+}
+
   //데이터 초기 호출_앱 실행 시점
 
 @override
@@ -162,7 +171,7 @@ void dispose() {
     title: title,
     subtitle: subtitle,
     trailing: _buildActionButton(item),
-    borderColor: AppColors.primaryBrown,
+    borderColor: getBorderColorByStatus(item['rawStatus'] ?? item['status']),
     backgroundColor: Colors.white,
     elevation: 6,
   );

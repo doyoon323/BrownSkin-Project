@@ -30,7 +30,23 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
   List<Map<String, dynamic>> myRequests = []; //진행중 요청 목록
   List<Map<String, dynamic>> completedRequests = []; //완료 및 거절 목록
 
-  
+  //상태에 따른 카드 테두리 색
+  Color getBorderColorByStatus(String status) {
+  switch (status) {
+    case 'pending':
+      return Colors.green;
+    case 'accepted':
+      return Colors.green;
+    case 'transit':
+      return const Color.fromARGB(255, 138, 101, 45);
+    case 'completed':
+      return AppColors.primaryBrown;
+    case 'denied':
+      return Colors.red;
+    default:
+      return AppColors.primaryBrown;
+  }
+}
 
   @override //초기 데이터 로딩(화면 생성 시, 내역 조회)
   void initState() {
@@ -306,7 +322,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
               "${getDateLabelForRole(role, item['rawStatus'] ?? item['status'])}: ${item['date'] ?? '-'}", 
               
 
-          borderColor: AppColors.primaryBrown,
+          borderColor: getBorderColorByStatus(item['rawStatus'] ?? item['status']),
           elevation: 2,
           trailing: item['status']=='accepted' || item['status']=='transit'
                 ? ElevatedButton(
