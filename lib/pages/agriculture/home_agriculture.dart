@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
@@ -29,13 +28,11 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   String get token => widget.token;
   List<Map<String, dynamic>> donutData = [];
   final TextEditingController weightController = TextEditingController();
-  final TextEditingController searchController = TextEditingController();
 
   // UI 상태 관리
   String currentTab = "전체"; // 전체, 가공, 수확 탭
   String sortBy = "name"; // 정렬 기준 : name, status
   bool isGridView = true;
-  String searchQuery = "";
   Timer? _timer;
 
   @override
@@ -388,31 +385,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             padding: EdgeInsets.all(16),
             child: Row(
               children: [
-                // 검색창
-                Expanded(
-                  child: TextField(
-                    controller: searchController,
-                    decoration: InputDecoration(
-                      hintText: "품목 검색...",
-                      prefixIcon: Icon(Icons.search, size: 20),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        searchQuery = value;
-                      });
-                    },
-                  ),
-                ),
                 SizedBox(width: 12),
 
                 // 정렬 드롭다운
@@ -537,11 +509,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     List<Map<String, dynamic>> filtered = donutData.where((item) {
       // 탭 필터링
       bool tabMatch = currentTab == "전체" || item["type"] == currentTab;
-      // 검색 필터링
-      bool searchMatch = searchQuery.isEmpty ||
-          item["name"].toString().toLowerCase().contains(
-            searchQuery.toLowerCase(),);
-      return tabMatch && searchMatch;
+      return tabMatch ;
     }).toList();
 
     // 정렬
