@@ -21,7 +21,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
 
   Map<String, List<Map<String, dynamic>>> userByproduct = {};
-  Map<String, String?>? selectedByproduct;
+  String? selectedByproduct;
   String? selectedType;
 
   String get token => widget.token;
@@ -48,9 +48,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
               }
         }
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      init();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) { init(); });
   }
 
 
@@ -93,22 +91,27 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   }
 
   /// 등록한 무게 DB 저장 및 UI 갱신
-  Future<bool> addWeight(String? type, String? name, String weight) async {
+  Future<bool> addWeight(bool disposed, String? type, String? name, String weight) async {
+
     if (type == null || name == null || weight.isEmpty) { //에러 핸들링1 : 내용이 비어있을 경우
       showSnack("무게, 타입, 이름을 모두 입력하세요");
       return false;
     }
 
-    final parsedWeight = double.tryParse(weight);
-    if (parsedWeight == null || parsedWeight <= 0) { //에러 핸들링2 :유효하지 않은 숫자
+    double? parsedWeight = double.tryParse(weight);
+    if (parsedWeight == null || (!disposed && parsedWeight <= 0) ) { //에러 핸들링2 :유효하지 않은 숫자
       showSnack("유효하지 않은 입력입니다.");
       return false;
     }
 
+    if (disposed) parsedWeight *= -1;
+
+    print("test DISPOSED : $disposed , WEIGHT : $parsedWeight");
+
     final response = await http.post(
       Uri.parse("$BASE_URL/api/add-weight"),
       headers: {"Authorization": "Token $token"},
-      body: {"name": name, "weight": weight, "type": type},
+      body: {"name": name, "weight": parsedWeight.toString(), "type": type},
     );
 
     if (response.statusCode != 200) {
@@ -158,28 +161,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     setState(() { donutData = tempList;});
   }
 
-  Map<String, List<Map<String, dynamic>>> cachedHistory = {};
-
   void showHistoryPreviewUI(BuildContext context, String type, String name) async {
-    final newData = await getHistoryData(type, name);
-    String key = "$type $name";
+    await getHistoryData(type, name);
 
-    if (!cachedHistory.containsKey(key)) cachedHistory[key] = [];
-
-    final existingKeys = cachedHistory[key]!.map((
-        e) => "${e['timestampFull']}_${e['type']}_${e['name']}").toSet();
-    final uniqueNewData = newData.where((entry) {
-      return !existingKeys.contains(
-          "${entry['timestampFull']}_${entry['type']}_${entry['name']}");
-    }).toList();
-
-    cachedHistory[key] = [...uniqueNewData, ...cachedHistory[key]!];
-    DateTime limitDate = DateTime.now().subtract(Duration(days: 30));
-    cachedHistory[key] = cachedHistory[key]!.where((entry) {
-      DateTime entryDate = DateTime.parse(entry['timestamp']);
-      return entryDate.isAfter(limitDate) ||
-          entryDate.isAtSameMomentAs(limitDate);
-    }).toList();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -191,79 +175,99 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
           maxChildSize: 1.0,
           expand: true,
           builder: (_, scrollController) {
-            return SafeArea(
-              child: Material(
-                color: Colors.white,
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20)),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 36, left: 8, right: 8,bottom: 50),
-                      child: Row(
-                        children: [
-                          InkWell(
-                            onTap: () => Navigator.pop(context),
-                            borderRadius: BorderRadius.circular(20),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Icon(Icons.arrow_back, size: 24),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+            late void Function(void Function()) setModalBodyState;
 
-
-                    // 내용 부분
-                    Expanded(
-                      child: _buildHistoryBottomSheet(
-                        name,
-                        cachedHistory[key]!,
-                      ),
-                    ),
-
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                // 폐기 동작
-                              },
-                              child: Text("부산물 폐기"),
-                              style: OutlinedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.zero,
-                                  ),
-                                  side: BorderSide(color: Colors.black),
-                                foregroundColor: Colors.black
+            return StatefulBuilder(
+              builder: (context, setOuterState) {
+                return SafeArea(
+                  child: Material(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    child: Column(
+                      children: [
+                        // 🔹 헤더
+                        Padding(
+                          padding: const EdgeInsets.only(top: 36, left: 8, right: 8, bottom: 50),
+                          child: Row(
+                            children: [
+                              InkWell(
+                                onTap: () => Navigator.pop(context),
+                                borderRadius: BorderRadius.circular(20),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Icon(Icons.arrow_back, size: 24),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () {
-                                _showAddWeightDialog(type, name);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.zero,
+                        ),
+
+                        // 🔹 내용 영역
+                        Expanded(
+                          child: StatefulBuilder(
+                            builder: (context, setInnerState) {
+                              setModalBodyState = setInnerState;
+
+                              return _buildHistoryList(name, cachedHistory["$type $name"] ?? []);
+                            },
+                          ),
+                        ),
+
+                        // 🔹 하단 버튼
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () async {
+                                    final added = await _showAddWeightDialog("부산물 폐기 등록", type, name, true);
+
+                                    if (added) {
+                                      final newData = await getHistoryData(type, name);
+                                      cachedHistory["$type $name"] = newData;
+                                      setModalBodyState(() {
+                                        print("🌀 setModalState triggered after 폐기");
+                                      });
+                                    }
+                                  },
+                                  child: Text("부산물 폐기"),
+                                  style: OutlinedButton.styleFrom(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                                    side: BorderSide(color: Colors.black),
+                                    foregroundColor: Colors.black,
                                   ),
-                                backgroundColor: Colors.black,
-                                foregroundColor: Colors.white
+                                ),
                               ),
-                              child: Text("부산물 추가"),
-                            ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () async {
+                                    final added = await _showAddWeightDialog("부산물 무게 추가", type, name, false);
+                                    if(added){
+                                      final newData = await getHistoryData(type, name);
+                                      cachedHistory["$type $name"] = newData;
+                                      setModalBodyState(() {
+                                        print("🌀 setModalState triggered after 추가");
+                                      });
+                                    }
+                                  },
+                                  child: Text("부산물 추가"),
+                                  style: ElevatedButton.styleFrom(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                                    backgroundColor: Colors.black,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             );
           },
         );
@@ -272,8 +276,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   }
 
 
+  Map<String, List<Map<String, dynamic>>> cachedHistory = {};
   Map<String, DateTime> last_fetch_history = {};
-
   Future<List<Map<String, dynamic>>> getHistoryData(String type, String name) async {
     final key = "$type $name";
     final now = DateTime.now();
@@ -299,11 +303,33 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     if (filteredData.isNotEmpty) {
       filteredData.sort((a, b) => DateTime.parse(b['timestamp']).compareTo(DateTime.parse(a['timestamp'])));
       last_fetch_history[key] = DateTime.parse(filteredData.first['timestamp']);
-    } else last_fetch_history[key] = now;
+    } else {
+      last_fetch_history[key] = now;
+    }
 
-    return filteredData;
+    if (!cachedHistory.containsKey(key)) {
+      cachedHistory[key] = [];
+    }
+
+    final existingKeys = cachedHistory[key]!
+        .map((e) => "${e['timestampFull']}_${e['type']}_${e['name']}")
+        .toSet();
+
+    final uniqueNewData = filteredData.where((entry) {
+      return !existingKeys.contains("${entry['timestampFull']}_${entry['type']}_${entry['name']}");
+    }).toList();
+
+    cachedHistory[key] = [...uniqueNewData, ...cachedHistory[key]!];
+
+    final limitDate = now.subtract(Duration(days: 30));
+    cachedHistory[key] = cachedHistory[key]!.where((entry) {
+      final entryDate = DateTime.parse(entry['timestamp']);
+      return entryDate.isAfter(limitDate) || entryDate.isAtSameMomentAs(limitDate);
+    }).toList();
+
+    // ✅ 최신 상태 반환
+    return List<Map<String, dynamic>>.from(cachedHistory[key]!);
   }
-
 
 
 
@@ -500,7 +526,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
         children: [
           FloatingActionButton(
             onPressed: () {
-              _showAddWeightDialog(null,null);
+              _showAddWeightDialog("새 부산물 등록",null,null, false);
             },
             backgroundColor: Colors.grey[300],
             foregroundColor: Colors.white,
@@ -595,91 +621,68 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     };
   }
 
-  Widget _buildHistoryBottomSheet(String name,
-      List<Map<String, dynamic>> history) {
+
+  Widget _buildHistoryList(String name, List<Map<String, dynamic>> history) {
     final latestWeight = history.isNotEmpty
         ? history.first["current_weight_float"]
         : 0.0;
 
+    print("📦 buildHistoryList(): ${history.length} items");
+    print("📦 history hashCode: ${history.hashCode}");
+
     return Container(
       padding: EdgeInsets.all(16),
-      height: 400,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "$name 부산물",
-            style: TextStyle(fontSize: 16),
-          ),
+          Text("$name 부산물", style: TextStyle(fontSize: 16)),
           SizedBox(height: 14),
           Text(
             "${latestWeight.toStringAsFixed(1)} $weight_uints",
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-
-          /// 테이블 헤더
           SizedBox(height: 75),
-
-          /// 내용 리스트
           Expanded(
             child: ListView.builder(
+              key: ValueKey(history.length), // ✅ 변화 감지용 key
               itemCount: history.length,
               itemBuilder: (context, index) {
                 final entry = history[index];
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
                     children: [
-                      /// 날짜
-                      Expanded(flex: 3,
+                      Expanded(
+                        flex: 3,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-
                           children: [
-                            Text(
-                              entry["status"],
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            Text(entry["status"], style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                             SizedBox(height: 8),
-                            Text(entry["timestamp"],
-                                style: TextStyle(fontSize: 13)),
+                            Text(entry["timestamp"], style: TextStyle(fontSize: 13)),
                           ],
                         ),
                       ),
-
-                      /// 무게 변화
                       Expanded(
                         flex: 2,
                         child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                          children : [
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
                             Text(
-                          "${entry["weight_diff_float"] > 0 ? "+"
-                              : ""}${entry["weight_diff_float"].toStringAsFixed(1)} $weight_uints",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: entry["weight_diff_float"] > 0
-                                ? Colors.black87
-                                : Color(0xFFED2939)
-                          ),
+                              "${entry["weight_diff_float"] > 0 ? "+" : ""}${entry["weight_diff_float"].toStringAsFixed(1)} $weight_uints",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: entry["weight_diff_float"] > 0 ? Colors.black87 : Color(0xFFED2939),
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text("${entry["current_weight_float"].toStringAsFixed(1)} $weight_uints",
+                                style: TextStyle(fontSize: 13, color: Colors.brown[800])),
+                          ],
                         ),
-                  SizedBox(height: 8),
-                  Text("${entry["current_weight_float"].toStringAsFixed(1)} $weight_uints",
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.brown[800],
-                    ),
-                      )
-                ]
                       ),
-                      )
                     ],
                   ),
                 );
@@ -961,7 +964,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
-                    // TODO: 폐기 버튼
+                    _showAddWeightDialog("부산물 폐기 등록",item['type'], item['name'], true);
                   },
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(
@@ -977,7 +980,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
-                    _showAddWeightDialog(item['type'], item['name']);
+                    _showAddWeightDialog("부산물 무게 추가",item['type'], item['name'], false);
                   },
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(
@@ -997,11 +1000,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   }
 
   /// 부산물 추가 다이얼로그
-  void _showAddWeightDialog(String? type, String? name) {
-    //selectedByproduct?['name'] = name;
-    //selectedType = type;
-
-    showModalBottomSheet(
+  /// 부산물 추가 다이얼로그
+  Future<bool> _showAddWeightDialog(String label, String? type, String? name, bool disposed) async {
+    final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -1010,10 +1011,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
           builder: (context, setModalState) {
             return Container(
               padding: EdgeInsets.only(
-                bottom: MediaQuery
-                    .of(context)
-                    .viewInsets
-                    .bottom,
+                bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -1026,7 +1024,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      '부산물 등록',
+                      label,
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -1034,7 +1032,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 20),
-
 
                     Text('부산물 유형 선택'),
                     SizedBox(height: 8),
@@ -1063,7 +1060,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                       SizedBox(height: 16),
                       Text('품목 선택'),
                       SizedBox(height: 8),
-                      DropdownButtonFormField<Map<String, String?>>(
+                      DropdownButtonFormField<String>(
                         value: selectedByproduct,
                         decoration: InputDecoration(
                           border: OutlineInputBorder(
@@ -1075,14 +1072,12 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                         hint: Text("품목을 선택해주세요"),
                         items: byproductsCategory
                             .where((item) => item['type'] == selectedType)
-                            .map(
-                              (item) =>
-                              DropdownMenuItem(
-                                value: item,
-                                child: Text(item['name']!),
-                              ),
-                        )
-                            .toList(),
+                            .map<DropdownMenuItem<String>>(
+                              (item) => DropdownMenuItem(
+                            value: item['name'],
+                            child: Text(item['name']!),
+                          ),
+                        ).toList(),
                         onChanged: (value) {
                           setModalState(() {
                             selectedByproduct = value;
@@ -1111,11 +1106,19 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                     ElevatedButton(
                       onPressed: () async {
                         final success = await addWeight(
-                            selectedType, selectedByproduct!['name'],
-                            weightController.text.trim());
-                        if (success) await updateData(userByproduct);
-                        weightController.clear();
-                        Navigator.pop(context);
+                          disposed,
+                          selectedType,
+                          selectedByproduct,
+                          weightController.text.trim(),
+                        );
+
+                        if (success) {
+                          await updateData(userByproduct); // 필요한 경우 유지
+                          weightController.clear();
+                          Navigator.pop(context, true); // ✅ 성공 시 true 반환
+                        } else {
+                          Navigator.pop(context, false); // 실패 시 false
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         padding: EdgeInsets.symmetric(vertical: 16),
@@ -1141,9 +1144,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
         );
       },
     );
+    return result == true; // null 또는 false → 실패
   }
-
-
   Widget bottomNavigationBar() {
     return BottomAppBar(
       shape: CircularNotchedRectangle(), // 가운데 notch
