@@ -120,10 +120,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     }
 
     await fetchUserByProduct();
-    setState(() {
-      selectedByproduct = null;
-      selectedType = null;
-    });
+    setState(() {});
     showSnack("성공적으로 등록되었습니다!");
     return true;
   }
@@ -1000,8 +997,12 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   }
 
   /// 부산물 추가 다이얼로그
-  /// 부산물 추가 다이얼로그
   Future<bool> _showAddWeightDialog(String label, String? type, String? name, bool disposed) async {
+    final isFixed = type != null && name != null;
+
+    String? selectedType = type;
+    String? selectedByproduct = name;
+
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -1035,7 +1036,25 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
                     Text('부산물 유형 선택'),
                     SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
+                    isFixed
+                        ? DropdownButtonFormField<String>(
+                      value: selectedType,
+                      onChanged: null,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[200], // 비활성화 느낌
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                          value: selectedType,
+                          child: Text(selectedType ?? '', style: TextStyle(color: Colors.black)),
+                        ),
+                      ],
+                    )
+                        : DropdownButtonFormField<String>(
                       value: selectedType,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
@@ -1055,12 +1074,30 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                         });
                       },
                     ),
-
                     if (selectedType != null) ...[
                       SizedBox(height: 16),
                       Text('품목 선택'),
                       SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
+
+                      isFixed
+                          ? DropdownButtonFormField<String>(
+                        value: selectedByproduct,
+                        onChanged: null, // ❌ 선택 불가
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[200],
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: selectedByproduct,
+                            child: Text(selectedByproduct ?? '', style: TextStyle(color: Colors.black)),
+                          ),
+                        ],
+                      )
+                          : DropdownButtonFormField<String>(
                         value: selectedByproduct,
                         decoration: InputDecoration(
                           border: OutlineInputBorder(
@@ -1146,6 +1183,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     );
     return result == true; // null 또는 false → 실패
   }
+
   Widget bottomNavigationBar() {
     return BottomAppBar(
       shape: CircularNotchedRectangle(), // 가운데 notch
