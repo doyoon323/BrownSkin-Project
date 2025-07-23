@@ -304,6 +304,34 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
 
     //진행중+완료/거절 내역 모두 합침
     final allList = [...myRequests, ...completedRequests]; 
+
+    // 상태 우선순위 정의(정렬 기준)
+    const statusPriority = {
+      'transit': 0,
+      'accepted': 1,
+      'pending': 2,
+      'completed': 3,
+      'denied': 4,
+    };
+
+    // 정렬 적용 (상태 우선순위 → 날짜 내림차순)
+    allList.sort((a, b) {
+      final aStatus = a['rawStatus'] ?? a['status'];
+      final bStatus = b['rawStatus'] ?? b['status'];
+
+      final aPriority = statusPriority[aStatus] ?? 99;
+      final bPriority = statusPriority[bStatus] ?? 99;
+
+      if (aPriority != bPriority) {
+        return aPriority.compareTo(bPriority);
+      }
+
+      final aDate = DateTime.tryParse(a['date'] ?? '') ?? DateTime(1900);
+      final bDate = DateTime.tryParse(b['date'] ?? '') ?? DateTime(1900);
+      return bDate.compareTo(aDate); // 최신일수록 먼저
+    });
+
+
     //비어있습니다 표시
     if (allList.isEmpty) return buildEmptyPlaceholder();
     //카드 형태 리스트

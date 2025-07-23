@@ -184,6 +184,26 @@ Widget _buildRequestList(String tabTitle) {
       ? completedRequests
       : allRequests.where((e) => getStatusLabelForRole(role, e['rawStatus']) == tabTitle).toList();
 
+// 정렬: 최신순 + 완료/거절 탭일 경우 상태 우선
+list.sort((a, b) {
+  final aDate = DateTime.tryParse(a['date'] ?? '') ?? DateTime(1900);
+  final bDate = DateTime.tryParse(b['date'] ?? '') ?? DateTime(1900);
+
+  if (tabTitle == '완료/거절') {
+    // 완료 먼저, 거절 나중
+    final aPriority = a['rawStatus'] == 'completed' ? 0 : 1;
+    final bPriority = b['rawStatus'] == 'completed' ? 0 : 1;
+
+    if (aPriority != bPriority) {
+      return aPriority.compareTo(bPriority);
+    }
+  }
+
+  // 최신순 정렬
+  return bDate.compareTo(aDate);
+});
+
+
 //비어있습니다 표시
   if (list.isEmpty) return buildEmptyPlaceholder();
   

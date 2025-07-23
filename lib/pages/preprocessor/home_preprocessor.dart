@@ -215,9 +215,18 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
 
   //탭1. 입고_receivedItem목록 카드형으로 보여주고, 각 항목마다 작업시작 버튼 제공
   Widget _buildReceivedTab() {
+
     //비어있습니다 표시
     if (receivedItems.isEmpty) return buildEmptyPlaceholder();
 
+    //정렬 입고일 오래된 순
+    receivedItems.sort((a, b) {
+      final aDate = DateTime.tryParse(a['req_date'] ?? '') ?? DateTime(1900);
+      final bDate = DateTime.tryParse(b['req_date'] ?? '') ?? DateTime(1900);
+      return aDate.compareTo(bDate); // 오래된 게 위로
+    });
+
+  
     return Container(
       color: AppColors.backgroundBrown,
       child: ListView( //리스트형 카드 반복
@@ -252,6 +261,13 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
   Widget _buildProcessingTab() {
     //비어있습니다 표시
     if (processingItems.isEmpty) return buildEmptyPlaceholder();
+
+    //정렬 예상 완료일 임박한 순
+    processingItems.sort((a, b) {
+      final aDate = DateTime.tryParse(a['expected_complete_date'] ?? '') ?? DateTime(2100);
+      final bDate = DateTime.tryParse(b['expected_complete_date'] ?? '') ?? DateTime(2100);
+      return aDate.compareTo(bDate); // 임박한 게 위로
+    });
 
     return Container(
       color: AppColors.backgroundBrown,
@@ -288,6 +304,21 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
   Widget _buildCompletedTab() {
     //비어있습니다 표시
     if (completedItems.isEmpty) return buildEmptyPlaceholder();
+
+    
+    // 수율 계산 함수
+    double calculateYield(Map<String, dynamic> item) {
+      final double finalWeight = double.tryParse(item['final_weight'].toString()) ?? 0;
+      final double originalWeight = double.tryParse(item['weight_float'].toString()) ?? 1;
+      return originalWeight > 0 ? finalWeight / originalWeight : 0;
+    }
+
+    // 정렬: 수율 높은 순
+    completedItems.sort((a, b) {
+      final aYield = calculateYield(a);
+      final bYield = calculateYield(b);
+      return bYield.compareTo(aYield); // 높은 게 위로 오게 내림차순
+    });
 
     return Container( //전체 컨테이너
       color: AppColors.backgroundBrown,
@@ -366,7 +397,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
-                            color: AppColors.accentBrown ,
+                            color: Colors.white ,
                           ),
                           padding: const EdgeInsets.all(12.0),
                           child: Column(
