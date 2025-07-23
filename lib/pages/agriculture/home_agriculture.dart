@@ -5,9 +5,10 @@ import 'package:brownskin_app/common/constants.dart';
 import 'package:intl/intl.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:brownskin_app/pages/agriculture/deliveryReq_agriculture.dart';
-
 import '../../common/api_service.dart';
+import '../../common/mypage/home.dart';
 import '../../common/status_utils.dart';
+import '../../common/widgets.dart';
 
 class AgriHome extends StatefulWidget {
   final String token;
@@ -18,18 +19,12 @@ class AgriHome extends StatefulWidget {
 }
 
 class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, WidgetsBindingObserver {
-
-
-  Map<String, List<Map<String, dynamic>>> userByproduct = {};
-  String? selectedByproduct;
-  String? selectedType;
-
   String get token => widget.token;
+  Map<String, List<Map<String, dynamic>>> userByproduct = {};
   List<Map<String, dynamic>> donutData = [];
   final TextEditingController weightController = TextEditingController();
 
   // UI 상태 관리
-  String currentTab = "전체"; // 전체, 가공, 수확 탭
   String sortBy = "name"; // 정렬 기준 : name, status
   bool isGridView = true;
   Timer? _timer;
@@ -92,7 +87,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
   /// 등록한 무게 DB 저장 및 UI 갱신
   Future<bool> addWeight(bool disposed, String? type, String? name, String weight) async {
-
     if (type == null || name == null || weight.isEmpty) { //에러 핸들링1 : 내용이 비어있을 경우
       showSnack("무게, 타입, 이름을 모두 입력하세요");
       return false;
@@ -105,8 +99,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     }
 
     if (disposed) parsedWeight *= -1;
-
-    print("test DISPOSED : $disposed , WEIGHT : $parsedWeight");
 
     final response = await http.post(
       Uri.parse("$BASE_URL/api/add-weight"),
@@ -125,25 +117,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     return true;
   }
 
-
-  /// data transform helper function
-  Map<String, dynamic> transformItem(String type,
-      Map<String, dynamic> item,
-      int defaultThreshold,) {
-    final name = item['name'];
-    final threshold = (item["threshold"] ?? defaultThreshold) as num;
-    final weight = (item["weight_float"] ?? 0) as num;
-    final percent = (weight / threshold).clamp(0.0, 1.0);
-
-    return {
-      "name": name,
-      "type": type,
-      "threshold": threshold,
-      "weight": weight,
-      "percent": percent,
-    };
-  }
-
   /// 데이터 시각화용 데이터를 갱신하는 함수
   Future<void> updateData(Map<String, List<Map<String, dynamic>>> byproductList,) async {
     List<Map<String, dynamic>> tempList = [];
@@ -157,6 +130,93 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     }
     setState(() { donutData = tempList;});
   }
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  /// data transform helper function
+  Map<String, dynamic> transformItem(String type,
+      Map<String, dynamic> item,
+      int defaultThreshold,) {
+    final threshold = (item["threshold"] ?? defaultThreshold) as num;
+    final weight = (item["weight_float"] ?? 0) as num;
+
+    return {
+      "name": item['name'],
+      "type": type,
+      "threshold": threshold,
+      "weight": weight,
+      "percent": (weight / threshold).clamp(0.0, 1.0),
+    };
+  }
+
+
+
+  Widget _buildHistoryList(String name, List<Map<String, dynamic>> history) {
+    final latestWeight = history.isNotEmpty ? history.first["current_weight_float"] : 0.0;
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("$name 부산물", style: TextStyle(fontSize: 16)),
+          SizedBox(height: 14),
+          Text(
+            "${latestWeight.toStringAsFixed(1)} $weight_uints",
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 75),
+          Expanded(
+            child: ListView.builder(
+              key: ValueKey(history.length), // ✅ 변화 감지용 key
+              itemCount: history.length,
+              itemBuilder: (context, index) {
+                final entry = history[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(entry["status"], style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                            SizedBox(height: 8),
+                            Text(entry["timestamp"], style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              "${entry["weight_diff_float"] > 0 ? "+" : ""}${entry["weight_diff_float"].toStringAsFixed(1)} $weight_uints",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: entry["weight_diff_float"] > 0 ? Colors.black87 : Color(0xFFED2939),
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text("${entry["current_weight_float"].toStringAsFixed(1)} $weight_uints",
+                                style: TextStyle(fontSize: 13, color: Colors.brown[800])),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   void showHistoryPreviewUI(BuildContext context, String type, String name) async {
     await getHistoryData(type, name);
@@ -219,13 +279,10 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                                 child: OutlinedButton(
                                   onPressed: () async {
                                     final added = await _showAddWeightDialog("부산물 폐기 등록", type, name, true);
-
                                     if (added) {
                                       final newData = await getHistoryData(type, name);
                                       cachedHistory["$type $name"] = newData;
-                                      setModalBodyState(() {
-                                        print("🌀 setModalState triggered after 폐기");
-                                      });
+                                      setModalBodyState(() {});
                                     }
                                   },
                                   child: Text("부산물 폐기"),
@@ -244,9 +301,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                                     if(added){
                                       final newData = await getHistoryData(type, name);
                                       cachedHistory["$type $name"] = newData;
-                                      setModalBodyState(() {
-                                        print("🌀 setModalState triggered after 추가");
-                                      });
+                                      setModalBodyState(() {});
                                     }
                                   },
                                   child: Text("부산물 추가"),
@@ -324,15 +379,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
       return entryDate.isAfter(limitDate) || entryDate.isAtSameMomentAs(limitDate);
     }).toList();
 
-    // ✅ 최신 상태 반환
     return List<Map<String, dynamic>>.from(cachedHistory[key]!);
   }
-
-
-
-
-
-
 
 
 
@@ -349,47 +397,27 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     final filteredData = getFilteredData();
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(75),
-        child: AppBar(
-          title: Text(
-            '부산물 관리 시스템',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-          ),
-          foregroundColor: Colors.black,
-          elevation: 0,
-          actions: [
-            IconButton(
-              icon: Icon(
-                isGridView ? Icons.grid_view : Icons.list,
-                size: 28,
-              ),
-              onPressed: () {
-                setState(() {
-                  isGridView = !isGridView;
-                });
-              },
-            ),
-            IconButton(
-              icon: Icon(
-                Icons.person,
-                size: 40,
-              ),
-              onPressed: () {
-                /// 마이페이지 이동
-              },
-            ),
-            SizedBox(width: 8)
-          ],
-        ),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        title: Text('부산물 관리 시스템'),
+        actions:[
+          IconButton(icon: Icon(isGridView ? Icons.grid_view : Icons.list, size: 28),
+            onPressed: () {
+              setState(() { isGridView = !isGridView;});
+            }),
+          IconButton(icon: Icon(Icons.person, size: 40,),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const MyPageScreen()),);
+            }),
+          const SizedBox(width: 8),
+        ],
       ),
 
       /// 상단 헤더 (탭 버튼 + 요약 정보)
       body: Column(
         children: [
           Container(
-            //color: Colors.green[700],
             padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
             child: Column(
               children: [
@@ -398,36 +426,18 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                     Expanded(
                       child: Container(
                         padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(8), // 원하시면 모서리 둥글게 가능
-                        ),
+                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Padding(
-                                  padding: EdgeInsets.only(right: 16),
-                                  child: Icon(Icons.warning, color: Colors.white, size: 20),
-                                ),
-                                Text(
-                                  "포화 위험 품목",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                  ),
-                                ),
+                                Padding(padding: EdgeInsets.only(right: 16), child: Icon(Icons.warning, color: Colors.white, size: 20)),
+                                Text("포화 위험 품목", style: TextStyle(color: Colors.white, fontSize: 16)),
                               ],
                             ),
-                            Text(
-                              "${summaryData['danger']}개",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                              ),
-                            ),
+                            Text("${summaryData['danger']}개", style: TextStyle(color: Colors.white, fontSize: 16)),
                           ],
                         ),
                       ),
@@ -442,45 +452,30 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
           Container(
             margin: EdgeInsets.only(bottom: 16),
             padding: EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.03),
-              borderRadius: BorderRadius.circular(12),
-            ),
+            decoration: BoxDecoration(color: Colors.black.withOpacity(0.03), borderRadius: BorderRadius.circular(12)),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
                     _buildFilterCheckbox("가공", isProcessChecked, (newValue) {
-                      setState(() {
-                        isProcessChecked = newValue!;
-                      });
+                      setState(() { isProcessChecked = newValue!; });
                     }),
                     SizedBox(width: 4),
                     _buildFilterCheckbox("수확", isHarvestChecked, (newValue) {
-                      setState(() {
-                        isHarvestChecked = newValue!;
-                      });
+                      setState(() { isHarvestChecked = newValue!; });
                     }),
                   ],
                 ),
                 /// 우측: 정렬 드롭다운
                 Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12),),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: sortBy,
                       padding: EdgeInsets.symmetric(horizontal: 12),
-                      items: [
-                        DropdownMenuItem(value: "name", child: Text("이름순")),
-                        DropdownMenuItem(value: "status", child: Text("위험도순")),
-                      ],
-                      onChanged: (value) {
-                        setState(() { sortBy = value!;});
-                      },
+                      items: [DropdownMenuItem(value: "name", child: Text("이름순")), DropdownMenuItem(value: "status", child: Text("위험도순")),],
+                      onChanged: (value) { setState(() { sortBy = value!;});},
                     ),
                   ),
                 ),
@@ -488,31 +483,21 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             ),
           ),
 
-
           /// 메인 콘텐츠 (Grid / List 뷰)
           Expanded(
-            child:
-             isGridView ?
-             ListView.builder(
+            child: isGridView ? ListView.builder(
               padding: EdgeInsets.symmetric(vertical: 5),
               itemCount: filteredData.length,
               itemBuilder: (context, index) {
                 return _buildListItem(filteredData[index]);
-              },
-            )
-                 : GridView.builder(
+              })
+                : GridView.builder(
               padding: EdgeInsets.all(12),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 0.8,
-              ),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 0.8,),
               itemCount: filteredData.length,
               itemBuilder: (context, index) {
                 return _buildCompactGridCard(filteredData[index]);
-              },
-            )
+              })
           ),
         ],
       ),
@@ -531,19 +516,27 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             child: Icon(Icons.add, size: 45),
           ),
           SizedBox(height: 15),
-          Text(
-            '부산물 종류 등록',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-          ),
+          Text('부산물 종류 등록', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
-      /// 하단 메뉴 바
-      bottomNavigationBar: bottomNavigationBar(),
+      bottomNavigationBar: bottomNavigationBar(context, [
+          BottomNavItem(icon: Icons.home_rounded, label: '홈', isSelected: true, onTap: () {}),
+          BottomNavItem(icon: Icons.local_shipping_rounded, label: '배송 요청', onTap: () => onDeliveryRequestTap(context))
+        ],
+      ),
     );
   }
 
+  // NavTap 관리
+  void onDeliveryRequestTap(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => DeliveryReqAgriculturePage(token: token, userByproduct: userByproduct)),
+    ).then((result) {
+      if (result == true) fetchUserByProduct().then((_) => updateData(userByproduct));
+    });
+  }
 
 
   bool isProcessChecked = true;
@@ -556,9 +549,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
           child: Container(
             width: 22,
             height: 22,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.black26, width: 1), // 윤곽선
-            ),
+            decoration: BoxDecoration(border: Border.all(color: Colors.black26, width: 1)),
             child: Checkbox(
               value: value,
               onChanged: onChanged,
@@ -619,77 +610,241 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   }
 
 
-  Widget _buildHistoryList(String name, List<Map<String, dynamic>> history) {
-    final latestWeight = history.isNotEmpty
-        ? history.first["current_weight_float"]
-        : 0.0;
 
-    print("📦 buildHistoryList(): ${history.length} items");
-    print("📦 history hashCode: ${history.hashCode}");
+  Widget _buildListItem(Map<String, dynamic> item) {
+    double percent = item["percent"];
+    Color progressColor = getProgressColor(percent);
 
     return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 4, offset: Offset(0, 2))],
+        border: Border.all(color: Colors.grey.withOpacity(0.6), width: 1.0,)
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("$name 부산물", style: TextStyle(fontSize: 16)),
-          SizedBox(height: 14),
-          Text(
-            "${latestWeight.toStringAsFixed(1)} $weight_uints",
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(top: 20),
+                      child: RichText(
+                        text: TextSpan(
+                          style: TextStyle(fontSize: 20, color: Colors.black, fontWeight: FontWeight.bold),
+                          children: [
+                            TextSpan(text: "[ ${item['type']} ] "),
+                            TextSpan(text: "${item['name']}  "),
+                            TextSpan(text: "${item['weight']}$weight_uints"),
+                          ],
+                        ),
+                      ),
+                    ),
+
+
+                    if (item['percent'] >= 0.8)
+                    Positioned(top: 0,
+                      left: 0,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.warning, size: 12, color: Colors.black87),
+                            SizedBox(width: 4),
+                            Text("위험", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+
+              OutlinedButton(
+                onPressed: () {
+                  showHistoryPreviewUI(context, item['type'], item['name']);
+                },
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2),),
+                  side: BorderSide(color: Colors.black),
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                ),
+                child: Text("재고 내역", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900)),
+              ),
+            ],
           ),
-          SizedBox(height: 75),
-          Expanded(
-            child: ListView.builder(
-              key: ValueKey(history.length), // ✅ 변화 감지용 key
-              itemCount: history.length,
-              itemBuilder: (context, index) {
-                final entry = history[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(entry["status"], style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                            SizedBox(height: 8),
-                            Text(entry["timestamp"], style: TextStyle(fontSize: 13)),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              "${entry["weight_diff_float"] > 0 ? "+" : ""}${entry["weight_diff_float"].toStringAsFixed(1)} $weight_uints",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: entry["weight_diff_float"] > 0 ? Colors.black87 : Color(0xFFED2939),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text("${entry["current_weight_float"].toStringAsFixed(1)} $weight_uints",
-                                style: TextStyle(fontSize: 13, color: Colors.brown[800])),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+          SizedBox(height: 20),
+
+          // 진행률 바 + % 텍스트
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: LinearProgressIndicator(value: percent, backgroundColor: Colors.grey[300], valueColor: AlwaysStoppedAnimation<Color>(progressColor), minHeight: 20,),
+                ),
+              ),
+              SizedBox(width: 10),
+              Text("${(percent * 100).toInt()}%", style: TextStyle(color: progressColor, fontWeight: FontWeight.bold, fontSize: 20)),
+            ],
+          ),
+          SizedBox(height: 16),
+          // 폐기 / 추가 버튼 (MultiActionButtonGroup 사용)
+          Row(
+            children: [
+              Expanded(
+                child: SingleActionButton(
+                  label: '폐기',
+                  onPressed: () {
+                    _showAddWeightDialog("부산물 폐기 등록", item['type'], item['name'], true);
+                  },
+                  backgroundColor: Colors.grey[300]!,
+                  foregroundColor: Colors.black,
+                ),
+              ),
+              const SizedBox(width: 12), // 버튼 사이 여백
+              Expanded(
+                child: SingleActionButton(
+                  label: '추가',
+                  onPressed: () {
+                    _showAddWeightDialog("부산물 무게 추가", item['type'], item['name'], false);
+                  },
+                  backgroundColor: Colors.grey[300]!,
+                  foregroundColor: Colors.black,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+
+
+  /// 부산물 추가 다이얼로그
+  Future<bool> _showAddWeightDialog(String label, String? type, String? name, bool disposed) async {
+    final isFixed = type != null && name != null;
+    String? selectedType = type;
+    String? selectedByproduct = name;
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom,),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20)),),
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: _buildCategoryInputSection( label: label, isFixed: isFixed, selectedType: selectedType, selectedByproduct: selectedByproduct,
+                    onTypeChanged: (value) {
+                      setModalState(() {
+                        selectedType = value;
+                        selectedByproduct = null;
+                      });
+                    },
+                    onByproductChanged: (value) {
+                      setModalState(() { selectedByproduct = value;});
+                    },
+                    controller: weightController,
+                    onSubmit: () async {
+                      final success = await addWeight(disposed, selectedType, selectedByproduct, weightController.text.trim());
+
+                      if (!success) Navigator.pop(context, false);
+                      else {
+                        await updateData(userByproduct);
+                        weightController.clear();
+                        Navigator.pop(context, true);
+                      }
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+    return result == true; // null 또는 false → 실패
+  }
+
+
+  List<Widget> _buildCategoryInputSection({
+    required String label,
+    required bool isFixed,
+    required String? selectedType,
+    required String? selectedByproduct,
+    required ValueChanged<String?> onTypeChanged,
+    required ValueChanged<String?> onByproductChanged,
+    required TextEditingController controller,
+    required VoidCallback onSubmit,
+  }) {
+    return [
+      Text(label, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center,),
+      const SizedBox(height: 20),
+
+      _buildDropdownSection(
+          label: '부산물 유형 선택',
+          dropdown: isFixed ? CommonDropdownField(value: selectedType, items: [selectedType!], onChanged: null, isEnabled: false)
+            : CommonDropdownField(value: selectedType, items: ['가공', '수확'], onChanged: onTypeChanged, hintText: '유형을 선택해주세요')
+      ),
+
+      if (selectedType != null)
+        _buildDropdownSection(
+          label: '품목 선택',
+          dropdown: isFixed ? CommonDropdownField(value: selectedByproduct, items: [selectedByproduct ?? ''], onChanged: null, isEnabled: false)
+              : CommonDropdownField(
+            value: selectedByproduct,
+            items: byproductsCategory.where((item) => item['type'] == selectedType)
+                .map((item) => item['name']!).toList(),
+            onChanged: onByproductChanged,
+            hintText: '품목을 선택해주세요',
+          )
+        ),
+
+      const SizedBox(height: 16),
+      Text('무게 입력 ($weight_uints)'),
+      const SizedBox(height: 8),
+      TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          hintText: '예: 100',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          filled: true,
+          fillColor: Colors.grey[50],
+        ),
+      ),
+
+      const SizedBox(height: 20),
+      SingleActionButton(label: '등록하기', onPressed: onSubmit, borderRadius: 12,
+      ),
+    ];
+  }
+
+  Widget _buildDropdownSection({required String label, required Widget dropdown}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [Text(label), SizedBox(height: 8), dropdown]
+    );
+  }
+
+
 
   /// 1. 도넛 차트 & 그리드 시각화
   Widget _buildCompactGridCard(Map<String, dynamic> item) {
@@ -827,417 +982,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             ),
           ),
         )
-    );
-  }
-
-  Widget _buildListItem(Map<String, dynamic> item) {
-    double percent = item["percent"];
-    Color progressColor = getProgressColor(percent);
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-        border: Border.all(
-          color: Colors.grey.withOpacity(0.6),
-          width: 1.0,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Stack(
-                  children: [
-                    Padding(
-
-                      padding: EdgeInsets.only(top: 20),
-                      child: RichText(
-                        text: TextSpan(
-                          style: TextStyle(fontSize: 20, color: Colors.black, fontWeight: FontWeight.bold),
-                          children: [
-                            TextSpan(text: "[ ${item['type']} ] "),
-                            TextSpan(text: "${item['name']}  "),
-                            TextSpan(text: "${item['weight']}$weight_uints"),
-                          ],
-                        ),
-                      ),
-                    ),
-
-
-                    if (item['percent'] >= 0.8)
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.warning, size: 12, color: Colors.black87),
-                            SizedBox(width: 4),
-                            Text(
-                              "위험",
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-
-              OutlinedButton(
-                onPressed: () {
-                  showHistoryPreviewUI(context, item['type'], item['name']);
-                },
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                  side: BorderSide(color: Colors.black),
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-
-                ),
-                child: Text("재고 내역", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900)),
-              ),
-            ],
-          ),
-          SizedBox(height: 20),
-
-          // 진행률 바 + % 텍스트
-          Row(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: LinearProgressIndicator(
-                    value: percent,
-                    backgroundColor: Colors.grey[300],
-                    valueColor: AlwaysStoppedAnimation<Color>(progressColor),
-                    minHeight: 20,
-                  ),
-                ),
-              ),
-              SizedBox(width: 10),
-              Text(
-                "${(percent * 100).toInt()}%",
-                style: TextStyle(
-                  color: progressColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-
-          // 폐기 / 추가 버튼
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    _showAddWeightDialog("부산물 폐기 등록",item['type'], item['name'], true);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                    backgroundColor: Colors.grey[300],
-                    foregroundColor: Colors.black,
-                  ),
-                  child: Text("폐기"),
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    _showAddWeightDialog("부산물 무게 추가",item['type'], item['name'], false);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                    backgroundColor: Colors.grey[300],
-                    foregroundColor: Colors.black,
-                  ),
-                  child: Text("추가"),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 부산물 추가 다이얼로그
-  Future<bool> _showAddWeightDialog(String label, String? type, String? name, bool disposed) async {
-    final isFixed = type != null && name != null;
-
-    String? selectedType = type;
-    String? selectedByproduct = name;
-
-    final result = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 20),
-
-                    Text('부산물 유형 선택'),
-                    SizedBox(height: 8),
-                    isFixed
-                        ? DropdownButtonFormField<String>(
-                      value: selectedType,
-                      onChanged: null,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[200], // 비활성화 느낌
-                      ),
-                      items: [
-                        DropdownMenuItem(
-                          value: selectedType,
-                          child: Text(selectedType ?? '', style: TextStyle(color: Colors.black)),
-                        ),
-                      ],
-                    )
-                        : DropdownButtonFormField<String>(
-                      value: selectedType,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                      ),
-                      hint: Text("유형을 선택해주세요"),
-                      items: ["가공", "수확"].map((type) {
-                        return DropdownMenuItem(value: type, child: Text(type));
-                      }).toList(),
-                      onChanged: (value) {
-                        setModalState(() {
-                          selectedType = value;
-                          selectedByproduct = null;
-                        });
-                      },
-                    ),
-                    if (selectedType != null) ...[
-                      SizedBox(height: 16),
-                      Text('품목 선택'),
-                      SizedBox(height: 8),
-
-                      isFixed
-                          ? DropdownButtonFormField<String>(
-                        value: selectedByproduct,
-                        onChanged: null, // ❌ 선택 불가
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[200],
-                        ),
-                        items: [
-                          DropdownMenuItem(
-                            value: selectedByproduct,
-                            child: Text(selectedByproduct ?? '', style: TextStyle(color: Colors.black)),
-                          ),
-                        ],
-                      )
-                          : DropdownButtonFormField<String>(
-                        value: selectedByproduct,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[50],
-                        ),
-                        hint: Text("품목을 선택해주세요"),
-                        items: byproductsCategory
-                            .where((item) => item['type'] == selectedType)
-                            .map<DropdownMenuItem<String>>(
-                              (item) => DropdownMenuItem(
-                            value: item['name'],
-                            child: Text(item['name']!),
-                          ),
-                        ).toList(),
-                        onChanged: (value) {
-                          setModalState(() {
-                            selectedByproduct = value;
-                          });
-                        },
-                      ),
-                    ],
-
-                    SizedBox(height: 16),
-                    Text('무게 입력 ($weight_uints)'),
-                    SizedBox(height: 8),
-                    TextField(
-                      controller: weightController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        hintText: '예: 100',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                      ),
-                    ),
-
-                    SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () async {
-                        final success = await addWeight(
-                          disposed,
-                          selectedType,
-                          selectedByproduct,
-                          weightController.text.trim(),
-                        );
-
-                        if (success) {
-                          await updateData(userByproduct); // 필요한 경우 유지
-                          weightController.clear();
-                          Navigator.pop(context, true); // ✅ 성공 시 true 반환
-                        } else {
-                          Navigator.pop(context, false); // 실패 시 false
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        '등록하기',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-    return result == true; // null 또는 false → 실패
-  }
-
-  Widget bottomNavigationBar() {
-    return BottomAppBar(
-      shape: CircularNotchedRectangle(), // 가운데 notch
-      notchMargin: 6.0,
-      elevation: 10,
-      color: Colors.white,
-      child: SizedBox(
-        height: 60,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            /// 홈 버튼
-            GestureDetector(
-              onTap: () {
-                // 홈 화면이므로 아무 동작 안함
-              },
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.home_rounded, color: Colors.black),
-                  Text('홈', style: TextStyle(color: Colors.black, fontSize: 12)),
-                ],
-              ),
-            ),
-            SizedBox(width: 40),
-
-            /// 배송 요청 버튼
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DeliveryReqAgriculturePage(
-                      token: token,
-                      userByproduct: userByproduct,
-                    ),
-                  ),
-                ).then((result) {
-                  if (result == true) {
-                    fetchUserByProduct().then((_) => updateData(userByproduct));
-                  }
-                });
-              },
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.local_shipping_rounded, color: Colors.grey[400]),
-                  Text('배송 요청', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
