@@ -609,7 +609,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   }
 
 
-
   Widget _buildListItem(Map<String, dynamic> item) {
     double percent = item["percent"];
     Color progressColor = getProgressColor(percent);
