@@ -2,7 +2,7 @@ import 'package:brownskin_app/common/mypage/profile.dart';
 import 'package:flutter/material.dart';
 
 import 'announcement.dart';
-import 'info.dart';
+import 'policy.dart';
 
 class MyPageScreen extends StatelessWidget {
   const MyPageScreen({super.key});

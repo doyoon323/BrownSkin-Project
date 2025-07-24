@@ -668,7 +668,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                 ),
               ),
 
-
               OutlinedButton(
                 onPressed: () {
                   showHistoryPreviewUI(context, item['type'], item['name']);
