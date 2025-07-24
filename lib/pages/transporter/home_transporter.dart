@@ -138,7 +138,8 @@ void dispose() {
             buildRefreshIconButton(context, () async {
               await fetchMyDeliveries();
               await fetchCompletedDeliveries();
-            }),          
+            }), 
+            buildMyPageIconButton(context),         
           ],
           bottom: TabBar(
             controller: _tabController,

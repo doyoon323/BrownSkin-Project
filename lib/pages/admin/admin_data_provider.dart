@@ -44,10 +44,11 @@ class AdminData {
     final body = await ApiService.fetchMap(
         url: "$BASE_URL/api/threshold?type=$type&name=$byproduct",
         token: token);
-    if (body['weight_float'] is num)
+    if (body['weight_float'] is num) {
       return (body['weight_float'] as num).toDouble();
-    else
+    } else {
       return -1;
+    }
   }
 
   /// 갱신한 시도별 구 목록 return
@@ -75,7 +76,7 @@ class AdminData {
       updated[provinceList[i]] = results[i];
     }
 
-    print('[PERF] ✅ updateRegionData 완료: 총 ${sw.elapsedMilliseconds}ms (${count}개 지역)');
+    print('[PERF] ✅ updateRegionData 완료: 총 ${sw.elapsedMilliseconds}ms ($count개 지역)');
     return updated;
   }
 }

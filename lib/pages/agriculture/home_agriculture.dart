@@ -5,8 +5,8 @@ import 'package:brownskin_app/common/constants.dart';
 import 'package:intl/intl.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:brownskin_app/pages/agriculture/deliveryReq_agriculture.dart';
+import 'package:brownskin_app/common/themes.dart';
 import '../../common/api_service.dart';
-import '../../common/mypage/home.dart';
 import '../../common/status_utils.dart';
 import '../../common/widgets.dart';
 
@@ -113,7 +113,11 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
     await fetchUserByProduct();
     setState(() {});
-    showSnack("성공적으로 등록되었습니다!");
+    if (disposed) {
+    showSnack("부산물이 폐기 처리되었습니다.");
+  } else {
+    showSnack("부산물이 성공적으로 추가되었습니다.");
+  }
     return true;
   }
 
@@ -125,8 +129,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     for (final byproduct in byproductList.entries) {
       final type = byproduct.key;
       final products = byproduct.value;
-      for (final item in products)
+      for (final item in products) {
         tempList.add(transformItem(type, item, defaultThreshold));
+      }
     }
     setState(() { donutData = tempList;});
   }
@@ -285,12 +290,12 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                                       setModalBodyState(() {});
                                     }
                                   },
-                                  child: Text("부산물 폐기"),
                                   style: OutlinedButton.styleFrom(
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                                     side: BorderSide(color: Colors.black),
                                     foregroundColor: Colors.black,
                                   ),
+                                  child: Text("부산물 폐기"),
                                 ),
                               ),
                               SizedBox(width: 12),
@@ -304,12 +309,12 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                                       setModalBodyState(() {});
                                     }
                                   },
-                                  child: Text("부산물 추가"),
                                   style: ElevatedButton.styleFrom(
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                                     backgroundColor: Colors.black,
                                     foregroundColor: Colors.white,
                                   ),
+                                  child: Text("부산물 추가"),
                                 ),
                               ),
                             ],
@@ -399,20 +404,24 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: Text('부산물 관리 시스템'),
-        actions:[
-          IconButton(icon: Icon(isGridView ? Icons.grid_view : Icons.list, size: 28),
-            onPressed: () {
-              setState(() { isGridView = !isGridView;});
-            }),
-          IconButton(icon: Icon(Icons.person, size: 40,),
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const MyPageScreen()),);
-            }),
-          const SizedBox(width: 8),
+        backgroundColor: AppColors.primaryBrown,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text(
+          '부산물 관리 시스템',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        elevation: 4,
+        shadowColor: AppColors.darkBrown,
+        actions: [
+          buildLogoutIconButton(context),
+          buildRefreshIconButton(context, () async {
+            await fetchUserByProduct();
+            await updateData(userByproduct);
+          }),
+          buildMyPageIconButton(context),
         ],
       ),
+
 
       /// 상단 헤더 (탭 버튼 + 요약 정보)
       body: Column(
@@ -761,16 +770,35 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                       setModalState(() { selectedByproduct = value;});
                     },
                     controller: weightController,
-                    onSubmit: () async {
-                      final success = await addWeight(disposed, selectedType, selectedByproduct, weightController.text.trim());
+                    onSubmit: () {
+                      final type = selectedType;
+                      final name = selectedByproduct;
+                      final weight = weightController.text.trim();
 
-                      if (!success) Navigator.pop(context, false);
-                      else {
-                        await updateData(userByproduct);
-                        weightController.clear();
-                        Navigator.pop(context, true);
+                      if (type == null || name == null || weight.isEmpty) {
+                        showSnack("무게, 타입, 이름을 모두 입력하세요");
+                        return;
                       }
-                    },
+                      
+                      //확인 팝업
+                      showConfirmPopup(
+                        context: context,
+                        typeLabel: type,
+                        productName: name,
+                        weightText: weight,
+                        actionText: _getActionText(label),
+                        onConfirm: () async {
+                          final success = await addWeight(disposed, type, name, weight);
+                          if (!success) {
+                            Navigator.pop(context, false);
+                          } else {
+                            await updateData(userByproduct);
+                            weightController.clear();
+                            Navigator.pop(context, true);
+                          }
+                        },
+                      );
+                    },                                     
                   ),
                 ),
               ),
@@ -782,6 +810,13 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     return result == true; // null 또는 false → 실패
   }
 
+//팝업 정보
+  String _getActionText(String label) {
+  if (label.contains("무게 추가")) return "추가하시겠습니까?";
+  if (label.contains("폐기")) return "를 폐기하시겠습니까?";
+  if (label.contains("새 부산물")) return "부산물을 등록하시겠습니까?";
+  return "등록하시겠습니까?";
+}
 
   List<Widget> _buildCategoryInputSection({
     required String label,

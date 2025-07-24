@@ -1,12 +1,11 @@
 //공통위젯들을 뽑아놓은 파일입니다...
 
-//카드형식, 액션버튼(상태변경)형식, 앱바, 텅 빈 위젯, 로그아웃버튼, 새로고침버튼
-
 
 import 'package:flutter/material.dart';
 import 'themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:brownskin_app/pages/login/login_page.dart'; 
+import '../../common/mypage/home.dart';
 
 //1. 카드
 
@@ -62,7 +61,7 @@ class InfoCard extends StatelessWidget {
   }
 }
 
-//2. 버튼
+//2. 액션버튼
 
 class ActionButtonData {
   final String label;
@@ -338,4 +337,74 @@ class CommonDropdownField extends StatelessWidget {
       items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList()
     );
   }
+}
+
+//9. 확인팝업
+void showConfirmPopup({
+  required BuildContext context,
+  required String typeLabel,          // ex: 수확
+  required String productName,        // ex: 사과
+  required String weightText,         // ex: 100
+  required String actionText,         // ex: '부산물을 등록하시겠습니까?'
+  required VoidCallback onConfirm,    // 확인 버튼 눌렀을 때 실행할 함수
+}) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.all(20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: const TextStyle(fontSize: 16, color: Colors.black),
+                children: [
+                  const TextSpan(text: '[ ', style: TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: typeLabel, style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold)),
+                  const TextSpan(text: ' ] '),
+                  TextSpan(text: productName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: ' ${weightText}kg', style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold)),
+                  TextSpan(text: '\n$actionText'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('취소'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    onConfirm();
+                  },
+                  child: const Text('확인'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+//10. 마이페이지 접속 버튼
+Widget buildMyPageIconButton(BuildContext context) {
+  return IconButton(
+    icon: Icon(Icons.person),
+    tooltip: '마이페이지',
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const MyPageScreen()),
+      );
+    },
+  );
 }

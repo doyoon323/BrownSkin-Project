@@ -113,7 +113,7 @@ class _SignUpPageState extends State<SignUpPage> {
       'password': _controllers['password']!.text,
       'password2': _controllers['password2']!.text,
       'company_name': _controllers['company']!.text,
-      'addr1': address.length > 0 ? address[0] : '',
+      'addr1': address.isNotEmpty ? address[0] : '',
       'addr2': address.length > 1 ? address[1] : '',
       'addrDetail': address.length > 2 ? address.sublist(2).join(' ') : '',
       'role': _selectedRole!,

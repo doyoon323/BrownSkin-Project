@@ -146,8 +146,9 @@ class _AdminHomePageState extends State<AdminHomePage>
         final LatLng? pos = await getLatLngFromAddress(province, district); /// 개선점 - 중복 api 호출 해결
         if (pos == null) continue;
 
-        if (_latLngInBounds(pos, bounds))
+        if (_latLngInBounds(pos, bounds)) {
           visibleDistricts.add(MapEntry(province, district));
+        }
       }
     }
 
@@ -260,8 +261,9 @@ class _AdminHomePageState extends State<AdminHomePage>
         selectedIndex = index;
       });
 
-      if (index == 0) return; // 홈
-      else if (index == 1) {// 임계 설정
+      if (index == 0) {
+        return; // 홈
+      } else if (index == 1) {// 임계 설정
         final result = await Navigator.push<int>(context, MaterialPageRoute(builder: (context) => SetThresholdAdminPage(token: widget.token)));
 
         if (result == null) {// 복귀했을 때 result 없으면 홈으로
@@ -548,7 +550,7 @@ class _AdminHomePageState extends State<AdminHomePage>
     required LinearGradient gradient,
     double? percentage,
   }) {
-    return Container(
+    return SizedBox(
       width: 120,
       height: 30, // 높이 살짝 줄임 (원하면 조절 가능)
       child: Material(
@@ -686,7 +688,7 @@ class _AdminHomePageState extends State<AdminHomePage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
+            SizedBox(
               width: 60,
               height: 60,
               child: CircularProgressIndicator(
