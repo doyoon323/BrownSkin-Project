@@ -34,6 +34,9 @@ dependencies:
   webview_flutter: ^4.0.7
   webview_flutter_android: ^3.10.2
 
+
+  daum_postcode_view: ^0.1.2
+
   firebase_core: any
   firebase_auth: any
   cloud_firestore: any
