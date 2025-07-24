@@ -5,6 +5,8 @@ import 'package:brownskin_app/common/constants.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/pages/admin/global.dart';
 
+import '../../common/widgets.dart';
+
 class SetThresholdAdminPage extends StatefulWidget {
   String token;
 
@@ -188,6 +190,9 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
           ),
         ),
       ),
+      actions: [
+            buildLogoutIconButton(context,backgroundColor: Colors.lightGreen),
+      ],
     );
   }
 

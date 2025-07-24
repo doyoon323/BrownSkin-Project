@@ -67,11 +67,13 @@ class InfoCard extends StatelessWidget {
 class ActionButtonData {
   final String label;
   final VoidCallback onPressed;
+  final ButtonStyle? style;
   final Color backgroundColor;
 
   const ActionButtonData({
     required this.label,
     required this.onPressed,
+    this.style,
     this.backgroundColor = AppColors.primaryBrown,
   });
 }
@@ -105,7 +107,7 @@ class ActionButtonGroup extends StatelessWidget {
           padding: isLast ? EdgeInsets.zero : spacing,
           child: ElevatedButton(
             onPressed: btn.onPressed,
-            style: ElevatedButton.styleFrom(
+            style: btn.style ?? ElevatedButton.styleFrom(
               backgroundColor: btn.backgroundColor,
               foregroundColor: Colors.white,
               padding: padding,
@@ -123,7 +125,49 @@ class ActionButtonGroup extends StatelessWidget {
   }
 }
 
-//3. 앱바
+
+
+//2-2 single button (추후 통합)
+
+class SingleActionButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final double borderRadius;
+  final double? fontSize;
+  final EdgeInsetsGeometry? padding;
+
+  const SingleActionButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.backgroundColor = Colors.black,
+    this.foregroundColor = Colors.white,
+    this.borderRadius = 2,
+    this.fontSize = 14,
+    this.padding = const EdgeInsets.symmetric(vertical: 16)
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          padding: padding,
+          backgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(borderRadius),),
+        ),
+        child: Text(label, style: TextStyle(fontSize: fontSize))
+      ),
+    );
+  }
+}
+
+//3-1. 앱바 (전처리, 수거, 농가)
 
 PreferredSizeWidget buildCommonAppBar({
   required String title,
@@ -148,9 +192,20 @@ PreferredSizeWidget buildCommonAppBar({
         ),
       ),
     ],
-    bottom: tabBar,
+    bottom: tabBar ,
   );
 }
+
+// 3-2 앱바 (분리배출, 농가) 추후 논의 후  3-1과 합칠 것
+PreferredSizeWidget buildCommonAppBar2(String title, List<Widget> actions){
+  return AppBar(
+    backgroundColor: Colors.white,
+    title: Text(title, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+    elevation: 4,
+    actions: actions,
+  );
+}
+
 
 //4. 텅 비어있는 상태
 Widget buildEmptyPlaceholder() {
@@ -175,11 +230,11 @@ Widget buildEmptyPlaceholder() {
 
 
 // 5. 로그아웃 버튼 (페이지 어디서든 재사용 가능)
-Widget buildLogoutIconButton(BuildContext context) {
+Widget buildLogoutIconButton(BuildContext context, {Color? backgroundColor}) {
   return Container(
     margin: const EdgeInsets.only(right: 8),
     decoration: BoxDecoration(
-      color: AppColors.darkBrown,
+      color: backgroundColor ?? AppColors.darkBrown,
       borderRadius: BorderRadius.circular(8),
     ),
     child: IconButton(
@@ -228,3 +283,59 @@ Widget buildRefreshIconButton(
 
 
 
+//7. 하단 메뉴바
+class BottomNavItem {
+final IconData icon;
+final String label;
+final VoidCallback onTap;
+final bool isSelected;
+
+BottomNavItem({required this.icon, required this.label, required this.onTap, this.isSelected = false});
+}
+
+Widget bottomNavigationBar(BuildContext context, List<BottomNavItem> items, {Color? color}) {
+  return BottomAppBar(
+    color: color ?? Colors.white,
+    child: SizedBox(
+      height: 60,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: items.map((item) => GestureDetector(
+          onTap: item.onTap,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(item.icon, color: item.isSelected ? Colors.black : Colors.grey[400]),
+              Text(item.label, style: TextStyle(color: item.isSelected ? Colors.black : Colors.grey[400], fontSize: 12)),
+            ],
+          ))).toList(),
+      ),
+    ),
+  );
+}
+
+//8. 드롭다운
+class CommonDropdownField extends StatelessWidget {
+  final String? value;
+  final List<String> items;
+  final void Function(String?)? onChanged;
+  final String hintText;
+  final bool isEnabled;
+
+  const CommonDropdownField({super.key, required this.value, required this.items, required this.onChanged, this.hintText = '', this.isEnabled = true});
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      onChanged: isEnabled ? onChanged : null,
+      decoration: InputDecoration(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+        fillColor: isEnabled ? Colors.grey[50] : Colors.grey[200],
+      ),
+      hint: Text(hintText),
+      items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList()
+    );
+  }
+}
