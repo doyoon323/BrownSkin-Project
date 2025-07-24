@@ -73,7 +73,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
         url: '$BASE_URL/api/my-byprod',
         token: widget.token
     );
-    //json parsing
     userByproduct = rawData.map((key, value) =>
         MapEntry(key, List<Map<String, dynamic>>.from(value)),);
   }

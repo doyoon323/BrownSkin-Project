@@ -339,3 +339,32 @@ class CommonDropdownField extends StatelessWidget {
     );
   }
 }
+
+
+//9. 로딩
+Widget buildLoadingWidget() {
+  return Center(
+    child: Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade600), strokeWidth: 4),
+          ),
+          const SizedBox(height: 24),
+          Text('데이터를 불러오는 중...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+          const SizedBox(height: 8),
+          Text('잠시만 기다려주세요', style: TextStyle(fontSize: 14, color: Colors.grey.shade500)),
+        ],
+      ),
+    ),
+  );
+}

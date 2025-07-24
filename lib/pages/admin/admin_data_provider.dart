@@ -1,6 +1,5 @@
 import 'package:brownskin_app/common/api_service.dart';
 import 'package:brownskin_app/common/constants.dart';
-import 'package:brownskin_app/pages/admin/global.dart';
 
 
 class AdminData {
@@ -44,38 +43,23 @@ class AdminData {
     final body = await ApiService.fetchMap(
         url: "$BASE_URL/api/threshold?type=$type&name=$byproduct",
         token: token);
-    if (body['weight_float'] is num)
-      return (body['weight_float'] as num).toDouble();
-    else
-      return -1;
+    if (body['weight_float'] is num)  return (body['weight_float'] as num).toDouble();
+    else return -1;
   }
 
   /// 갱신한 시도별 구 목록 return
   Future<Map<String, List<String>>> updateRegionData() async {
-    final sw = Stopwatch()
-      ..start();
-    print('[PERF] 🔸 updateRegionData 시작');
-
     final Map<String, List<String>> updated = allAreas;
     final provinceList = updated.keys.toList();
-
-    int count = 0;
     final results = <List<String>>[];
 
     for (final province in provinceList) {
-      final subSw = Stopwatch()
-        ..start();
       final districts = await fetchDistrictData(province);
-
       results.add(districts);
-      count++;
     }
-
-    for (int i = 0; i < provinceList.length; i++) {
+    for (int i = 0; i < provinceList.length; i++)
       updated[provinceList[i]] = results[i];
-    }
 
-    print('[PERF] ✅ updateRegionData 완료: 총 ${sw.elapsedMilliseconds}ms (${count}개 지역)');
     return updated;
   }
 }

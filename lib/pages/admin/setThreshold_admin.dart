@@ -1,10 +1,7 @@
-import 'dart:convert';
 import 'package:brownskin_app/common/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/common/constants.dart';
 import 'package:http/http.dart' as http;
-import 'package:brownskin_app/pages/admin/global.dart';
-
 import '../../common/widgets.dart';
 
 class SetThresholdAdminPage extends StatefulWidget {
@@ -50,9 +47,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),);
     _slideAnimation = Tween<double>(begin: 30.0, end: 0.0).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),);
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(CurvedAnimation(parent: _successAnimationController, curve: Curves.elasticOut),);
-
     _animationController.forward();
-
     _currentWeightController.addListener(() {setState(() {});});
   }
 
@@ -67,7 +62,6 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
 
   Future<bool> setThreshold(String? weight) async {
     if (weight == null || weight.isEmpty) return false;
-
     try {
       final request = await http.post(
         Uri.parse("$BASE_URL/api/threshold"),
@@ -104,20 +98,6 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
     setState(() {selectedIndex = index;});
     if (index == 0) Navigator.pop(context, 0);
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -190,9 +170,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
           ),
         ),
       ),
-      actions: [
-            buildLogoutIconButton(context,backgroundColor: Colors.lightGreen),
-      ],
+      actions: [buildLogoutIconButton(context,backgroundColor: Colors.lightGreen)],
     );
   }
 
@@ -501,21 +479,13 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
                 controller: _currentWeightController,
                 keyboardType: TextInputType.number,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '임계값을 입력해주세요';
-                  }
-                  if (double.tryParse(value) == null) {
-                    return '올바른 숫자를 입력해주세요';
-                  }
-                  if (double.parse(value) <= 0) {
-                    return '0보다 큰 값을 입력해주세요';
-                  }
+                  if (value == null || value.isEmpty) return '임계값을 입력해주세요';
+                  if (double.tryParse(value) == null) return '올바른 숫자를 입력해주세요';
+                  if (double.parse(value) <= 0) return '0보다 큰 값을 입력해주세요';
                   return null;
                 },
 
-
                 decoration: InputDecoration(
-
                   hintText: '예: 100',
                   hintStyle: TextStyle(color: Colors.grey.shade400),
                   suffixText: 'kg',

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:ui' as ui;
-import '../../service/location_service.dart';
+import '../../common/constants.dart';
+import '../../common/location_service.dart';
 import 'admin_data_provider.dart';
-import 'global.dart';
 
 class AdminMarker {
   final String token;

@@ -1,9 +1,8 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'constants.dart';
 
-import '../pages/admin/global.dart';
 
 //여기서 주기적으로 area DB 최신 갱신하고, cache에 넣어두면 UI에도 반영 가능할 듯
 
@@ -30,7 +29,6 @@ final Map<String, Map<String, LatLng>> _latLngCache = {
 Future<void> preloadAllDistrictLatLng({int batchSize = 10}) async {
   final tasks = <Future>[];
 
-
   for (final entry in allAreas.entries) {
     final province = entry.key;
     for (final district in entry.value) {
@@ -47,29 +45,18 @@ Future<void> preloadAllDistrictLatLng({int batchSize = 10}) async {
   if (tasks.isNotEmpty) await Future.wait(tasks);
 }
 
-Map<String, Map<String, LatLng>> getLatLngCache() {
-  return _latLngCache;
-}
-
-
 Future<LatLng?> getLatLngFromAddress(String addr1, String addr2) async {
   // 1. 캐시 확인
-  if (_latLngCache[addr1]?.containsKey(addr2) == true) {
+  if (_latLngCache[addr1]?.containsKey(addr2) == true)
     return _latLngCache[addr1]![addr2]!;
-  }
 
   final normAddr1 = normalizeProvinceName(addr1);
   final query = addr2.isEmpty ? normAddr1 : "$normAddr1 $addr2";
 
-  final url = Uri.parse(
-    'https://dapi.kakao.com/v2/local/search/address.json?query=$query',
-  );
-
+  final url = Uri.parse('https://dapi.kakao.com/v2/local/search/address.json?query=$query');
   final response = await http.get(
     url,
-    headers: {
-      'Authorization': 'KakaoAK 75acb2a58d477b9c94d5c3e61790980b'
-    },
+    headers: {'Authorization': 'KakaoAK 75acb2a58d477b9c94d5c3e61790980b'},
   );
 
   if (response.statusCode == 200) {
