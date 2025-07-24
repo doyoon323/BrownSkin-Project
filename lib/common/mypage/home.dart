@@ -1,6 +1,7 @@
 import 'package:brownskin_app/common/mypage/profile.dart';
 import 'package:flutter/material.dart';
 
+import '../../pages/login/login_page.dart';
 import 'announcement.dart';
 import 'policy.dart';
 
@@ -90,7 +91,9 @@ class MyPageScreen extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 40),
               child: TextButton(
                 onPressed: () {
-                  // 로그아웃 처리
+                  Navigator.push(context,
+                    MaterialPageRoute(builder: (context) =>  LoginPage()),
+                  );
                 },
                 child: const Text('로그아웃', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),

@@ -1,9 +1,11 @@
+import 'package:daum_postcode_view/daum_postcode_view.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'dart:convert';
 import 'package:brownskin_app/pages/login/login_page.dart';
 import 'package:flutter/foundation.dart';
+import '../../common/widgets.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -22,9 +24,7 @@ class _SignUpPageState extends State<SignUpPage> {
     'password': TextEditingController(),
     'password2': TextEditingController(),
     'company': TextEditingController(),
-    'addr1': TextEditingController(),
-    'addr2': TextEditingController(),
-    'addrDetail': TextEditingController(),
+    'address': TextEditingController(),
   };
 
   String? _selectedRole;
@@ -96,20 +96,26 @@ class _SignUpPageState extends State<SignUpPage> {
       _showMessage('세부 유형을 선택하세요.');
       return false;
     }
+    if (_controllers['address'] == null) {
+      _showMessage('주소를 입력하세요.');
+      return false;
+    }
     return true;
   }
 
 //서버에 회원가입 요청 보내기
   Future<http.Response> _submitRegistration() async {
+    final address = (_controllers['address']!.text.trim()).split(RegExp(r'\s+'));
+
     final body = <String, String>{
       'username': _controllers['username']!.text,
       'email': _controllers['email']!.text,
       'password': _controllers['password']!.text,
       'password2': _controllers['password2']!.text,
       'company_name': _controllers['company']!.text,
-      'addr1': _controllers['addr1']!.text,
-      'addr2': _controllers['addr2']!.text,
-      'addrDetail': _controllers['addrDetail']!.text,
+      'addr1': address.length > 0 ? address[0] : '',
+      'addr2': address.length > 1 ? address[1] : '',
+      'addrDetail': address.length > 2 ? address.sublist(2).join(' ') : '',
       'role': _selectedRole!,
     };
 
@@ -234,9 +240,7 @@ class _SignUpPageState extends State<SignUpPage> {
               setState(() => _showConfirmPassword = !_showConfirmPassword);
             }),
             _buildTextField('회사명', 'company', TextInputType.text),
-            _buildTextField('시도', 'addr1', TextInputType.text),
-            _buildTextField('시군구', 'addr2', TextInputType.text),
-            _buildTextField('상세 주소', 'addrDetail', TextInputType.text),
+            _buildPostcodeField('주소','address',TextInputType.text),
             const SizedBox(height: 8),
             _buildRoleDropdown(),
             if (_typeOptions.containsKey(_selectedRole)) _buildTypeDropdown(),
@@ -244,6 +248,36 @@ class _SignUpPageState extends State<SignUpPage> {
             _buildSubmitButton(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPostcodeField(String label,String key,  TextInputType type){
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Flexible(fit: FlexFit.tight, flex : 3, child: _buildTextField(label, key, type) ),
+          SizedBox(width: 10),
+          SizedBox(
+            height: 52,
+            child: ActionButtonGroup(
+              buttons: [ ActionButtonData(
+                  label: '주소 검색',
+                  backgroundColor: Colors.brown,
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => DaumPostcodeView(
+                        onComplete: (DaumPostcodeModel result) {
+                          Navigator.of(context).pop({'address': result.address,});
+                        }))
+                    );
+                    if (result != null) _controllers[key]!.text = result['address'];
+                  })
+              ]),
+          ),
+        ],
       ),
     );
   }
