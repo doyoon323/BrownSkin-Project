@@ -30,7 +30,23 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
   List<Map<String, dynamic>> myRequests = []; //진행중 요청 목록
   List<Map<String, dynamic>> completedRequests = []; //완료 및 거절 목록
 
-  
+  //상태에 따른 카드 테두리 색
+  Color getBorderColorByStatus(String status) {
+  switch (status) {
+    case 'pending':
+      return Colors.green;
+    case 'accepted':
+      return Colors.green;
+    case 'transit':
+      return const Color.fromARGB(255, 138, 101, 45);
+    case 'completed':
+      return AppColors.primaryBrown;
+    case 'denied':
+      return Colors.red;
+    default:
+      return AppColors.primaryBrown;
+  }
+}
 
   @override //초기 데이터 로딩(화면 생성 시, 내역 조회)
   void initState() {
@@ -268,9 +284,9 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
                 width: double.infinity,
                 child: ActionButtonGroup(
                   buttons: [
-                    ActionButtonData(
+                    ActionButtonData( //팝업 띄우기
                       label: '수거 요청 보내기',
-                      onPressed: sendDeliveryRequest,
+                      onPressed: showConfirmDialog,
                       backgroundColor: AppColors.primaryBrown, 
                     ),
                   ],
@@ -288,6 +304,34 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
 
     //진행중+완료/거절 내역 모두 합침
     final allList = [...myRequests, ...completedRequests]; 
+
+    // 상태 우선순위 정의(정렬 기준)
+    const statusPriority = {
+      'transit': 0,
+      'accepted': 1,
+      'pending': 2,
+      'completed': 3,
+      'denied': 4,
+    };
+
+    // 정렬 적용 (상태 우선순위 → 날짜 내림차순)
+    allList.sort((a, b) {
+      final aStatus = a['rawStatus'] ?? a['status'];
+      final bStatus = b['rawStatus'] ?? b['status'];
+
+      final aPriority = statusPriority[aStatus] ?? 99;
+      final bPriority = statusPriority[bStatus] ?? 99;
+
+      if (aPriority != bPriority) {
+        return aPriority.compareTo(bPriority);
+      }
+
+      final aDate = DateTime.tryParse(a['date'] ?? '') ?? DateTime(1900);
+      final bDate = DateTime.tryParse(b['date'] ?? '') ?? DateTime(1900);
+      return bDate.compareTo(aDate); // 최신일수록 먼저
+    });
+
+
     //비어있습니다 표시
     if (allList.isEmpty) return buildEmptyPlaceholder();
     //카드 형태 리스트
@@ -306,7 +350,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
               "${getDateLabelForRole(role, item['rawStatus'] ?? item['status'])}: ${item['date'] ?? '-'}", 
               
 
-          borderColor: AppColors.primaryBrown,
+          borderColor: getBorderColorByStatus(item['rawStatus'] ?? item['status']),
           elevation: 2,
           trailing: item['status']=='accepted' || item['status']=='transit'
                 ? ElevatedButton(
@@ -333,6 +377,59 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
       },
     );
   }
+
+  //무게 전송 전 확인팝업
+void showConfirmDialog() {
+  final weightText = weightController.text.trim();
+  final productName = selectedByproduct?["name"] ?? '';
+  final typeLabel = selectedType ?? '';
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.all(20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: const TextStyle(fontSize: 16, color: Colors.black),
+                children: [
+                  const TextSpan(text: '[ ', style: TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: typeLabel, style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold)),
+                  const TextSpan(text: ' ] '),
+                  TextSpan(text: productName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: ' ${weightText}kg', style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold)),
+                  const TextSpan(text: '\n배송사에 수거 요청해요'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('취소'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    sendDeliveryRequest();
+                  },
+                  child: const Text('수거요청'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 
   //수거 요청 전송 함수
   Future<void> sendDeliveryRequest() async {
@@ -392,3 +489,4 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     }
   }
 }
+

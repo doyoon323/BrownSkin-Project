@@ -27,6 +27,15 @@ class _TransporterHomePageState extends State<TransporterHomePage> with SingleTi
   // 위치 정보 주기적으로 업데이트하는 타이머
   Timer? _locationUpdateTimer;
 
+  Color getBorderColorByStatus(String status) {
+  switch (status) {
+    case 'denied':
+      return Colors.red;
+    default:
+      return AppColors.primaryBrown;
+  }
+}
+
   //데이터 초기 호출_앱 실행 시점
 
 @override
@@ -165,7 +174,7 @@ void dispose() {
     title: title,
     subtitle: subtitle,
     trailing: _buildActionButton(item),
-    borderColor: AppColors.primaryBrown,
+    borderColor: getBorderColorByStatus(item['rawStatus'] ?? item['status']),
     backgroundColor: Colors.white,
     elevation: 6,
   );
@@ -177,6 +186,26 @@ Widget _buildRequestList(String tabTitle) {
   List<Map<String, dynamic>> list = tabTitle == '완료/거절'
       ? completedRequests
       : allRequests.where((e) => getStatusLabelForRole(role, e['rawStatus']) == tabTitle).toList();
+
+// 정렬: 최신순 + 완료/거절 탭일 경우 상태 우선
+list.sort((a, b) {
+  final aDate = DateTime.tryParse(a['date'] ?? '') ?? DateTime(1900);
+  final bDate = DateTime.tryParse(b['date'] ?? '') ?? DateTime(1900);
+
+  if (tabTitle == '완료/거절') {
+    // 완료 먼저, 거절 나중
+    final aPriority = a['rawStatus'] == 'completed' ? 0 : 1;
+    final bPriority = b['rawStatus'] == 'completed' ? 0 : 1;
+
+    if (aPriority != bPriority) {
+      return aPriority.compareTo(bPriority);
+    }
+  }
+
+  // 최신순 정렬
+  return bDate.compareTo(aDate);
+});
+
 
 //비어있습니다 표시
   if (list.isEmpty) return buildEmptyPlaceholder();
