@@ -321,30 +321,14 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
                 if (double.parse(value) <= 0) return '0보다 큰 값을 입력해주세요';
                 return null;
               },
-            decoration: InputDecoration(
-              hintText: '예: 100',
+            decoration: InputDecoration(hintText: '예: 100',
               hintStyle: TextStyle(color: Colors.grey.shade400),
               suffixText: 'kg',
-              suffixStyle: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF64748B),
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFEF4444)),
-              ),
+              suffixStyle: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0)),),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0)),),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),),
+              errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFEF4444)),),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
