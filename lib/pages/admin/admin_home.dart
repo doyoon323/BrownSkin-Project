@@ -10,7 +10,6 @@ import 'admin_data_provider.dart';
 import 'admin_marker_factory.dart';
 
 
-/// 관리자 기본 화면 (부산물 데이터 시각화 with google maps)
 class AdminHomePage extends StatefulWidget {
   final String token;
   const AdminHomePage({required this.token, super.key});
@@ -26,24 +25,23 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
 
   //UI
   bool isLoading = true;
-  String? errorMessage;
-  late AnimationController _animationController;
-  late AnimationController _chartAnimationController;
   double? threshold;
 
   //Maps
   Set<Marker> _provinceMarkers = {};
-  final Set<Marker> _districtMarkers = {};
+  Set<Marker> _districtMarkers = {};
   Set<Marker> currentMarkers = {};
   GoogleMapController? _controller;
 
-  late final polygonService;
-  late final adminData;
-  late final markerHelper;
+  late final PolygonService polygonService;
+  late final AdminData adminData;
+  late final AdminMarker markerHelper;
 
-  double? total_weight = 0;
+  double? total_weight;
   int selectedIndex = 0;
 
+  //race condition flag
+  bool _isReloadingDistrict = false;
 
   late final Future<void> Function(LatLng) _onProvinceMarkerTap = (LatLng latLng) async {
     const targetZoom = 10.0;
@@ -59,158 +57,143 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this,);
-    _chartAnimationController = AnimationController(duration: const Duration(milliseconds: 1200), vsync: this,);
-
     markerHelper = AdminMarker(token: widget.token);
     adminData = AdminData(token: widget.token);
     polygonService = PolygonService();
+
     initData();
-    polygonService.createPolygonsFromConsts().then((_) {setState(() {});});
+    polygonService.createPolygonsFromConsts().then((_) => setState(() {}));
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    _chartAnimationController.dispose();
-    super.dispose();
-  }
 
-  /// AllAreas, Province마커 생성을 완료하고, district preload를 해둔다
   Future<void> initData() async {
     threshold = await adminData.getThreshold(selectedType, selectedByproductName);
-    final provinceWeightData = await adminData.getWeightData(selectedType, selectedByproductName, null, null);
+    final provinceWeightData = await adminData.getWeightData(selectedType, selectedByproductName, null, null,);
+    _provinceMarkers = await markerHelper.generateProvinceMarkers(provinceWeightData, threshold!, _onProvinceMarkerTap,);
+    total_weight = adminData.lastTotalWeight ?? 0.0 ;
 
-    _provinceMarkers = await markerHelper.generateProvinceMarkers(
-      provinceWeights: provinceWeightData,
-      threshold: threshold!,
-      onTap: _onProvinceMarkerTap,
-    );
-    total_weight = adminData.lastTotalWeight;
-
-    // UI 반영
     setState(() {
       currentMarkers = _provinceMarkers;
       isLoading = false;
     });
 
-    //병목의 원인 -> shared 사용해볼것
     allAreas = await adminData.updateRegionData();
+    _startDistrictPreloadStream();
+  }
 
-    //비동기 함수 사용시 mount 사용하라는데 ? 조사해보고 코드 추가할 것
+  void _startDistrictPreloadStream() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       preloadAllDistrictLatLng().then((_) async {
+        if (!mounted) return;
         final stream = markerHelper.graduallyDistrictMarkers(
-          selectedType: selectedType,
-          selectedByproductName: selectedByproductName,
-          threshold: threshold!,
-          onTap: _onDistrictMarkerTap,
-          adminData: adminData,
+          selectedType, selectedByproductName, threshold!,
+          _onDistrictMarkerTap, adminData,
         );
-
-        await for (final marker in stream)
+        await for (final marker in stream) {
+          if (!mounted) break;
+          _districtMarkers.removeWhere((m) => m.markerId == marker.markerId);
           _districtMarkers.add(marker);
+        }
       });
     });
   }
-
 
   Future<void> lazyLoadDistrictMarker(double zoom) async {
     if (zoom <= 7) return;
 
     final bounds = await _controller!.getVisibleRegion();
-    final visibleDistricts = <MapEntry<String, String>>[];
-
-    for (final entry in allAreas.entries) {
-      final province = entry.key;
-      for (final district in entry.value) {
-        final LatLng? pos = await getLatLngFromAddress(province, district); /// 개선점 - 중복 api 호출 해결
-        if (pos == null) continue;
-        if (_latLngInBounds(pos, bounds)) visibleDistricts.add(MapEntry(province, district));
-      }
-    }
+    final visibleDistricts = await _getVisibleDistricts(bounds);
     if (visibleDistricts.isEmpty) return;
 
-    final Map<String, Map<String, dynamic>> provinceWeightDataMap = {};
-    for (final province in visibleDistricts.map((e) => e.key).toSet()) {
-      var data = await adminData.getWeightData( selectedType, selectedByproductName, province, null,);
-      provinceWeightDataMap[province] = data;
-    }
+    final provinceWeightDataMap = await _getProvinceWeightData(visibleDistricts);
+    await _generateDistrictMarkers(visibleDistricts, provinceWeightDataMap);
+  }
 
-    for (final entry in visibleDistricts) {
+
+  Future<List<MapEntry<String, String>>> _getVisibleDistricts(LatLngBounds bounds) async {
+    final entries = <MapEntry<String, String>>[
+      for (final entry in allAreas.entries)
+        for (final district in entry.value) MapEntry(entry.key, district)
+    ];
+
+    final results = await Future.wait(entries.map((e) => getLatLngFromAddress(e.key, e.value)),);
+
+    return [
+      for (int i = 0; i < results.length; i++)
+        if (results[i] != null && latLngInBounds(results[i]!, bounds)) entries[i]
+    ];
+  }
+
+  Future<Map<String, Map<String, dynamic>>> _getProvinceWeightData(List<MapEntry<String, String>> districts) async {
+    final Map<String, Map<String, dynamic>> result = {};
+    final provinces = districts.map((e) => e.key).toSet();
+
+    for (final province in provinces)
+      result[province] = await adminData.getWeightData(selectedType, selectedByproductName, province, null);
+    return result;
+  }
+
+  Future<void> _generateDistrictMarkers(
+      List<MapEntry<String, String>> districts,
+      Map<String, Map<String, dynamic>> provinceWeightDataMap) async {
+
+    for (final entry in districts) {
       final province = entry.key;
       final district = entry.value;
 
       final Set<Marker> markers = await markerHelper.generateSpecificDistrictMarkers(
         province: province,
-        districts: [district], // 화면에 보이는 district만
+        districts: [district],
         districtWeightData: provinceWeightDataMap[province]!,
         threshold: threshold!,
         onTap: _onDistrictMarkerTap,
       );
 
-      if (markers.isEmpty)  continue;
-      for (final newMarker in markers) {
-        _districtMarkers.removeWhere((m) => m.markerId == newMarker.markerId);
-        _districtMarkers.add(newMarker);
+      for (final marker in markers) {
+        _districtMarkers.removeWhere((m) => m.markerId == marker.markerId);
+        _districtMarkers.add(marker);
       }
     }
   }
 
-  bool _latLngInBounds(LatLng point, LatLngBounds bounds) {
-    final lat = point.latitude;
-    final lng = point.longitude;
-
-    final southWest = bounds.southwest;
-    final northEast = bounds.northeast;
-
-    return lat >= southWest.latitude &&
-        lat <= northEast.latitude &&
-        lng >= southWest.longitude &&
-        lng <= northEast.longitude;
-  }
-
   Future<void> reloadProvinceMarkers() async {
-    final provinceWeightData = await adminData.getWeightData(selectedType, selectedByproductName, null, null,
-    );
-    final markers = await markerHelper.generateProvinceMarkers(
-      provinceWeights: provinceWeightData,
-      threshold: threshold!,
-      onTap: _onProvinceMarkerTap,
-    );
-
+    final provinceWeightData = await adminData.getWeightData(selectedType, selectedByproductName, null, null,);
+    final markers = await markerHelper.generateProvinceMarkers(provinceWeightData, threshold!, _onProvinceMarkerTap,);
     _provinceMarkers = markers;
     total_weight = adminData.lastTotalWeight;
   }
 
 
   Future<void> reloadDistrictMarkers() async {
-    final zoom = await _controller?.getZoomLevel() ?? 7.0;
-    await lazyLoadDistrictMarker(zoom); // 필요 시 lazy load
+    if (_isReloadingDistrict) return; // 중복 호출 방지
+    _isReloadingDistrict = true;
 
-    unawaited(Future(() async {
-      final stream = markerHelper.updateDistrictMarkers(
-        selectedType: selectedType,
-        selectedByproductName: selectedByproductName,
-        threshold: threshold!,
-        existingMarkers: _districtMarkers,
-        onTap: _onDistrictMarkerTap,
-        adminData: adminData,
-      );
+    try {
+      final zoom = await _controller?.getZoomLevel() ?? 7.0;
+      await lazyLoadDistrictMarker(zoom); // 필요 시 lazy load
 
-      await for (final marker in stream) {
-        _districtMarkers.removeWhere((m) => m.markerId == marker.markerId);
-        _districtMarkers.add(marker);
-      }
-    }));
+      unawaited(Future(() async {
+        final stream = markerHelper.graduallyDistrictMarkers(
+          selectedType, selectedByproductName, threshold!,
+          _onDistrictMarkerTap, adminData,
+        );
+
+        await for (final marker in stream) {
+          if (!mounted) break;
+          _districtMarkers.removeWhere((m) => m.markerId == marker.markerId);
+          _districtMarkers.add(marker);
+        }
+      }));
+    } finally {
+      _isReloadingDistrict = false;
+    }
   }
 
 
   Future<void> reloadMarkers() async {
     final zoom = await _controller?.getZoomLevel() ?? 7.0;
-    setState(() { isLoading = true;});
+    setState(()  => isLoading = true);
 
-    //race condition 고려해야함
     if (zoom <= 7) {
       await reloadProvinceMarkers();
       reloadDistrictMarkers();
@@ -219,16 +202,15 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
       reloadProvinceMarkers();
     }
 
-    setState(() {
-      isLoading = false;
-      _drawZoomMarker(zoom);
-    });
+    isLoading = false;
+    _drawZoomMarker(zoom);
   }
 
 
   void _drawZoomMarker(double zoom) {
     setState(() => currentMarkers = zoom <= 7 ? _provinceMarkers : _districtMarkers);
   }
+
 
   Widget _buildMapSection() {
     final _center = LatLng(36.5,127.8);
@@ -255,17 +237,14 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Colors.brown,
       body: SafeArea(
         child: Stack(
           children: [
             _buildMapSection(),
             if (isLoading)
               Positioned.fill(
-                child: Container(
-                  color: Colors.white.withOpacity(0.9),
-                  child: Center(child: buildLoadingWidget())
-                )
+                child: Container(color: Colors.white.withOpacity(0.9), child: Center(child: buildLoadingWidget()))
               ),
             Positioned(top: 0, left: 0, right: 0, child: _buildFilterBar()),
             Positioned(top: 85, left: 0, right: 0, child: _buildSummaryCards()),
@@ -364,15 +343,12 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
       padding: const EdgeInsets.all(4),
       child: Row(
         children: ["가공", "수확"].map((type) {
-          return Expanded(child: _buildToggleButton(type, selectedType == type,
-                  () async => await _onTypeChanged(type)));
+          return Expanded(child: _buildToggleButton(type, selectedType == type, () async => await _onTypeChanged(type)));
         }).toList(),
       ),
     );
   }
 
-
-// 토글 버튼 위젯
   Widget _buildToggleButton(String text, bool isSelected, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
@@ -380,10 +356,10 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.green.shade600 : Colors.transparent,
+          color: isSelected ? Colors.brown.shade600 : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           boxShadow: isSelected ? [
-            BoxShadow(color: Colors.green.shade600.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2)),
+            BoxShadow(color: Colors.brown.shade600.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2)),
           ] : null,
         ),
         child: Center(
@@ -396,8 +372,7 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
 
   /// 타입 변경 헬퍼 메서드
   Future<void> _onTypeChanged(String newType) async {
-    final filtered = byproductsCategory.where((item) => item["type"] == newType)
-        .map((item) => item["name"]!).toSet()
+    final filtered = byproductsCategory.where((item) => item["type"] == newType).map((item) => item["name"]!).toSet()
         .toList();
     final newByproduct = filtered.isNotEmpty ? filtered.first : null;
     final newThreshold = await adminData.getThreshold(newType, newByproduct);
@@ -421,9 +396,7 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
         'value': total_weight?.toStringAsFixed(1) ?? '-',
         'unit': 'kt',
         'icon': Icons.scale_rounded,
-        'gradient': const LinearGradient(
-          colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)], begin: Alignment.topLeft, end: Alignment.bottomRight,
-        ),
+        'gradient': const LinearGradient(colors:[Color(0xFF4E3730), Color(0xFF5A2805)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         'percentage': null,
       },
       {
@@ -431,9 +404,7 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
         'value': disposalRate.toStringAsFixed(1),
         'unit': '%',
         'icon': Icons.delete_outline_rounded,
-        'gradient': const LinearGradient(
-          colors: [Color(0xFFF23920), Color(0xFFEB4231)], begin: Alignment.topLeft, end: Alignment.bottomRight,
-        ),
+        'gradient': const LinearGradient(colors: [Color(0xFF684226), Color(0xFF533B21)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         'percentage': disposalRate / 100,
       },
       {
@@ -441,9 +412,7 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
         'value': recyclingRate.toStringAsFixed(1),
         'unit': '%',
         'icon': Icons.recycling_rounded,
-        'gradient': const LinearGradient(
-          colors: [Color(0xFF32D957), Color(0xFF28B44B)], begin: Alignment.topLeft, end: Alignment.bottomRight,
-        ),
+        'gradient': const LinearGradient(colors:[Colors.brown, Color(0xFF6C4348)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         'percentage': recyclingRate / 100,
       },
     ];

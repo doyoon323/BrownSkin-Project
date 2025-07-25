@@ -82,6 +82,19 @@ Future<LatLng?> getLatLngFromAddress(String addr1, String addr2) async {
   }
 }
 
+bool latLngInBounds(LatLng point, LatLngBounds bounds) {
+  final lat = point.latitude;
+  final lng = point.longitude;
+
+  final southWest = bounds.southwest;
+  final northEast = bounds.northeast;
+
+  return lat >= southWest.latitude &&
+      lat <= northEast.latitude &&
+      lng >= southWest.longitude &&
+      lng <= northEast.longitude;
+}
+
 String normalizeProvinceName(String name) {
   return {
     '서울': '서울특별시',

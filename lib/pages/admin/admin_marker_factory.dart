@@ -42,11 +42,11 @@ class AdminMarker {
     );
   }
 
-  Future<Set<Marker>> generateProvinceMarkers({
-    required Map<String, dynamic> provinceWeights,
-    required double threshold,
-    required Future<void> Function(LatLng) onTap,
-  }) async {
+  Future<Set<Marker>> generateProvinceMarkers(
+     Map<String, dynamic> provinceWeights,
+     double threshold,
+     Future<void> Function(LatLng) onTap,
+  ) async {
     final futures = allAreas.keys.map((province) async {
       final latLng = await getLatLngFromAddress(province, "");
       if (latLng == null) return null;
@@ -68,13 +68,13 @@ class AdminMarker {
   }
 
 
-  Stream<Marker> graduallyDistrictMarkers({
-    required String selectedType,
-    required String? selectedByproductName,
-    required double threshold,
-    required void Function(LatLng) onTap,
-    required AdminData adminData,
-  }) async* {
+  Stream<Marker> graduallyDistrictMarkers(
+     String selectedType,
+     String? selectedByproductName,
+     double threshold,
+     void Function(LatLng) onTap,
+     AdminData adminData,
+      ) async* {
     for (final province in allAreas.keys) {
       final weightData = await adminData.getWeightData(
         selectedType,
