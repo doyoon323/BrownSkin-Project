@@ -1,21 +1,24 @@
 import 'package:daum_postcode_view/daum_postcode_view.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:brownskin_app/common/constants.dart';
-import 'dart:convert';
-import 'package:brownskin_app/pages/login/login_page.dart';
 import 'package:flutter/foundation.dart';
-import '../../common/widgets.dart';
+import 'dart:convert';
 
-class SignUpPage extends StatefulWidget {
-  const SignUpPage({super.key});
+import 'package:brownskin_app/common/constants.dart';
+import 'package:brownskin_app/common/widgets.dart';
+import 'package:brownskin_app/pages/signup/complete_page.dart';
+
+class SignUpFormPage extends StatefulWidget {
+  final String selectedRole;
+  final String? selectedType;
+
+  const SignUpFormPage({super.key, required this.selectedRole, this.selectedType});
 
   @override
-  State<SignUpPage> createState() => _SignUpPageState();
+  State<SignUpFormPage> createState() => _SignUpFormPageState();
 }
 
-//입력창
-class _SignUpPageState extends State<SignUpPage> {
+class _SignUpFormPageState extends State<SignUpFormPage> {
   final _formKey = GlobalKey<FormState>();
 
   final _controllers = <String, TextEditingController>{
@@ -27,24 +30,9 @@ class _SignUpPageState extends State<SignUpPage> {
     'address': TextEditingController(),
   };
 
-  String? _selectedRole;
-  String? _selectedType;
   bool _showPassword = false;
   bool _showConfirmPassword = false;
-  bool _isLoading = false; //요청 중 로딩 상태
-
-//배송사, 전처리사 세부 타입
-  static const Map<String, List<String>> _typeOptions = {
-    'transporter': ['clean', 'normal'],
-    'preprocessor': ['A', 'B', 'C', 'D'],
-  };
-
-//역할 선택 드롭다운 아이템
-  static const List<DropdownMenuItem<String>> _roleItems = [
-    DropdownMenuItem(value: 'disposer', child: Text('배출사')),
-    DropdownMenuItem(value: 'transporter', child: Text('유통사')),
-    DropdownMenuItem(value: 'preprocessor', child: Text('전처리사')),
-  ];
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -54,10 +42,12 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
-//회원가입 요청 함수
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-    if (!_validateForm()) return;
+    if (_controllers['password']!.text != _controllers['password2']!.text) {
+      _showError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -65,45 +55,22 @@ class _SignUpPageState extends State<SignUpPage> {
       final response = await _submitRegistration();
       if (!mounted) return;
 
-      if (response.statusCode == 201) { //회원가입 성공
-        _showMessage('회원가입이 완료되었습니다!', isSuccess: true, onClose: () {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const LoginPage()),
-          );
-        });
-      } else { //실패처리
+      if (response.statusCode == 201) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const SignUpCompletePage()),
+        );
+      } else {
         _handleRegistrationError(response);
       }
     } catch (e) {
       if (kDebugMode) print('네트워크 오류: $e');
-      if (mounted) _showMessage('네트워크 오류가 발생했습니다.');
+      if (mounted) _showError('네트워크 오류가 발생했습니다.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-//추가 폼 검증
-  bool _validateForm() {
-    if (_controllers['password']!.text != _controllers['password2']!.text) {
-      _showMessage('비밀번호가 일치하지 않습니다.');
-      return false;
-    }
-    if (_selectedRole == null) {
-      _showMessage('역할을 선택하세요.');
-      return false;
-    }
-    if (_typeOptions.containsKey(_selectedRole) && _selectedType == null) {
-      _showMessage('세부 유형을 선택하세요.');
-      return false;
-    }
-    if (_controllers['address'] == null) {
-      _showMessage('주소를 입력하세요.');
-      return false;
-    }
-    return true;
-  }
 
-//서버에 회원가입 요청 보내기
   Future<http.Response> _submitRegistration() async {
     final address = (_controllers['address']!.text.trim()).split(RegExp(r'\s+'));
 
@@ -116,11 +83,11 @@ class _SignUpPageState extends State<SignUpPage> {
       'addr1': address.isNotEmpty ? address[0] : '',
       'addr2': address.length > 1 ? address[1] : '',
       'addrDetail': address.length > 2 ? address.sublist(2).join(' ') : '',
-      'role': _selectedRole!,
+      'role': widget.selectedRole,
     };
 
-    if (_typeOptions.containsKey(_selectedRole)) {
-      body['type'] = _selectedType!;
+    if (widget.selectedType != null) {
+      body['type'] = widget.selectedType!;
     }
 
     return await http.post(
@@ -130,7 +97,6 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-//서버 에러처리
   void _handleRegistrationError(http.Response response) {
     String errorMsg = '회원가입에 실패했습니다.';
     try {
@@ -139,39 +105,20 @@ class _SignUpPageState extends State<SignUpPage> {
     } catch (e) {
       if (kDebugMode) print('JSON 파싱 실패: $e');
     }
-    _showMessage(errorMsg);
+    _showError(errorMsg);
   }
 
-//팝업 메시지 표시
-  void _showMessage(String message, {bool isSuccess = false, VoidCallback? onClose}) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        icon: Icon(
-          isSuccess ? Icons.check_circle : Icons.error,
-          color: isSuccess ? Colors.green : Colors.red,
-          size: 32,
-        ),
-        title: Text(isSuccess ? '성공' : '오류'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              if (onClose != null) onClose();
-            },
-            child: const Text('확인'),
-          ),
-        ],
-      ),
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 
-//여기부터는 디자인툴
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
+      appBar: AppBar(title: const Text('회원 정보 입력')),
       body: Center(
         child: SingleChildScrollView(
           child: Container(
@@ -182,7 +129,7 @@ class _SignUpPageState extends State<SignUpPage> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black,
+                  color: Colors.black.withOpacity(0.1),
                   blurRadius: 20,
                   offset: const Offset(0, 4),
                 ),
@@ -241,9 +188,6 @@ class _SignUpPageState extends State<SignUpPage> {
             }),
             _buildTextField('회사명', 'company', TextInputType.text),
             _buildPostcodeField('주소','address',TextInputType.text),
-            const SizedBox(height: 8),
-            _buildRoleDropdown(),
-            if (_typeOptions.containsKey(_selectedRole)) _buildTypeDropdown(),
             const SizedBox(height: 24),
             _buildSubmitButton(),
           ],
@@ -258,7 +202,7 @@ class _SignUpPageState extends State<SignUpPage> {
       child: Row(
         children: [
           Flexible(fit: FlexFit.tight, flex : 3, child: _buildTextField(label, key, type) ),
-          SizedBox(width: 10),
+          const SizedBox(width: 10),
           SizedBox(
             height: 52,
             child: ActionButtonGroup(
@@ -298,7 +242,7 @@ class _SignUpPageState extends State<SignUpPage> {
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return '$label을(를) 입력하세요.';
-          if (key == 'email' && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w]{2,}$').hasMatch(value)) {
+          if (key == 'email' && !RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w]{2,}$').hasMatch(value)) {
             return '올바른 이메일 형식을 입력하세요.';
           }
           return null;
@@ -332,51 +276,6 @@ class _SignUpPageState extends State<SignUpPage> {
           }
           return null;
         },
-      ),
-    );
-  }
-
-  Widget _buildRoleDropdown() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: DropdownButtonFormField<String>(
-        decoration: InputDecoration(
-          labelText: '역할 선택',
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.brown, width: 2),
-          ),
-        ),
-        value: _selectedRole,
-        items: _roleItems,
-        onChanged: (value) {
-          setState(() {
-            _selectedRole = value;
-            _selectedType = null;
-          });
-        },
-      ),
-    );
-  }
-
-  Widget _buildTypeDropdown() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: DropdownButtonFormField<String>(
-        decoration: InputDecoration(
-          labelText: '세부 유형 선택',
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.brown, width: 2),
-          ),
-        ),
-        value: _selectedType,
-        items: _typeOptions[_selectedRole]!
-            .map((type) => DropdownMenuItem(value: type, child: Text(type)))
-            .toList(),
-        onChanged: (value) => setState(() => _selectedType = value),
       ),
     );
   }
