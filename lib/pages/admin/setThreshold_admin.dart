@@ -1,7 +1,6 @@
 import 'package:brownskin_app/common/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/common/constants.dart';
-import 'package:http/http.dart' as http;
 import '../../common/widgets.dart';
 
 class SetThresholdAdminPage extends StatefulWidget {
@@ -13,18 +12,128 @@ class SetThresholdAdminPage extends StatefulWidget {
   _SetThresholdAdminPageState createState() => _SetThresholdAdminPageState();
 }
 
-class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
-    with TickerProviderStateMixin {
+class CommonCards {
+  static Widget buildCard({
+    required Widget child,
+    Color? color, Gradient? gradient,
+    BorderRadius borderRadius = const BorderRadius.all(Radius.circular(16)), List<BoxShadow>? boxShadow,
+    EdgeInsets padding = const EdgeInsets.all(24),
+  }) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(color: color, gradient: gradient, borderRadius: borderRadius, boxShadow: boxShadow),
+      child: child,
+    );
+  }
+
+  static Widget buildCardTitle({
+    required IconData icon,
+    required String title,
+    Color iconColor = Colors.brown, double iconSize = 20,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+          child: Icon(icon, color: iconColor, size: iconSize),
+        ),
+        const SizedBox(width: 12),
+        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+      ],
+    );
+  }
+
+  static Widget buildErrorMessageCard(String message) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: Colors.brown.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.brown.withOpacity(0.3))),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.brown, size: 16),
+          const SizedBox(width: 8),
+          Expanded(child: Text(message, style: const TextStyle(fontSize: 12, color: Colors.brown, fontWeight: FontWeight.w500))),
+        ],
+      ),
+    );
+  }
+
+
+  static Widget buildHeaderCard({
+    required String title, required String subtitle,
+    required IconData icon,
+    Color iconBgColor = Colors.white, Color iconColor = Colors.white, Gradient? backgroundGradient, Color shadowColor = Colors.brown,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.brown,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: shadowColor, blurRadius: 20, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(50)),
+            child: Icon(icon, size: 32, color: iconColor),
+          ),
+          const SizedBox(height: 16),
+          Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 8),
+          Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: Colors.white, height: 1.5)),
+        ],
+      ),
+    );
+  }
+
+  static Widget buildSuccessCard(Animation<double> scaleAnimation) {
+    return AnimatedBuilder(
+      animation: scaleAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: scaleAnimation.value,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            color: Colors.brown,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [BoxShadow(color:Colors.brown, blurRadius: 15, offset: Offset(0, 6))],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(50)),
+                  child: const Icon(Icons.check_circle, color: Colors.white, size: 24)
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('설정 완료!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                      SizedBox(height: 4),
+                      Text('임계값이 성공적으로 설정되었습니다.', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SetThresholdAdminPageState extends State<SetThresholdAdminPage> with TickerProviderStateMixin {
   final TextEditingController _currentWeightController = TextEditingController();
-  final TextEditingController _targetGoalController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  String get token => widget.token;
-
-  // page2 용 변수
   String? selectedType;
   String? selectedByproductName;
-  String? selectedProvince;
   int selectedIndex = 1;
 
   bool isLoading = false;
@@ -32,7 +141,6 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   String? errorMessage;
   String? currentThreshold;
 
-  // 애니메이션 컨트롤러
   late AnimationController _animationController;
   late AnimationController _successAnimationController;
   late Animation<double> _fadeAnimation;
@@ -54,7 +162,6 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   @override
   void dispose() {
     _currentWeightController.dispose();
-    _targetGoalController.dispose();
     _animationController.dispose();
     _successAnimationController.dispose();
     super.dispose();
@@ -62,33 +169,28 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
 
   Future<bool> setThreshold(String? weight) async {
     if (weight == null || weight.isEmpty) return false;
-    try {
-      final request = await http.post(
-        Uri.parse("$BASE_URL/api/threshold"),
-        headers: {'Authorization': 'Token ${widget.token}'},
-        body: {
-          'type': selectedType,
-          'name': selectedByproductName,
-          'weight': weight
-        },
-      );
-      if (request.statusCode != 200) {
-        errorMessage = '임계값 설정에 실패했습니다.';
-        return false;
-      }
+
+    final response = await ApiService.postWithToken(
+      endpoint: '/api/threshold',
+      token: widget.token,
+      body: {
+        'type': selectedType!,
+        'name': selectedByproductName!,
+        'weight': weight
+      },
+    );
+    if (response != null && response.statusCode >= 200 && response.statusCode < 300) {
       await getThreshold(selectedType,selectedByproductName);
       isSuccess = true;
       _successAnimationController.forward();
       return true;
-    } catch (e) {
-      errorMessage = '네트워크 오류가 발생했습니다.';
     }
     return false;
   }
 
 
   Future<void> getThreshold(String? type, String? name) async {
-    final raw = await ApiService.fetchMap(url: "$BASE_URL/api/threshold?"+"type=$type&"+"name=$name", token: token);
+    final raw = await ApiService.fetchMap(url: "$BASE_URL/api/threshold?"+"type=$type&"+"name=$name", token: widget.token);
     if (raw["weight_float"] != null)  currentThreshold = raw["weight_float"].toString();
     else  currentThreshold = null;
   }
@@ -113,11 +215,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
                   key: _formKey,
                   child: Column(
                     children: [
-                    buildHeaderCard(
-                    title: '임계값 관리',
-                    subtitle: '부산물 수집량의 임계값을 설정하여\n효율적인 관리를 시작하세요',
-                    icon: Icons.tune,
-                  ),
+                      CommonCards.buildHeaderCard(title: '임계값 관리', subtitle: '부산물 수집량의 임계값을 설정하여\n효율적인 관리를 시작하세요', icon: Icons.tune,),
                       const SizedBox(height: 20),
                       _buildSelectionCard(),
                       const SizedBox(height: 20),
@@ -126,7 +224,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
                       _buildActionButton(),
                       if (isSuccess) ...[
                         const SizedBox(height: 20),
-                        buildSuccessCard(_scaleAnimation)
+                        CommonCards.buildSuccessCard(_scaleAnimation)
                       ],
                     ],
                   ),
@@ -153,11 +251,9 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
       elevation: 0,
       leading: IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => Navigator.pop(context, 0)),
       flexibleSpace: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(colors: [Colors.green, Colors.lightGreen], begin: Alignment.topLeft, end: Alignment.bottomRight),
-        ),
+        decoration: const BoxDecoration(color: Colors.brown),
       ),
-      actions: [buildLogoutIconButton(context,backgroundColor: Colors.lightGreen)],
+      actions: [buildLogoutIconButton(context,backgroundColor: Colors.brown)],
     );
   }
 
@@ -166,56 +262,16 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
     if (index == 0) Navigator.pop(context, 0);
   }
 
-  Widget buildHeaderCard({
-    required String title, required String subtitle,
-    required IconData icon,
-    Color iconBgColor = Colors.white, Color iconColor = Colors.white, Gradient? backgroundGradient, Color shadowColor = Colors.green,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: backgroundGradient ?? LinearGradient(colors: [Colors.green, Colors.lightGreen], begin: Alignment.topLeft, end: Alignment.bottomRight,),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: shadowColor, blurRadius: 20, offset: const Offset(0, 8))],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(50)),
-            child: Icon(icon, size: 32, color: iconColor),
-          ),
-          const SizedBox(height: 16),
-          Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-          const SizedBox(height: 8),
-          Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: Colors.white, height: 1.5)),
-        ],
-      ),
-    );
-  }
-
-
-  Widget buildIconTitleRow(IconData icon, String title, {Color color = Colors.green}) {
+  Widget buildIconTitleRow(IconData icon, String title, {Color color = Colors.brown}) {
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8),),
           child: Icon(icon, color: color, size: 20),
         ),
         const SizedBox(width: 12),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1E293B),
-          ),
-        ),
+        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
       ],
     );
   }
@@ -223,18 +279,12 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
   Widget _buildSelectionCard() {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 10, offset: const Offset(0, 4))],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 10, offset: const Offset(0, 4))]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           buildIconTitleRow(Icons.category, '대상 선택'),
           const SizedBox(height: 20),
-
-          /// 부산물 유형 드롭다운
           CommonDropdownField(
             value: selectedType,
             items: const ["가공", "수확"],
@@ -248,14 +298,11 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
             },
             hintText: '부산물 유형 선택',
           ),
-
           if (selectedType != null) ...[
             const SizedBox(height: 16),
-            /// 품목 드롭다운
             CommonDropdownField(
               value: selectedByproductName,
-              items: byproductsCategory.where((item) => item['type'] == selectedType)
-                  .map((item) => item['name']!)
+              items: byproductsCategory.where((item) => item['type'] == selectedType).map((item) => item['name']!)
                   .toList(),
               onChanged: (value) async {
                 setState(() {
@@ -264,7 +311,6 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
                   currentThreshold = null;
                   _successAnimationController.reset();
                 });
-
                 await getThreshold(selectedType, value);
                 setState(() {});
               },
@@ -278,32 +324,31 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
 
 
   Widget _buildThresholdCard() {
-    return buildCard(
+    return CommonCards.buildCard(
       color: Colors.white,
       boxShadow: [BoxShadow(color: Colors.grey.shade200, blurRadius: 10, offset: const Offset(0, 4),)],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          buildCardTitle(icon: Icons.scale, title: '임계값 설정', iconColor: const Color(0xFF10B981)),
+          CommonCards.buildCardTitle(icon: Icons.scale, title: '임계값 설정', iconColor: Colors.brown),
           const SizedBox(height: 20),
 
           if (currentThreshold != null) ...[
-            buildCard(
-              color: const Color(0xFF10B981).withOpacity(0.1),
+            CommonCards.buildCard(
+              color:  Colors.brown,
               padding: const EdgeInsets.all(16),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [],
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 20),
+                  const Icon(Icons.check_circle, color: Colors.brown, size: 20),
                   const SizedBox(width: 12),
-                  Text('현재 설정된 임계값: ${currentThreshold}kg', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF10B981),),),
+                  Text('현재 설정된 임계값: ${currentThreshold}kg', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
                 ],
               ),
             ),
             const SizedBox(height: 16),
           ],
-
           const Row(
             children: [
               Icon(Icons.edit, size: 16, color: Color(0xFF64748B)),
@@ -325,24 +370,19 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
               hintStyle: TextStyle(color: Colors.grey.shade400),
               suffixText: 'kg',
               suffixStyle: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0)),),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0)),),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),),
-              errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFEF4444)),),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2)),
+              errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFEF4444))),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
             ),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF1E293B),
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
           ),
-
           if (errorMessage != null) ...[
             const SizedBox(height: 12),
-            buildErrorMessageCard(errorMessage!)
+            CommonCards.buildErrorMessageCard(errorMessage!)
           ],
         ],
       ),
@@ -354,12 +394,10 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
     return Container(
       width: double.infinity,
       height: 56,
-      decoration: BoxDecoration(gradient: canSubmit ? const LinearGradient(colors: [Colors.green, Colors.lightGreen],)
-            : null,
+      decoration: BoxDecoration(gradient: canSubmit ? const LinearGradient(colors: [Colors.brown, Color(0xFF6C4348)]) : null,
         color: canSubmit ? null : Colors.grey.shade300,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: canSubmit ? [BoxShadow(color: const Color(0xFF667EEA) , blurRadius: 15, offset: const Offset(0, 6))]
-            : null,
+        boxShadow: canSubmit ? [BoxShadow(color:  Color(0xFF6C4348) , blurRadius: 15, offset: const Offset(0, 6))] : null,
       ),
       child: Material(
         color: Colors.transparent,
@@ -386,93 +424,6 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
     );
   }
 
-  Widget buildSuccessCard(Animation<double> scaleAnimation) {
-    return AnimatedBuilder(
-      animation: scaleAnimation,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: scaleAnimation.value,
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)],),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [BoxShadow(color: Color(0xFF10B981), blurRadius: 15, offset: Offset(0, 6))],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(50)),
-                  child: const Icon(Icons.check_circle, color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('설정 완료!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                      SizedBox(height: 4),
-                      Text('임계값이 성공적으로 설정되었습니다.', style: TextStyle(fontSize: 12, color: Colors.white70)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget buildCard({
-    required Widget child, Color? color, Gradient? gradient,
-    BorderRadius borderRadius = const BorderRadius.all(Radius.circular(16)),
-    List<BoxShadow>? boxShadow, EdgeInsets padding = const EdgeInsets.all(24),
-  }) {
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(color: color, gradient: gradient, borderRadius: borderRadius, boxShadow: boxShadow,),
-      child: child,
-    );
-  }
-
-  Widget buildCardTitle({
-    required IconData icon, required String title,
-    Color iconColor = Colors.green, double iconSize = 20,
-  }) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-          child: Icon(icon, color: iconColor, size: iconSize),
-        ),
-        const SizedBox(width: 12),
-        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-      ],
-    );
-  }
-
-  Widget buildErrorMessageCard(String message) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline, color: Colors.green, size: 16),
-          const SizedBox(width: 8),
-          Expanded(child: Text(message, style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w500))),
-        ],
-      ),
-    );
-  }
-
-
   void _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
       String weightValue = _currentWeightController.text;
@@ -485,7 +436,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 8), Text('임계값이 성공적으로 설정되었습니다!')],),
-            backgroundColor: Color(0xFF10B981),
+            backgroundColor: Colors.brown,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
