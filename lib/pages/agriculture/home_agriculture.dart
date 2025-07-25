@@ -407,7 +407,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             }),
           IconButton(icon: Icon(Icons.person, size: 40,),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const MyPageScreen()),);
+              Navigator.push(context, MaterialPageRoute(builder: (context) => MyPageScreen(token : widget.token)),);
             }),
           const SizedBox(width: 8),
         ],

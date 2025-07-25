@@ -1,12 +1,13 @@
 import 'package:brownskin_app/common/mypage/profile.dart';
 import 'package:flutter/material.dart';
-
 import '../../pages/login/login_page.dart';
 import 'announcement.dart';
 import 'policy.dart';
 
 class MyPageScreen extends StatelessWidget {
-  const MyPageScreen({super.key});
+  final String token;
+
+  const MyPageScreen({super.key, required this.token});
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +44,7 @@ class MyPageScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                      MaterialPageRoute(builder: (context) => EditProfilePage(token: this.token,)),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -103,4 +104,8 @@ class MyPageScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+extension on String {
+  get token => null;
 }
