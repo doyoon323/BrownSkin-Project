@@ -94,7 +94,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage>
 
 
   Future<void> getThreshold(String? type, String? name) async {
-    final raw = await ApiService.fetchMap(url: "$BASE_URL/api/threshold?""type=$type&"+"name=$name", token: token);
+    final raw = await ApiService.fetchMap(url: "$BASE_URL/api/threshold?""type=$type&""name=$name", token: token);
     if (raw["weight_float"] != null) {
       currentThreshold = raw["weight_float"].toString();
     } else {

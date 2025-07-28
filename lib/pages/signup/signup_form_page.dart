@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
 
+import 'package:brownskin_app/common/themes.dart';
 import 'package:brownskin_app/common/constants.dart';
 import 'package:brownskin_app/common/widgets.dart';
 import 'package:brownskin_app/pages/signup/complete_page.dart';
@@ -118,7 +119,22 @@ class _SignUpFormPageState extends State<SignUpFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      appBar: AppBar(title: const Text('회원 정보 입력')),
+      appBar: AppBar(
+        title: const Text(
+          '회원 정보 입력',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: AppColors.primaryBrown,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: Center(
         child: SingleChildScrollView(
           child: Container(
@@ -129,7 +145,7 @@ class _SignUpFormPageState extends State<SignUpFormPage> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black,
                   blurRadius: 20,
                   offset: const Offset(0, 4),
                 ),
