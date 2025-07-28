@@ -138,7 +138,8 @@ void dispose() {
             buildRefreshIconButton(context, () async {
               await fetchMyDeliveries();
               await fetchCompletedDeliveries();
-            }),          
+            }),
+            buildProfileIconButton(context: context, token: widget.token),
           ],
           bottom: TabBar(
             controller: _tabController,
@@ -179,6 +180,7 @@ void dispose() {
     elevation: 6,
   );
 }
+
 
 //배송카드 공간
 

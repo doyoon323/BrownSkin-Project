@@ -129,12 +129,10 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     }
     setState(() { donutData = tempList;});
   }
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
   /// data transform helper function
-  Map<String, dynamic> transformItem(String type,
-      Map<String, dynamic> item,
-      int defaultThreshold,) {
+  Map<String, dynamic> transformItem(String type, Map<String, dynamic> item, int defaultThreshold,) {
     final threshold = (item["threshold"] ?? defaultThreshold) as num;
     final weight = (item["weight_float"] ?? 0) as num;
 
@@ -358,12 +356,10 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
       last_fetch_history[key] = now;
     }
 
-    if (!cachedHistory.containsKey(key)) {
+    if (!cachedHistory.containsKey(key))
       cachedHistory[key] = [];
-    }
 
-    final existingKeys = cachedHistory[key]!
-        .map((e) => "${e['timestampFull']}_${e['type']}_${e['name']}")
+    final existingKeys = cachedHistory[key]!.map((e) => "${e['timestampFull']}_${e['type']}_${e['name']}")
         .toSet();
 
     final uniqueNewData = filteredData.where((entry) {
@@ -386,144 +382,162 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
 
 
-
-
 /* UI 구현 */
 
   @override
   Widget build(BuildContext context) {
-    final summaryData = getSummaryData();
-    final filteredData = getFilteredData();
-
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: Text('부산물 관리 시스템'),
-        actions:[
-          IconButton(icon: Icon(isGridView ? Icons.grid_view : Icons.list, size: 28),
-            onPressed: () {
-              setState(() { isGridView = !isGridView;});
-            }),
-          IconButton(icon: Icon(Icons.person, size: 40,),
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => MyPageScreen(token : widget.token)),);
-            }),
-          const SizedBox(width: 8),
-        ],
-      ),
-
-      /// 상단 헤더 (탭 버튼 + 요약 정보)
+      appBar: Home_AppBar(),
       body: Column(
         children: [
-          Container(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Padding(padding: EdgeInsets.only(right: 16), child: Icon(Icons.warning, color: Colors.white, size: 20)),
-                                Text("포화 위험 품목", style: TextStyle(color: Colors.white, fontSize: 16)),
-                              ],
-                            ),
-                            Text("${summaryData['danger']}개", style: TextStyle(color: Colors.white, fontSize: 16)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // 체크박스 버튼
-          Container(
-            margin: EdgeInsets.only(bottom: 16),
-            padding: EdgeInsets.all(6),
-            decoration: BoxDecoration(color: Colors.black.withOpacity(0.03), borderRadius: BorderRadius.circular(12)),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    _buildFilterCheckbox("가공", isProcessChecked, (newValue) {
-                      setState(() { isProcessChecked = newValue!; });
-                    }),
-                    SizedBox(width: 4),
-                    _buildFilterCheckbox("수확", isHarvestChecked, (newValue) {
-                      setState(() { isHarvestChecked = newValue!; });
-                    }),
-                  ],
-                ),
-                /// 우측: 정렬 드롭다운
-                Container(
-                  decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12),),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: sortBy,
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      items: [DropdownMenuItem(value: "name", child: Text("이름순")), DropdownMenuItem(value: "status", child: Text("위험도순")),],
-                      onChanged: (value) { setState(() { sortBy = value!;});},
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          /// 메인 콘텐츠 (Grid / List 뷰)
-          Expanded(
-            child: isGridView ? ListView.builder(
-              padding: EdgeInsets.symmetric(vertical: 5),
-              itemCount: filteredData.length,
-              itemBuilder: (context, index) {
-                return _buildListItem(filteredData[index]);
-              })
-                : GridView.builder(
-              padding: EdgeInsets.all(12),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 0.8,),
-              itemCount: filteredData.length,
-              itemBuilder: (context, index) {
-                return _buildCompactGridCard(filteredData[index]);
-              })
-          ),
+          _buildSummaryHeader(),
+          _buildCheckbox(),
+          _buildByproductInfo()
         ],
       ),
 
-      /// 하단 부산물 추가 버튼
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton(
-            onPressed: () {
-              _showAddWeightDialog("새 부산물 등록",null,null, false);
-            },
-            backgroundColor: Colors.grey[300],
-            foregroundColor: Colors.white,
-            shape: CircleBorder(side: BorderSide(color: Colors.black26)),
-            child: Icon(Icons.add, size: 45),
-          ),
-          SizedBox(height: 15),
-          Text('부산물 종류 등록', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),),
-        ],
-      ),
+      floatingActionButton: _buildNewProductButton(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: bottomNavigationBar(context, [
           BottomNavItem(icon: Icons.home_rounded, label: '홈', isSelected: true, onTap: () {}),
           BottomNavItem(icon: Icons.local_shipping_rounded, label: '배송 요청', onTap: () => onDeliveryRequestTap(context))
         ],
       ),
+    );
+  }
+
+  Widget _buildNewProductButton() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FloatingActionButton(
+          onPressed: () {
+            _showAddWeightDialog("새 부산물 등록",null,null, false);
+          },
+          backgroundColor: Colors.grey[300],
+          foregroundColor: Colors.white,
+          shape: CircleBorder(side: BorderSide(color: Colors.black26)),
+          child: Icon(Icons.add, size: 45),
+        ),
+        SizedBox(height: 15),
+        Text('부산물 종류 등록', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),),
+      ],
+    );
+  }
+
+  Widget _buildByproductInfo(){
+    final filteredData = getFilteredData();
+    return Expanded(
+        child: isGridView ? ListView.builder(
+            padding: EdgeInsets.symmetric(vertical: 5),
+            itemCount: filteredData.length,
+            itemBuilder: (context, index) {
+              return _buildListItem(filteredData[index]);
+            })
+            : GridView.builder(
+            padding: EdgeInsets.all(12),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 0.8,),
+            itemCount: filteredData.length,
+            itemBuilder: (context, index) {
+              return _buildCompactGridCard(filteredData[index]);
+            })
+    );
+  }
+
+  Widget _buildSummaryHeader(){
+    List<Map<String, dynamic>> filtered = getFilteredData();
+    Map<String,dynamic> DangerData;
+
+    if (donutData.isEmpty || filtered.isEmpty) DangerData = {"danger": 0};
+    else {
+      int dangerCount = filtered.where((item) => item["percent"] >= 0.9).length;
+      DangerData = {"danger": dangerCount};
+    }
+    return Container(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(padding: EdgeInsets.only(right: 16), child: Icon(Icons.warning, color: Colors.white, size: 20)),
+                            Text("포화 위험 품목", style: TextStyle(color: Colors.white, fontSize: 16)),
+                          ],
+                        ),
+                        Text("${DangerData['danger']}개", style: TextStyle(color: Colors.white, fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+  }
+
+  Widget _buildCheckbox(){
+    return
+      Container(
+        margin: EdgeInsets.only(bottom: 16),
+        padding: EdgeInsets.all(6),
+        decoration: BoxDecoration(color: Colors.black.withOpacity(0.03), borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                _buildFilterCheckbox("가공", isProcessChecked, (newValue) {
+                  setState(() { isProcessChecked = newValue!; });
+                }),
+                SizedBox(width: 4),
+                _buildFilterCheckbox("수확", isHarvestChecked, (newValue) {
+                  setState(() { isHarvestChecked = newValue!; });
+                }),
+              ],
+            ),
+            /// 우측: 정렬 드롭다운
+            Container(
+              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12),),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: sortBy,
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  items: [DropdownMenuItem(value: "name", child: Text("이름순")), DropdownMenuItem(value: "status", child: Text("위험도순")),],
+                  onChanged: (value) { setState(() { sortBy = value!;});},
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+  }
+
+  PreferredSizeWidget Home_AppBar(){
+    return AppBar(
+      backgroundColor: Colors.white,
+      title: Text('부산물 관리 시스템'),
+      actions:[
+        IconButton(icon: Icon(isGridView ? Icons.grid_view : Icons.list, size: 28),
+            onPressed: () {
+              setState(() { isGridView = !isGridView;});
+            }),
+        IconButton(icon: Icon(Icons.person, size: 40,),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => MyPageScreen(token : widget.token)),);
+            }),
+        const SizedBox(width: 8),
+      ],
     );
   }
 
@@ -578,7 +592,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
       switch (sortBy) {
         case "status":
           return getStatusPriority(b["percent"]).compareTo(getStatusPriority(a["percent"]));
-        case "name":
         default:
           return a["name"].compareTo(b["name"]);
       }
@@ -586,27 +599,78 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     return filtered;
   }
 
-
-  /// 요약 정보 계산
-  Map<String, dynamic> getSummaryData() {
-    if (donutData.isEmpty) return {"total": 0, "average": 0, "danger": 0, "warning": 0};
-
-    List<Map<String, dynamic>> filtered = getFilteredData();
-    if (filtered.isEmpty)  return {"total": 0, "average": 0, "danger": 0, "warning": 0};
-
-    double totalWeight = filtered.fold(0, (sum, item) => sum + item["weight"]);
-    double averagePercent = filtered.fold(0.0, (sum, item) => sum + item["percent"]) / filtered.length;
-    int dangerCount = filtered.where((item) => item["percent"] >= 0.9).length;
-    int warningCount = filtered.where((item) => item["percent"] >= 0.7 && item["percent"] < 0.9).length;
-
-    return {
-      "total": totalWeight,
-      "average": averagePercent,
-      "danger": dangerCount,
-      "warning": warningCount,
-      "count": filtered.length,
-    };
+  Widget _buildWarningBadge(double percent) {
+    if (percent < 0.8) return SizedBox.shrink();
+    return Positioned(
+      top: 0,
+      left: 0,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.warning, size: 12, color: Colors.black87),
+            SizedBox(width: 4),
+            Text("위험", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black)),
+          ],
+        ),
+      ),
+    );
   }
+
+  Widget _buildProgressBar(double percent, Color color) {
+    return Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: LinearProgressIndicator(
+              value: percent,
+              backgroundColor: Colors.grey[300],
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 20,
+            ),
+          ),
+        ),
+        SizedBox(width: 10),
+        Text(
+          "${(percent * 100).toInt()}%",
+          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 20),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons(Map<String, dynamic> item) {
+    return Row(
+      children: [
+        Expanded(
+          child: SingleActionButton(
+            label: '폐기',
+            onPressed: () {
+              _showAddWeightDialog("부산물 폐기 등록", item['type'], item['name'], true);
+            },
+            backgroundColor: Colors.grey[300]!,
+            foregroundColor: Colors.black,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: SingleActionButton(
+            label: '추가',
+            onPressed: () {
+              _showAddWeightDialog("부산물 무게 추가", item['type'], item['name'], false);
+            },
+            backgroundColor: Colors.grey[300]!,
+            foregroundColor: Colors.black,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  
 
 
   Widget _buildListItem(Map<String, dynamic> item) {
@@ -644,24 +708,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                         ),
                       ),
                     ),
-
-
-                    if (item['percent'] >= 0.8)
-                    Positioned(top: 0,
-                      left: 0,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4)),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.warning, size: 12, color: Colors.black87),
-                            SizedBox(width: 4),
-                            Text("위험", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black)),
-                          ],
-                        ),
-                      ),
-                    ),
+                    _buildWarningBadge(percent)
                   ],
                 ),
               ),
@@ -680,47 +727,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             ],
           ),
           SizedBox(height: 20),
-
-          // 진행률 바 + % 텍스트
-          Row(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: LinearProgressIndicator(value: percent, backgroundColor: Colors.grey[300], valueColor: AlwaysStoppedAnimation<Color>(progressColor), minHeight: 20,),
-                ),
-              ),
-              SizedBox(width: 10),
-              Text("${(percent * 100).toInt()}%", style: TextStyle(color: progressColor, fontWeight: FontWeight.bold, fontSize: 20)),
-            ],
-          ),
-          SizedBox(height: 16),
-          // 폐기 / 추가 버튼 (MultiActionButtonGroup 사용)
-          Row(
-            children: [
-              Expanded(
-                child: SingleActionButton(
-                  label: '폐기',
-                  onPressed: () {
-                    _showAddWeightDialog("부산물 폐기 등록", item['type'], item['name'], true);
-                  },
-                  backgroundColor: Colors.grey[300]!,
-                  foregroundColor: Colors.black,
-                ),
-              ),
-              const SizedBox(width: 12), // 버튼 사이 여백
-              Expanded(
-                child: SingleActionButton(
-                  label: '추가',
-                  onPressed: () {
-                    _showAddWeightDialog("부산물 무게 추가", item['type'], item['name'], false);
-                  },
-                  backgroundColor: Colors.grey[300]!,
-                  foregroundColor: Colors.black,
-                ),
-              ),
-            ],
-          ),
+          _buildProgressBar(percent, progressColor),
+          _buildActionButtons(item)
         ],
       ),
     );
@@ -782,12 +790,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
 
   List<Widget> _buildCategoryInputSection({
-    required String label,
-    required bool isFixed,
-    required String? selectedType,
-    required String? selectedByproduct,
-    required ValueChanged<String?> onTypeChanged,
-    required ValueChanged<String?> onByproductChanged,
+    required String label, required bool isFixed,
+    required String? selectedType, required String? selectedByproduct,
+    required ValueChanged<String?> onTypeChanged, required ValueChanged<String?> onByproductChanged,
     required TextEditingController controller,
     required VoidCallback onSubmit,
   }) {

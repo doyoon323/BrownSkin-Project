@@ -4,6 +4,7 @@
 
 
 import 'package:flutter/material.dart';
+import 'mypage/home.dart';
 import 'themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:brownskin_app/pages/login/login_page.dart'; 
@@ -282,8 +283,32 @@ Widget buildRefreshIconButton(
 }
 
 
+//7. 프로필 버튼
+Widget buildProfileIconButton({
+  required BuildContext context,
+  required String token,
+}) {
+  return Container(
+    margin: const EdgeInsets.only(right: 8),
+    decoration: BoxDecoration(
+      color: AppColors.darkBrown,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: IconButton(
+      icon: const Icon(Icons.person, color: Colors.white),
+      tooltip: '마이페이지',
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => MyPageScreen(token: token))
+        );
+      },
+    ),
+  );
+}
 
-//7. 하단 메뉴바
+
+//8. 하단 메뉴바
 class BottomNavItem {
 final IconData icon;
 final String label;
@@ -314,7 +339,7 @@ Widget bottomNavigationBar(BuildContext context, List<BottomNavItem> items, {Col
   );
 }
 
-//8. 드롭다운
+//9. 드롭다운
 class CommonDropdownField extends StatelessWidget {
   final String? value;
   final List<String> items;
@@ -341,7 +366,7 @@ class CommonDropdownField extends StatelessWidget {
 }
 
 
-//9. 로딩
+//10. 로딩
 Widget buildLoadingWidget() {
   return Center(
     child: Container(

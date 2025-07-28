@@ -31,8 +31,9 @@ dependencies:
   flutter:
     sdk: flutter
 
-  webview_flutter: ^4.0.7
-  webview_flutter_android: ^3.10.2
+  webview_flutter: ^4.2.2
+  webview_flutter_android: ^3.11.0
+
 
 
   daum_postcode_view: ^0.1.2

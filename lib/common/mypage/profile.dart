@@ -1,16 +1,15 @@
-import 'package:brownskin_app/common/api_service.dart';
 import 'package:brownskin_app/common/mypage/set_password.dart';
 import 'package:brownskin_app/common/mypage/withdraw.dart';
 import 'package:daum_postcode_view/daum_postcode_view.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
 import '../constants.dart';
 import '../widgets.dart';
 
 class EditProfilePage extends StatefulWidget {
   final String token;
-  const EditProfilePage({super.key, required this.token});
+  final Map<String,dynamic> Info;
+  EditProfilePage({super.key, required this.Info, required this.token});
 
   @override
   State<EditProfilePage> createState() => _EditProfilePageState();
@@ -20,66 +19,73 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Map<String, TextEditingController> _controllers = {};
   Map<String,dynamic> userData = {};
 
-  final _formKey = GlobalKey<FormState>();
 
   @override void initState() {
     super.initState();
-    initController();
+    _initController();
   }
 
 
   Future<Map<String, dynamic>> getProfile() async {
-    return await ApiService.fetchMap(url: '/auth/api-profile', token: widget.token);
-  }
-
-  void initController() async {
-    final userData = await getProfile();
-    _controllers = {
-      'id': TextEditingController(text: userData['id']),
-      'name': TextEditingController(text: "이름"),
-      'phone': TextEditingController(text: "전화번호"),
-      'bizNumber': TextEditingController(text: '123-45-67890'),
-      'company_name': TextEditingController(text: userData['company_name']),
-      'address': TextEditingController(text: "${userData['addr1']} ${userData['addr2']} ${userData['addrDetail']}"),
-      'bizType': TextEditingController(text: '도소매업'),
-      'category': TextEditingController(text: '식품 소매업'),
-    };
+    return widget.Info;
   }
 
 
-  Widget _buildTextField(String label, String key, {bool readOnly = false}) {
+  void _initController() async {
+    final fetched = await getProfile();
+    setState(() {
+      userData = fetched;
+      _controllers = {
+        'id': TextEditingController(text: fetched['username'] ?? ''),
+        'name': TextEditingController(text: fetched['name'] ?? ''),
+        'phone': TextEditingController(text: fetched['phone'] ?? ''),
+        'bizNumber': TextEditingController(text: fetched['bizNumber'] ?? '123-4515-1561'),
+        'company_name': TextEditingController(text: fetched['company_name'] ?? ''),
+        'address': TextEditingController(text: "${fetched['addr1'] ?? ''} ${fetched['addr2'] ?? ''} ${fetched['addrDetail'] ?? ''}"),
+        'bizType': TextEditingController(text: fetched['bizType'] ?? '도소매업'),
+        'category': TextEditingController(text: fetched['category'] ?? '식품 소매업'),
+      };
+    });
+  }
+
+
+  Widget _buildTextField(String label, String key,TextInputType type, {bool readOnly = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        controller: _controllers[key],
-        readOnly: readOnly,
-        //keyboardType: TextInputType type,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: Colors.black12,
-          contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(3), // 둥글기 정도 조절
-            borderSide: BorderSide.none, // 테두리 없음
-          ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _controllers[key],
+            readOnly: readOnly,
+            keyboardType:  type,
+            decoration: InputDecoration(
+                hintText: _controllers[key]?.text ?? '',
+                filled: true,
+                fillColor: Colors.black12,
+                contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(3), borderSide: BorderSide.none)
         ),
       ),
+    ])
     );
   }
+
 
 
 Widget _buildBussinessForm() {
   return Padding(
     padding: const EdgeInsets.all(24),
     child: Form(
-      key: _formKey,
       child: Column(
         children: [
-          _buildTextField('사업자등록번호', 'bizNumber', readOnly: true),
-          _buildTextField('상호(법인명)', 'company_name'),
-          _buildTextField('사업장주소','address'),
-          _buildTextField('업태','bizType', readOnly: true),
-          _buildTextField('종목','category', readOnly: true)
+          _buildTextField('사업자등록번호', 'bizNumber',TextInputType.text, readOnly: true),
+          _buildTextField('상호(법인명)', 'company_name',TextInputType.text, readOnly: true),
+          _buildTextField('사업장주소','address',TextInputType.text, readOnly: true),
+          _buildTextField('업태','bizType', TextInputType.text,readOnly: true),
+          _buildTextField('종목','category', TextInputType.text, readOnly: true)
           ]
       ),
     ),
@@ -91,13 +97,12 @@ Widget _buildForm() {
   return Padding(
     padding: const EdgeInsets.all(24),
     child: Form(
-      key: _formKey,
       child: Column(
         children: [
-          _buildTextField('아이디', 'id', readOnly: true),
+          _buildTextField('아이디', 'id', TextInputType.text,readOnly: true),
           _buildPasswordButton('비밀번호'),
-          _buildTextField('이름', 'name', readOnly: true),
-          _buildTextField('회사명', 'company'),
+          _buildTextField('이름', 'name', TextInputType.text,readOnly: true),
+          _buildTextField('회사명', 'company_name',TextInputType.text,),
           _buildPostcodeField('주소','address'),
         ],
       ),
@@ -132,7 +137,7 @@ Widget _buildPostcodeField(String label,String key){
     padding: const EdgeInsets.only(bottom: 16),
     child: Row(
       children: [
-        Flexible(fit: FlexFit.tight, flex : 3, child: _buildTextField(label, key) ),
+        Flexible(fit: FlexFit.tight, flex : 3, child: _buildTextField(label, key,TextInputType.text) ),
         SizedBox(width: 10),
         SizedBox(
           height: 52,
@@ -208,15 +213,18 @@ Widget _buildPostcodeField(String label,String key){
       final response = await _submitRegistration();
       if (!mounted) return;
 
-      if (response.statusCode == 201) { //회원가입 성공
-        _showMessage('수정 완료되었습니다!', isSuccess: true, onClose: () {} );
-      } else { //실패처리
+      if (response.statusCode == 200) {
+        _showMessage('수정이 완료되었습니다.', isSuccess: true, onClose: () {
+          Navigator.pop(context,true);
+        });
+      } else {
         _showMessage('수정에 실패했습니다.');
       }
     } catch (e) {
       if (mounted) _showMessage('네트워크 오류가 발생했습니다.');
     }
   }
+
 
   bool _validateForm() {
     if (_controllers['address'] == null) {
@@ -231,26 +239,25 @@ Widget _buildPostcodeField(String label,String key){
     return true;
   }
 
-//서버에 회원가입 요청 보내기
   Future<http.Response> _submitRegistration() async {
     final address = (_controllers['address']!.text.trim()).split(RegExp(r'\s+'));
 
     final body = <String, String>{
-      'password': _controllers['password']!.text,
-      'password2': _controllers['password2']!.text,
-      'company_name': _controllers['company']!.text,
+      'company_name': _controllers['company_name']!.text,
       'addr1': address.length > 0 ? address[0] : '',
       'addr2': address.length > 1 ? address[1] : '',
       'addrDetail': address.length > 2 ? address.sublist(2).join(' ') : '',
     };
 
-    return await http.post(
-      Uri.parse('$BASE_URL/auth/api-register'),
-      headers: {"Content-Type": "application/x-www-form-urlencoded"},
+    final url = Uri.parse('$BASE_URL/auth/api-profile-update');
+
+    final response = await http.patch(
+      url,
+      headers: {'Authorization': 'Token ${widget.token}'},
       body: body,
     );
+    return response;
   }
-
 
 //팝업 메시지 표시
   void _showMessage(String message, {bool isSuccess = false, VoidCallback? onClose}) {

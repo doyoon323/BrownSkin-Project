@@ -1,4 +1,10 @@
+import 'dart:convert';
+import 'dart:core';
+import 'package:brownskin_app/common/constants.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../pages/login/login_page.dart';
 
 class WithdrawalPage extends StatefulWidget {
   const WithdrawalPage({super.key});
@@ -10,6 +16,13 @@ class WithdrawalPage extends StatefulWidget {
 class _WithdrawalPageState extends State<WithdrawalPage> {
   int? selectedReason;
   bool agreed = false;
+  final _pwController = TextEditingController();
+
+  @override
+  void dispose() {
+    _pwController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,15 +96,23 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
               ),
 
             const SizedBox(height: 24),
-            const TextField(
-              decoration: InputDecoration(labelText: '비밀번호 확인', border: OutlineInputBorder(),),
+            TextField(
+              controller: _pwController,
+              decoration: const InputDecoration(
+                labelText: '비밀번호 확인',
+                border: OutlineInputBorder(),
+              ),
+              obscureText: true, // 비밀번호니까 숨김 처리
             ),
+
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
+                onPressed: () async {
+                  if (_valid()) {
+                    await _deleteUser();
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
@@ -104,6 +125,88 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _deleteUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    final uri = Uri.parse("$BASE_URL/auth/api-account-delete");
+
+    final request = http.MultipartRequest('DELETE', uri)
+      ..fields['password'] = _pwController.text
+      ..headers['Authorization'] = 'Token $token';
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    print("DELETE USER RESPONSE: ${response.body}");
+
+    if (response.statusCode == 200) {
+      _showMessage('탈퇴가 완료되었습니다.', isSuccess: true, onClose: () async {
+        await prefs.remove('token');
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => LoginPage()),
+              (route) => false,
+        );
+      });
+    } else {
+      String errorMessage = '탈퇴에 실패했습니다.';
+        final decoded = jsonDecode(response.body);
+
+        if (decoded is Map<String, dynamic>) {
+          if (decoded.values.first is List) {
+            errorMessage = decoded.values.first[0];
+          } else if (decoded.containsKey("detail")) {
+            errorMessage = decoded["detail"];
+          } else if (decoded.containsKey("error")) {
+            errorMessage = decoded["error"][0];
+          }
+        }
+      _showMessage(errorMessage);
+    }
+  }
+
+  bool _valid() {
+    if (agreed == false) {
+      _showMessage('유의사항을 체크해주세요.');
+      return false;
+    }
+    if (selectedReason == null) {
+      _showMessage('탈퇴사유를 선택하세요.');
+      return false;
+    }
+    if (_pwController.text == null) {
+      _showMessage('비밀번호를 입력하세요.');
+      return false;
+    }
+    return true;
+  }
+
+
+  void _showMessage(String message, {bool isSuccess = false, VoidCallback? onClose}) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        icon: Icon(
+          isSuccess ? Icons.check_circle : Icons.error,
+          color: isSuccess ? Colors.green : Colors.red,
+          size: 32,
+        ),
+        title: Text(isSuccess ? '성공' : '오류'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              if (onClose != null) onClose();
+            },
+            child: const Text('확인'),
+          ),
+        ],
       ),
     );
   }
