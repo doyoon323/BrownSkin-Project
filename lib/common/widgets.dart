@@ -6,7 +6,6 @@ import 'mypage/home.dart';
 import 'themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:brownskin_app/pages/login/login_page.dart'; 
-import '../../common/mypage/home.dart';
 
 //1. 카드
 

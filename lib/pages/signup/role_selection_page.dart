@@ -51,6 +51,10 @@ class RoleSelectionPage extends StatelessWidget {
         backgroundColor: AppColors.primaryBrown,
         elevation: 0,
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Container(
         decoration: BoxDecoration(

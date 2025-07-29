@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'package:intl/intl.dart';
-import 'package:percent_indicator/percent_indicator.dart';
 import 'package:brownskin_app/pages/agriculture/deliveryReq_agriculture.dart';
 import 'package:brownskin_app/common/themes.dart';
 import '../../common/api_service.dart';
-import '../../common/mypage/home.dart';
 import '../../common/status_utils.dart';
 import '../../common/widgets.dart';
 
