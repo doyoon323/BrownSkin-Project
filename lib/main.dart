@@ -22,6 +22,7 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   final String? initialToken;
+
   const MyApp({super.key, required this.initialToken});
 
   @override

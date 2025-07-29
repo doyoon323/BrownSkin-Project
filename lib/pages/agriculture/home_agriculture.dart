@@ -27,9 +27,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
   // UI 상태 관리
   String sortBy = "name"; // 정렬 기준 : name, status
-  bool isGridView = true;
   Timer? _timer;
-
 
   static const Color lightbackgroundBrown = Color(0xFF8D6E63);
   static const Color backgroundBrown = Color(0xFFD7CCC8);
@@ -189,9 +187,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                               InkWell(
                                 onTap: () => Navigator.pop(context),
                                 borderRadius: BorderRadius.circular(20),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Icon(Icons.arrow_back, size: 24),
+                                child: Padding(padding: const EdgeInsets.all(8.0), child: Icon(Icons.arrow_back, size: 24),
                                 ),
                               ),
                             ],
@@ -385,18 +381,11 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   Widget _buildByproductInfo(){
     final filteredData = getFilteredData();
     return Expanded(
-        child: isGridView ? ListView.builder(
+        child: ListView.builder(
             padding: EdgeInsets.symmetric(vertical: 5),
             itemCount: filteredData.length,
             itemBuilder: (context, index) {
               return _buildListItem(filteredData[index]);
-            })
-            : GridView.builder(
-            padding: EdgeInsets.all(12),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 0.8,),
-            itemCount: filteredData.length,
-            itemBuilder: (context, index) {
-              //return _buildCompactGridCard(filteredData[index]);
             })
     );
   }

@@ -1,4 +1,5 @@
 import 'package:brownskin_app/common/api_service.dart';
+import 'package:brownskin_app/pages/admin/tester.dart';
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/common/constants.dart';
 import '../../common/widgets.dart';
@@ -233,6 +234,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage> with Tick
         [
           BottomNavItem(icon: Icons.home, label: '홈', onTap: () => _onItemTapped(context, 0), isSelected: selectedIndex == 0),
           BottomNavItem(icon: Icons.settings_rounded, label: '임계 설정', onTap: () => _onItemTapped(context, 1),isSelected: selectedIndex == 1),
+          BottomNavItem(icon: Icons.science_outlined, label: '시연용(임시)', isSelected: selectedIndex == 2, onTap: () => _onItemTapped(context, 2)),
         ],
       ),
     );
@@ -251,9 +253,15 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage> with Tick
     );
   }
 
-  void _onItemTapped(BuildContext context, int index) {
+  Future<void> _onItemTapped(BuildContext context, int index) async {
     setState(() {selectedIndex = index;});
     if (index == 0) Navigator.pop(context, 0);
+
+    if (index == 2) {
+      await Navigator.push<int>(context,
+          MaterialPageRoute(builder: (context) => Tester()));
+    }
+    setState(() => selectedIndex = 1);
   }
 
   Widget buildIconTitleRow(IconData icon, String title, {Color color = Colors.brown}) {

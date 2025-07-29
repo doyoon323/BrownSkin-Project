@@ -1,4 +1,5 @@
 import 'package:brownskin_app/model/polygon_data.dart';
+import 'package:brownskin_app/pages/admin/tester.dart';
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/common/constants.dart';
 import 'dart:async';
@@ -268,6 +269,7 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
         [
           BottomNavItem(icon: Icons.home_rounded, label: '홈', isSelected: selectedIndex == 0, onTap: () => _onItemTapped(context, 0)),
           BottomNavItem(icon: Icons.settings_rounded, label: '임계 설정', isSelected: selectedIndex == 1, onTap: () => _onItemTapped(context, 1)),
+          BottomNavItem(icon: Icons.science_outlined, label: '시연용(임시)', isSelected: selectedIndex == 2, onTap: () => _onItemTapped(context, 2)),
         ],
         color: Colors.white,
       ),
@@ -289,7 +291,13 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
       threshold = await adminData.getThreshold(selectedType, selectedByproductName);
       await reloadMarkers();
     }
+    if (index == 2) {
+    Navigator.push<int>(context,
+          MaterialPageRoute(builder: (context) => Tester()));
+    setState(() => selectedIndex = 0);
+    }
   }
+
 
   Widget _buildFilterBar() {
     final filteredByproducts = byproductsCategory.where((item) => item["type"] == selectedType)
