@@ -1,4 +1,3 @@
-import 'package:brownskin_app/common/mypage/profile.dart';
 import 'package:flutter/material.dart';
 
 class ChangePasswordPage extends StatelessWidget {

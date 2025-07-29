@@ -1,6 +1,6 @@
 import 'package:brownskin_app/common/mypage/profile.dart';
 import 'package:flutter/material.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../pages/login/login_page.dart';
 import 'announcement.dart';
 import 'policy.dart';
@@ -90,9 +90,14 @@ class MyPageScreen extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(bottom: 40),
               child: TextButton(
-                onPressed: () {
-                  Navigator.push(context,
-                    MaterialPageRoute(builder: (context) =>  LoginPage()),
+                onPressed: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove('token'); // 토큰 삭제
+
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginPage()), // 로그인 페이지로 이동
+                    (route) => false, // 모든 이전 화면 제거
                   );
                 },
                 child: const Text('로그아웃', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),

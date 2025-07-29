@@ -1,12 +1,11 @@
 //공통위젯들을 뽑아놓은 파일입니다...
 
-//카드형식, 액션버튼(상태변경)형식, 앱바, 텅 빈 위젯, 로그아웃버튼, 새로고침버튼
-
 
 import 'package:flutter/material.dart';
 import 'themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:brownskin_app/pages/login/login_page.dart'; 
+import '../../common/mypage/home.dart';
 
 //1. 카드
 
@@ -62,7 +61,7 @@ class InfoCard extends StatelessWidget {
   }
 }
 
-//2. 버튼
+//2. 액션버튼
 
 class ActionButtonData {
   final String label;

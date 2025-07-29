@@ -187,7 +187,8 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
           shadowColor: AppColors.darkBrown ,
           actions: [ //상단에 새로고침버튼, 로그아웃버튼(공통위젯폴더)
             buildLogoutIconButton(context),
-            buildRefreshIconButton(context, fetchPreprocessItems),        
+            buildRefreshIconButton(context, fetchPreprocessItems),   
+            buildMyPageIconButton(context),     
             ],
           bottom: TabBar( //하단에는 탭 세 개
             indicatorColor: Colors.white,
