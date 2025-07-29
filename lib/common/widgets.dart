@@ -7,6 +7,7 @@ import 'themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:brownskin_app/pages/login/login_page.dart';
 
+
 //1. 카드
 
 class InfoCard extends StatelessWidget {
