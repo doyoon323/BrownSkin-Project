@@ -4,6 +4,7 @@ import 'package:daum_postcode_view/daum_postcode_view.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../constants.dart';
+import '../themes.dart';
 import '../widgets.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -18,6 +19,11 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   Map<String, TextEditingController> _controllers = {};
   Map<String,dynamic> userData = {};
+
+
+  static const Color backgroundBrown = Color(0xFFD7CCC8);
+
+
 
 
   @override void initState() {
@@ -66,7 +72,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 filled: true,
                 fillColor: Colors.black12,
                 contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(3), borderSide: BorderSide.none)
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none)
         ),
       ),
     ])
@@ -120,10 +126,10 @@ Widget _buildPasswordButton(String label){
             Navigator.push(context, MaterialPageRoute(builder: (_) =>  ChangePasswordPage()));
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.black,
+            backgroundColor: AppColors.primaryBrown,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 24),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           child: const Text('비밀번호 변경'),
         ),
@@ -144,7 +150,7 @@ Widget _buildPostcodeField(String label,String key){
           child: ActionButtonGroup(
               buttons: [ ActionButtonData(
                   label: '주소 검색',
-                  backgroundColor: Colors.brown,
+                  backgroundColor: AppColors.primaryBrown,
                   onPressed: () async {
                     final result = await Navigator.push(
                         context,
@@ -166,15 +172,14 @@ Widget _buildPostcodeField(String label,String key){
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundBrown,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.primaryBrown,
         shadowColor: Colors.white,
-        title: const Text('정보 수정', style: TextStyle(color: Colors.black)),
+        title: const Text('정보 수정', style: TextStyle(color: Colors.white)),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-
       body:
       SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -200,7 +205,7 @@ Widget _buildPostcodeField(String label,String key){
           Navigator.push(context,
               MaterialPageRoute(builder: (_) => const WithdrawalPage()));
         },
-        child: const Text('회원탈퇴', style: TextStyle(fontSize: 14, color: Colors.black, decoration: TextDecoration.underline)),
+        child: const Text('회원탈퇴', style: TextStyle(fontSize: 14, color: AppColors.primaryBrown, decoration: TextDecoration.underline)),
       ),
     );
   }
@@ -294,9 +299,9 @@ Widget _buildPostcodeField(String label,String key){
         child: ElevatedButton(
           onPressed: _isLoading ? null : _register,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.black,
+            backgroundColor: AppColors.primaryBrown,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           child: const Text('수정완료', style: TextStyle(fontSize: 16)),
         ),

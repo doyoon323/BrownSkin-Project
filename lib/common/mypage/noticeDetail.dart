@@ -1,20 +1,24 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../themes.dart';
+
 class NoticeDetailPage extends StatelessWidget {
   final Map<String, dynamic> notice;
+  static const Color backgroundBrown = Color(0xFFD7CCC8);
 
   const NoticeDetailPage({super.key, required this.notice});
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('공지 상세'),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.primaryBrown,
         foregroundColor: Colors.black,
       ),
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundBrown,
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

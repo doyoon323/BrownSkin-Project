@@ -61,8 +61,7 @@ class CommonCards {
 
   static Widget buildHeaderCard({
     required String title, required String subtitle,
-    required IconData icon,
-    Color iconBgColor = Colors.white, Color iconColor = Colors.white, Gradient? backgroundGradient, Color shadowColor = Colors.brown,
+    Gradient? backgroundGradient, Color shadowColor = Colors.brown,
   }) {
     return Container(
       width: double.infinity,
@@ -74,11 +73,6 @@ class CommonCards {
       ),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(50)),
-            child: Icon(icon, size: 32, color: iconColor),
-          ),
           const SizedBox(height: 16),
           Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 8),
@@ -215,7 +209,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage> with Tick
                   key: _formKey,
                   child: Column(
                     children: [
-                      CommonCards.buildHeaderCard(title: '임계값 관리', subtitle: '부산물 수집량의 임계값을 설정하여\n효율적인 관리를 시작하세요', icon: Icons.tune,),
+                      CommonCards.buildHeaderCard(title: '임계값 관리', subtitle: '부산물 수집량의 임계값을 설정하여\n효율적인 관리를 시작하세요'),
                       const SizedBox(height: 20),
                       _buildSelectionCard(),
                       const SizedBox(height: 20),

@@ -1,6 +1,7 @@
 import 'package:brownskin_app/common/api_service.dart';
 import 'package:brownskin_app/common/constants.dart';
 import 'package:flutter/material.dart';
+import '../themes.dart';
 import 'noticeDetail.dart';
 
 class NoticeListPage extends StatefulWidget {
@@ -16,6 +17,9 @@ class _NoticeListPageState extends State<NoticeListPage> {
   String? _next;
   String? _previous;
   bool _isLoading = false;
+
+  static const Color mediumbackgroundBrown = Color(0xFF4A3429);
+  static const Color backgroundBrown = Color(0xFFD7CCC8);
 
 
   @override
@@ -44,20 +48,19 @@ class _NoticeListPageState extends State<NoticeListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('공지사항'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        title: const Text('공지사항', style: TextStyle(color: backgroundBrown)),
+        backgroundColor: AppColors.primaryBrown,
+        foregroundColor: backgroundBrown,
         elevation: 0,
       ),
 
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundBrown,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
         children: [
           Expanded(
-            child: _notices.isEmpty ? const Center(child: Text('공지사항이 없습니다.'))
-                : ListView.separated(
+            child: _notices.isEmpty ? const Center(child: Text('공지사항이 없습니다.')) : ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: _notices.length,
               separatorBuilder: (_, __) => Divider(color: Colors.white),

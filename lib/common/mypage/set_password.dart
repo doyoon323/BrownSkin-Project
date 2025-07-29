@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants.dart';
+import '../themes.dart';
 
 
 class ChangePasswordPage extends StatefulWidget {
@@ -21,6 +22,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _obscureOld = true;
   bool _obscureNew = true;
   bool _obscureCheck = true;
+
+  static const Color backgroundBrown = Color(0xFFD7CCC8);
 
   @override
   void dispose() {
@@ -134,10 +137,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundBrown,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: const Text('비밀번호 변경'),
+        backgroundColor: AppColors.primaryBrown,
+        title: const Text('비밀번호 변경', style: TextStyle(color: Colors.white),),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -170,7 +173,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               toggle: () => setState(() => _obscureCheck = !_obscureCheck),
             ),
             const SizedBox(height: 32),
-
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -178,10 +180,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   if (_validPW()) _postPW();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
+                  backgroundColor: AppColors.primaryBrown,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 24),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 child: const Text('수정 완료'),
               ),

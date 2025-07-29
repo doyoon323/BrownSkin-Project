@@ -314,7 +314,7 @@ final String label;
 final VoidCallback onTap;
 final bool isSelected;
 
-BottomNavItem({required this.icon, required this.label, required this.onTap, this.isSelected = false});
+BottomNavItem({required this.icon, required this.label, required this.onTap, this.isSelected = false, Color? color});
 }
 
 Widget bottomNavigationBar(BuildContext context, List<BottomNavItem> items, {Color? color}) {
@@ -329,8 +329,8 @@ Widget bottomNavigationBar(BuildContext context, List<BottomNavItem> items, {Col
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(item.icon, color: item.isSelected ? Colors.black : Colors.grey[400]),
-              Text(item.label, style: TextStyle(color: item.isSelected ? Colors.black : Colors.grey[400], fontSize: 12)),
+              Icon(item.icon, color: item.isSelected ? Colors.brown : Colors.grey[400]),
+              Text(item.label, style: TextStyle(color: item.isSelected ? Colors.brown : Colors.grey[400], fontSize: 12)),
             ],
           ))).toList(),
       ),

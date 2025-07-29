@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../pages/login/login_page.dart';
+import '../themes.dart';
 
 class WithdrawalPage extends StatefulWidget {
   const WithdrawalPage({super.key});
@@ -18,6 +19,8 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
   bool agreed = false;
   final _pwController = TextEditingController();
 
+  static const Color backgroundBrown = Color(0xFFD7CCC8);
+
   @override
   void dispose() {
     _pwController.dispose();
@@ -27,10 +30,10 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundBrown,
       appBar: AppBar(
-          backgroundColor: Colors.white,
-          title: const Text('회원탈퇴')
+          backgroundColor: AppColors.primaryBrown,
+          title: const Text('회원탈퇴',style: TextStyle(color: Colors.white))
       ),
       body: SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -51,7 +54,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
               height: 200,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: Color(0xFFEFEBE9),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: const Text('탈퇴 시 유의사항 내용'),
@@ -97,6 +100,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
 
             const SizedBox(height: 24),
             TextField(
+
               controller: _pwController,
               decoration: const InputDecoration(
                 labelText: '비밀번호 확인',
@@ -115,7 +119,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
+                  backgroundColor: AppColors.primaryBrown,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),

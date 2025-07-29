@@ -30,6 +30,12 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   bool isGridView = true;
   Timer? _timer;
 
+
+  static const Color lightbackgroundBrown = Color(0xFF8D6E63);
+  static const Color backgroundBrown = Color(0xFFD7CCC8);
+  static const Color cardBrown = Color(0xFFEFEBE9);
+
+
   @override
   void initState() {
     super.initState();
@@ -172,7 +178,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
               builder: (context, setOuterState) {
                 return SafeArea(
                   child: Material(
-                    color: Colors.white,
+                    color: cardBrown,
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                     child: Column(
                       children: [
@@ -217,9 +223,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                                     }
                                   },
                                   style: OutlinedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                                    side: BorderSide(color: Colors.black),
-                                    foregroundColor: Colors.black,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    side: BorderSide(color: lightbackgroundBrown),
+                                    foregroundColor: lightbackgroundBrown,
                                   ),
                                   child: Text("부산물 폐기"),
                                 ),
@@ -236,9 +242,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                                    backgroundColor: Colors.black,
-                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    backgroundColor: lightbackgroundBrown,
+                                    foregroundColor: cardBrown,
                                   ),
                                   child: Text("부산물 추가"),
                                 ),
@@ -318,17 +324,15 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 /* UI 구현 */
   @override
   Widget build(BuildContext context) {
-    final summaryData = getSummaryData();
-    final filteredData = getFilteredData();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundBrown,
       appBar: AppBar(
         backgroundColor: AppColors.primaryBrown,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: cardBrown),
         title: const Text(
           '부산물 관리 시스템',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: cardBrown, fontWeight: FontWeight.bold),
         ),
         elevation: 4,
         shadowColor: AppColors.darkBrown,
@@ -343,6 +347,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
       ),
       body: Column(
         children: [
+          SizedBox(height: 15),
           _buildSummaryHeader(),
           _buildCheckbox(),
           _buildByproductInfo()
@@ -354,6 +359,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
           BottomNavItem(icon: Icons.home_rounded, label: '홈', isSelected: true, onTap: () {}),
           BottomNavItem(icon: Icons.local_shipping_rounded, label: '배송 요청', onTap: () => onDeliveryRequestTap(context))
         ],
+        color: cardBrown
       ),
     );
   }
@@ -365,8 +371,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
       children: [
         FloatingActionButton(
           onPressed: () => _showAddWeightDialog("새 부산물 등록",null,null, false),
-          backgroundColor: Colors.grey[300],
-          foregroundColor: Colors.white,
+          backgroundColor: lightbackgroundBrown,
+          foregroundColor: cardBrown,
           shape: CircleBorder(side: BorderSide(color: Colors.black26)),
           child: Icon(Icons.add, size: 45),
         ),
@@ -420,11 +426,11 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Padding(padding: EdgeInsets.only(right: 16), child: Icon(Icons.warning, color: Colors.white, size: 20)),
-                            Text("포화 위험 품목", style: TextStyle(color: Colors.white, fontSize: 16)),
+                            Padding(padding: EdgeInsets.only(right: 16), child: Icon(Icons.warning, color: cardBrown, size: 20)),
+                            Text("포화 위험 품목", style: TextStyle(color: cardBrown, fontSize: 16)),
                           ],
                         ),
-                        Text("${DangerData['danger']}개", style: TextStyle(color: Colors.white, fontSize: 16)),
+                        Text("${DangerData['danger']}개", style: TextStyle(color: cardBrown, fontSize: 16)),
                       ],
                     ),
                   ),
@@ -458,7 +464,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             ),
             /// 우측: 정렬 드롭다운
             Container(
-              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12),),
+              decoration: BoxDecoration(color: cardBrown, borderRadius: BorderRadius.circular(12),),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: sortBy,
@@ -500,7 +506,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
               value: value,
               onChanged: onChanged,
               checkColor: Colors.black,
-              activeColor: Colors.white,
+              activeColor: cardBrown,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               visualDensity: VisualDensity.compact,
             ),
@@ -650,8 +656,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             onPressed: () {
               _showAddWeightDialog("부산물 폐기 등록", item['type'], item['name'], true);
             },
-            backgroundColor: Colors.grey[300]!,
-            foregroundColor: Colors.black,
+            backgroundColor: lightbackgroundBrown,
+            foregroundColor: Colors.white,
+            borderRadius: 10,
           ),
         ),
         const SizedBox(width: 12),
@@ -661,8 +668,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             onPressed: () {
               _showAddWeightDialog("부산물 무게 추가", item['type'], item['name'], false);
             },
-            backgroundColor: Colors.grey[300]!,
-            foregroundColor: Colors.black,
+            backgroundColor: lightbackgroundBrown!,
+            foregroundColor: Colors.white,
+            borderRadius: 10,
           ),
         ),
       ],
@@ -677,7 +685,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             borderRadius: BorderRadius.circular(20),
             child: LinearProgressIndicator(
               value: percent,
-              backgroundColor: Colors.grey[300],
+              backgroundColor: backgroundBrown,
               valueColor: AlwaysStoppedAnimation<Color>(color),
               minHeight: 20,
             ),
@@ -702,9 +710,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBrown,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 4, offset: Offset(0, 2))],
+        boxShadow: [BoxShadow(color: cardBrown.withOpacity(0.1), spreadRadius: 1, blurRadius: 4, offset: Offset(0, 2))],
         border: Border.all(color: Colors.grey.withOpacity(0.6), width: 1.0,)
       ),
       child: Column(
@@ -749,6 +757,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
           ),
           SizedBox(height: 20),
           _buildProgressBar(percent, progressColor),
+          SizedBox(height: 10),
           _buildActionButtons(item)
         ],
       ),
@@ -771,7 +780,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
           builder: (context, setModalState) {
             return Container(
               padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom,),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20)),),
+              decoration: BoxDecoration(color: cardBrown, borderRadius: BorderRadius.vertical(top: Radius.circular(20)),),
               child: Padding(
                 padding: EdgeInsets.all(20),
                 child: Column(
@@ -883,7 +892,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
         ),
       ),
       const SizedBox(height: 20),
-      SingleActionButton(label: '등록하기', onPressed: onSubmit, borderRadius: 12,
+      SingleActionButton(label: '등록하기', onPressed: onSubmit, backgroundColor: lightbackgroundBrown , borderRadius: 12,
       ),
     ];
   }

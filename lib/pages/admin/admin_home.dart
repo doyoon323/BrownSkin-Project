@@ -240,7 +240,7 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
     return Scaffold(
       appBar: AppBar(
           backgroundColor: Colors.brown,
-          title: Text('부산물 관리 시스템'),
+          title: Text('부산물 관리 시스템', style: TextStyle(color: Colors.white)),
           actions:[
             IconButton(icon: Icon(Icons.person, size: 40,),
                 onPressed: () {

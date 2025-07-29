@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../themes.dart';
+
 class PolicyListPage extends StatelessWidget {
   const PolicyListPage({super.key});
 
+  static const Color backgroundBrown = Color(0xFFD7CCC8);
+
   @override
   Widget build(BuildContext context) {
-    // 약관 제목 및 내용 매핑
     final policies = [
       {
         'title': '서비스 이용약관',
@@ -26,11 +29,11 @@ class PolicyListPage extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundBrown,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.primaryBrown,
         elevation: 0,
-        title: const Text('< 약관 및 정책', style: TextStyle(color: Colors.black)),
+        title: const Text('< 약관 및 정책', style: TextStyle(color: backgroundBrown)),
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: ListView.builder(
@@ -70,17 +73,18 @@ class PolicyDetailPage extends StatelessWidget {
     required this.title,
     required this.content,
   });
+  static const Color backgroundBrown = Color(0xFFD7CCC8);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: AppColors.primaryBrown,
+        foregroundColor: backgroundBrown,
         elevation: 0,
       ),
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundBrown,
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: SingleChildScrollView(
@@ -93,6 +97,7 @@ class PolicyDetailPage extends StatelessWidget {
     );
   }
 }
+
 
 // ------------------------
 // 약관 더미 내용들 (예시로)
