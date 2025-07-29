@@ -7,6 +7,7 @@ import 'package:brownskin_app/pages/admin/setThreshold_admin.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../common/location_service.dart';
 import '../../common/mypage/home.dart';
+import '../../common/themes.dart';
 import '../../common/widgets.dart';
 import 'admin_data_provider.dart';
 import 'admin_marker_factory.dart';
@@ -240,17 +241,14 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          backgroundColor: Colors.brown,
-          title: Text('부산물 관리 시스템', style: TextStyle(color: Colors.white)),
+          backgroundColor: AppColors.primaryBrown,
+          title: Text('부산물 관리 시스템', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           actions:[
-            IconButton(icon: Icon(Icons.person, size: 40,),
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => MyPageScreen(token : widget.token)),);
-                }),
+            buildMyPageIconButton(context, widget.token),
+            buildLogoutIconButton(context,backgroundColor: AppColors.primaryBrown),
             const SizedBox(width: 8),
           ]
       ),
-      backgroundColor: Colors.brown,
       body: SafeArea(
         child: Stack(
           children: [

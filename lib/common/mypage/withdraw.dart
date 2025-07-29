@@ -30,11 +30,12 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundBrown,
       appBar: AppBar(
           backgroundColor: AppColors.primaryBrown,
-          title: const Text('회원탈퇴',style: TextStyle(color: Colors.white))
+          foregroundColor: backgroundBrown,
+          title: const Text('회원탈퇴',style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
       ),
+      backgroundColor: backgroundBrown,
       body: SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         child:Column(
@@ -42,10 +43,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
           children: [
             const Text(
               '탈퇴 시 유의사항',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold,fontSize: 16),
             ),
             const SizedBox(height: 12),
 
@@ -54,8 +52,8 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
               height: 200,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Color(0xFFEFEBE9),
-                borderRadius: BorderRadius.circular(4),
+                color: Color(0xFFC1BBB7).withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: const Text('탈퇴 시 유의사항 내용'),
             ),
@@ -100,11 +98,12 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
 
             const SizedBox(height: 24),
             TextField(
-
               controller: _pwController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: '비밀번호 확인',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               obscureText: true, // 비밀번호니까 숨김 처리
             ),
@@ -122,9 +121,9 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
                   backgroundColor: AppColors.primaryBrown,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 24),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text('회원탈퇴'),
+                child: const Text('회원탈퇴' ,style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -183,7 +182,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
       _showMessage('탈퇴사유를 선택하세요.');
       return false;
     }
-    if (_pwController.text == null) {
+    if (_pwController.text.isEmpty) {
       _showMessage('비밀번호를 입력하세요.');
       return false;
     }

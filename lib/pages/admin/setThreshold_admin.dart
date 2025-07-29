@@ -1,4 +1,5 @@
 import 'package:brownskin_app/common/api_service.dart';
+import 'package:brownskin_app/common/themes.dart';
 import 'package:brownskin_app/pages/admin/tester.dart';
 import 'package:flutter/material.dart';
 import 'package:brownskin_app/common/constants.dart';
@@ -68,7 +69,7 @@ class CommonCards {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.brown,
+        color: AppColors.primaryBrown,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: shadowColor, blurRadius: 20, offset: const Offset(0, 8))],
       ),
@@ -243,13 +244,15 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage> with Tick
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       title: const Text('임계값 설정', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 20)),
-      backgroundColor: Colors.transparent,
+      backgroundColor:AppColors.primaryBrown,
+      foregroundColor:Colors.white,
       elevation: 0,
-      leading: IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => Navigator.pop(context, 0)),
-      flexibleSpace: Container(
-        decoration: const BoxDecoration(color: Colors.brown),
-      ),
-      actions: [buildLogoutIconButton(context,backgroundColor: Colors.brown)],
+      //leading: IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => Navigator.pop(context, 0)),
+      flexibleSpace: Container(decoration: const BoxDecoration(color: AppColors.primaryBrown)),
+      actions: [
+        buildMyPageIconButton(context, widget.token),
+        buildLogoutIconButton(context,backgroundColor: AppColors.primaryBrown)
+      ],
     );
   }
 
@@ -264,7 +267,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage> with Tick
     setState(() => selectedIndex = 1);
   }
 
-  Widget buildIconTitleRow(IconData icon, String title, {Color color = Colors.brown}) {
+  Widget buildIconTitleRow(IconData icon, String title, {Color color = AppColors.primaryBrown}) {
     return Row(
       children: [
         Container(
@@ -374,7 +377,8 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage> with Tick
               suffixStyle: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(
+                  0xFF855056), width: 2)),
               errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFEF4444))),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               filled: true,

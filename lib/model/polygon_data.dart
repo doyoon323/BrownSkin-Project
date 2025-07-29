@@ -33,11 +33,7 @@ class PolygonService {
     polygonCoords.forEach((id, coords) {
       // id는 'Gyeonggi_do-0' 처럼 들어있으므로 name을 추출
       final name = id.split('-').first;
-      addPolygon(
-        id,
-        coords,
-        color: provinceColors[name] ?? Colors.red,
-      );
+      addPolygon(id, coords, color: provinceColors[name] ?? Colors.red);
     });
   }
   void addPolygon(String id, List<LatLng> outerRing,{ Color? color}) {
@@ -56,7 +52,7 @@ class PolygonService {
         polygonId: PolygonId(id),
         points: outerRing,
         strokeColor: Color(0xFFF2F2F2) ,
-        strokeWidth: 2,
+        strokeWidth: 1,
         fillColor: (color ?? Colors.green) ,
       ),
     );

@@ -20,8 +20,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Map<String, dynamic> userInfo = {};
   bool isLoading = true;
   static const Color mediumbackgroundBrown = Color(0xFF4A3429);
-  static const Color bronzeBrown = Color(0xFF6D4C41);
-  static const Color lightbackgroundBrown = Color(0xFF8D6E63);
+  static const Color lightbackgroundBrown = Color(0xFF433228);
   static const Color backgroundBrown = Color(0xFFD7CCC8);
   static const Color cardBrown = Color(0xFFEFEBE9);
 
@@ -76,7 +75,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: AppColors.primaryBrown,
-        automaticallyImplyLeading: false,
+        foregroundColor: backgroundBrown,
         title: Text(
           '마이페이지',
           style: TextStyle(color: cardBrown, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 0.5),
@@ -299,9 +298,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => NoticeListPage(token: widget.token),
-                        ),
+                        MaterialPageRoute(builder: (context) => NoticeListPage(token: widget.token)),
                       );
                     },
                   ),
@@ -324,9 +321,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const PolicyListPage(),
-                        ),
+                        MaterialPageRoute(builder: (context) => const PolicyListPage()),
                       );
                     },
                   ),
@@ -360,15 +355,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 );
               },
               style: TextButton.styleFrom(
-                backgroundColor: bronzeBrown,
+                backgroundColor: AppColors.primaryBrown,
                 padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: lightbackgroundBrown.withOpacity(0.5),
-                    width: 1,
-                  ),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16),),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -407,6 +396,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
+        color: lightbackgroundBrown.withOpacity(0.2),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),

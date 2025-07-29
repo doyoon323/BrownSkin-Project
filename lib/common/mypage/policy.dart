@@ -5,7 +5,10 @@ import '../themes.dart';
 class PolicyListPage extends StatelessWidget {
   const PolicyListPage({super.key});
 
+
+  static const Color lightbackgroundBrown = Color(0xFF433228);
   static const Color backgroundBrown = Color(0xFFD7CCC8);
+  static const Color cardBrown = Color(0xFFEFEBE9);
 
   @override
   Widget build(BuildContext context) {
@@ -29,24 +32,22 @@ class PolicyListPage extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: backgroundBrown,
       appBar: AppBar(
         backgroundColor: AppColors.primaryBrown,
+        foregroundColor: backgroundBrown,
         elevation: 0,
-        title: const Text('< 약관 및 정책', style: TextStyle(color: backgroundBrown)),
-        iconTheme: const IconThemeData(color: Colors.black),
+        title: const Text('약관 및 정책', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
+      backgroundColor: backgroundBrown,
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: policies.length,
         itemBuilder: (_, index) {
           final policy = policies[index];
-          return ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(policy['title']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-            trailing: const Icon(Icons.chevron_right),
+          return _buildMenuItem(
+            icon: Icons.description_outlined,
+            title: policy['title']!,
             onTap: () {
-              // 상세 페이지 이동
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -59,6 +60,78 @@ class PolicyListPage extends StatelessWidget {
             },
           );
         },
+      ),
+    );
+  }
+
+
+
+
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: lightbackgroundBrown.withOpacity(0.2),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                lightbackgroundBrown.withOpacity(0.2),
+                lightbackgroundBrown.withOpacity(0.1),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: cardBrown.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Icon(
+            Icons.description_outlined,
+            color: cardBrown,
+            size: 24,
+          ),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 17,
+            color: Colors.black54,
+            letterSpacing: 0.3,
+          ),
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: lightbackgroundBrown.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            Icons.chevron_right,
+            color: cardBrown,
+            size: 20,
+          ),
+        ),
+        onTap: onTap,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        hoverColor: lightbackgroundBrown.withOpacity(0.1),
+        splashColor: cardBrown.withOpacity(0.1),
       ),
     );
   }
@@ -79,7 +152,7 @@ class PolicyDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title: Text(title,style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.primaryBrown,
         foregroundColor: backgroundBrown,
         elevation: 0,
@@ -98,10 +171,6 @@ class PolicyDetailPage extends StatelessWidget {
   }
 }
 
-
-// ------------------------
-// 약관 더미 내용들 (예시로)
-// ------------------------
 
 const String _termsOfService = '''
 제1조 (목적)

@@ -140,7 +140,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       backgroundColor: backgroundBrown,
       appBar: AppBar(
         backgroundColor: AppColors.primaryBrown,
-        title: const Text('비밀번호 변경', style: TextStyle(color: Colors.white),),
+        foregroundColor: backgroundBrown,
+        title: const Text('비밀번호 변경', style: TextStyle(fontWeight: FontWeight.bold,color: Colors.white)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -185,7 +186,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text('수정 완료'),
+                child: const Text('수정 완료',style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],

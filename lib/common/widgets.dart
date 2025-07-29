@@ -5,8 +5,7 @@ import 'package:flutter/material.dart';
 import 'mypage/home.dart';
 import 'themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:brownskin_app/pages/login/login_page.dart'; 
-import '../../common/mypage/home.dart';
+import 'package:brownskin_app/pages/login/login_page.dart';
 
 //1. 카드
 
@@ -167,7 +166,7 @@ class SingleActionButton extends StatelessWidget {
   }
 }
 
-//3-1. 앱바 (전처리, 수거, 농가)
+//3. 앱바 (전처리, 수거, 농가)
 
 PreferredSizeWidget buildCommonAppBar({
   required String title,
@@ -193,16 +192,6 @@ PreferredSizeWidget buildCommonAppBar({
       ),
     ],
     bottom: tabBar ,
-  );
-}
-
-// 3-2 앱바 (분리배출, 농가) 추후 논의 후  3-1과 합칠 것
-PreferredSizeWidget buildCommonAppBar2(String title, List<Widget> actions){
-  return AppBar(
-    backgroundColor: Colors.white,
-    title: Text(title, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-    elevation: 4,
-    actions: actions,
   );
 }
 
@@ -258,11 +247,11 @@ Widget buildLogoutIconButton(BuildContext context, {Color? backgroundColor}) {
 
 //6. 새로고침 버튼
 Widget buildRefreshIconButton(
-    BuildContext context, Future<void> Function() onPressed) {
+    BuildContext context, Future<void> Function() onPressed, {Color? backgroundColor}) {
   return Container(
     margin: const EdgeInsets.only(right: 8),
     decoration: BoxDecoration(
-      color: AppColors.darkBrown,
+      color: backgroundColor ?? AppColors.darkBrown,
       borderRadius: BorderRadius.circular(8),
     ),
     child: IconButton(
@@ -281,30 +270,6 @@ Widget buildRefreshIconButton(
   );
 }
 
-
-//7. 프로필 버튼
-Widget buildProfileIconButton({
-  required BuildContext context,
-  required String token,
-}) {
-  return Container(
-    margin: const EdgeInsets.only(right: 8),
-    decoration: BoxDecoration(
-      color: AppColors.darkBrown,
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: IconButton(
-      icon: const Icon(Icons.person, color: Colors.white),
-      tooltip: '마이페이지',
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => MyPageScreen(token: token))
-        );
-      },
-    ),
-  );
-}
 
 
 //8. 하단 메뉴바
@@ -450,9 +415,9 @@ void showConfirmPopup({
 }
 
 //11. 마이페이지 접속 버튼
-Widget buildMyPageIconButton(BuildContext context, String token) {
+Widget buildMyPageIconButton(BuildContext context, String token, {Color? color}) {
   return IconButton(
-    icon: Icon(Icons.person),
+    icon: Icon(Icons.person, color: Colors.white),
     tooltip: '마이페이지',
     onPressed: () {
       Navigator.push(
@@ -462,3 +427,4 @@ Widget buildMyPageIconButton(BuildContext context, String token) {
     },
   );
 }
+

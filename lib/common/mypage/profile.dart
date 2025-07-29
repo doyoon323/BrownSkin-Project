@@ -131,7 +131,7 @@ Widget _buildPasswordButton(String label){
             padding: const EdgeInsets.symmetric(vertical: 24),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          child: const Text('비밀번호 변경'),
+          child: const Text('비밀번호 변경', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -172,14 +172,14 @@ Widget _buildPostcodeField(String label,String key){
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundBrown,
       appBar: AppBar(
+        foregroundColor: backgroundBrown,
         backgroundColor: AppColors.primaryBrown,
         shadowColor: Colors.white,
-        title: const Text('정보 수정', style: TextStyle(color: Colors.white)),
+        title: const Text('정보 수정', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
       ),
+        backgroundColor: backgroundBrown,
       body:
       SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -303,7 +303,7 @@ Widget _buildPostcodeField(String label,String key){
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          child: const Text('수정완료', style: TextStyle(fontSize: 16)),
+          child: const Text('수정완료', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
       ),
     );

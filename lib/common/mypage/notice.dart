@@ -18,8 +18,10 @@ class _NoticeListPageState extends State<NoticeListPage> {
   String? _previous;
   bool _isLoading = false;
 
-  static const Color mediumbackgroundBrown = Color(0xFF4A3429);
+  static const Color lightbackgroundBrown = Color(0xFF433228);
   static const Color backgroundBrown = Color(0xFFD7CCC8);
+  static const Color cardBrown = Color(0xFFEFEBE9);
+
 
 
   @override
@@ -30,10 +32,9 @@ class _NoticeListPageState extends State<NoticeListPage> {
 
   Future<void> _fetchNotices(String url) async {
     setState(() => _isLoading = true);
-
     final response = await ApiService.fetchMap(url: '$BASE_URL/notices/api/', token: widget.token);
 
-    if (response != null) {
+    if (response.isNotEmpty) {
       setState(() {
         _notices = response['results'] ?? [];
         _next = response['next'];
@@ -48,41 +49,37 @@ class _NoticeListPageState extends State<NoticeListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('공지사항', style: TextStyle(color: backgroundBrown)),
+        title: const Text('공지사항', style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.primaryBrown,
         foregroundColor: backgroundBrown,
         elevation: 0,
       ),
 
+
       backgroundColor: backgroundBrown,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
+      body: _isLoading ? const Center(child: CircularProgressIndicator()) : Column(
         children: [
           Expanded(
-            child: _notices.isEmpty ? const Center(child: Text('공지사항이 없습니다.')) : ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _isLoading ? const Center(child: CircularProgressIndicator())
+                : _notices.isEmpty ? const Center(child: Text('공지사항이 없습니다.'))
+                : ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
               itemCount: _notices.length,
-              separatorBuilder: (_, __) => Divider(color: Colors.white),
               itemBuilder: (context, index) {
                 final item = _notices[index];
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                  title: Text(item['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(item['created_at'] ?? ''),
+                return _buildMenuItem(
+                  title: item['title'] ?? '제목 없음',
+                  subtitle: item['created_at'] ?? '',
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => NoticeDetailPage(notice: item),
-                      ),
+                      MaterialPageRoute(builder: (_) => NoticeDetailPage(notice: item)),
                     );
                   },
                 );
               },
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
@@ -105,4 +102,51 @@ class _NoticeListPageState extends State<NoticeListPage> {
       ),
     );
   }
+
+
+  Widget _buildMenuItem({
+    required String title,
+    String? subtitle, //
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: lightbackgroundBrown.withOpacity(0.2),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+
+        title: Text(
+          title,
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 17, color: Colors.black54, letterSpacing: 0.3),
+        ),
+        subtitle: subtitle != null ? Text(
+            subtitle,
+            style: TextStyle(fontSize: 13, color: cardBrown.withOpacity(0.7))
+        )
+            : null,
+        trailing: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: lightbackgroundBrown.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            Icons.chevron_right,
+            color: cardBrown,
+            size: 20,
+          ),
+        ),
+        onTap: onTap,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        hoverColor: lightbackgroundBrown.withOpacity(0.1),
+        splashColor: cardBrown.withOpacity(0.1),
+      ),
+    );
+  }
+
 }

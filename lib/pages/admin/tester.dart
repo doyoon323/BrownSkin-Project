@@ -19,10 +19,11 @@ class Tester extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.primaryBrown,
+          foregroundColor:Colors.white,
+          backgroundColor: AppColors.primaryBrown,
           title:  Text(
               "분야별 테스트",
-            style: TextStyle(color: Colors.white)
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
           )
       ),
       body: Center(

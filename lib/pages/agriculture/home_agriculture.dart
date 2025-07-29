@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'package:intl/intl.dart';
-import 'package:percent_indicator/percent_indicator.dart';
 import 'package:brownskin_app/pages/agriculture/deliveryReq_agriculture.dart';
 import 'package:brownskin_app/common/themes.dart';
 import '../../common/api_service.dart';
-import '../../common/mypage/home.dart';
 import '../../common/status_utils.dart';
 import '../../common/widgets.dart';
 
@@ -327,17 +325,17 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
         backgroundColor: AppColors.primaryBrown,
         iconTheme: const IconThemeData(color: cardBrown),
         title: const Text(
-          '부산물 관리 시스템',
+          '부산물 관리',
           style: TextStyle(color: cardBrown, fontWeight: FontWeight.bold),
         ),
         elevation: 4,
         shadowColor: AppColors.darkBrown,
         actions: [
-          buildLogoutIconButton(context),
+          buildLogoutIconButton(context,backgroundColor: AppColors.primaryBrown),
           buildRefreshIconButton(context, () async {
             await fetchUserByProduct();
             await updateData(userByproduct);
-          }),
+          }, backgroundColor: AppColors.primaryBrown),
           buildMyPageIconButton(context, widget.token),
         ],
       ),
@@ -408,7 +406,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                 Expanded(
                   child: Container(
                     padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(color: Color(0xC8DF3838), borderRadius: BorderRadius.circular(8)),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -657,7 +655,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             onPressed: () {
               _showAddWeightDialog("부산물 무게 추가", item['type'], item['name'], false);
             },
-            backgroundColor: lightbackgroundBrown!,
+            backgroundColor: lightbackgroundBrown,
             foregroundColor: Colors.white,
             borderRadius: 10,
           ),
