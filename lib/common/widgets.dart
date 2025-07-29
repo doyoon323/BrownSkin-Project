@@ -367,3 +367,73 @@ Widget buildLoadingWidget() {
     ),
   );
 }
+
+//10. 확인팝업
+void showConfirmPopup({
+  required BuildContext context,
+  required String typeLabel,          // ex: 수확
+  required String productName,        // ex: 사과
+  required String weightText,         // ex: 100
+  required String actionText,         // ex: '부산물을 등록하시겠습니까?'
+  required VoidCallback onConfirm,    // 확인 버튼 눌렀을 때 실행할 함수
+}) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.all(20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: const TextStyle(fontSize: 16, color: Colors.black),
+                children: [
+                  const TextSpan(text: '[ ', style: TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: typeLabel, style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold)),
+                  const TextSpan(text: ' ] '),
+                  TextSpan(text: productName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: ' ${weightText}kg', style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold)),
+                  TextSpan(text: '\n$actionText'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('취소'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    onConfirm();
+                  },
+                  child: const Text('확인'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+//11. 마이페이지 접속 버튼
+Widget buildMyPageIconButton(BuildContext context) {
+  return IconButton(
+    icon: Icon(Icons.person),
+    tooltip: '마이페이지',
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const MyPageScreen()),
+      );
+    },
+  );
+}
