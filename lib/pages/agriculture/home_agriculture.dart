@@ -5,6 +5,7 @@ import 'package:brownskin_app/common/constants.dart';
 import 'package:intl/intl.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:brownskin_app/pages/agriculture/deliveryReq_agriculture.dart';
+import 'package:brownskin_app/common/themes.dart';
 import '../../common/api_service.dart';
 import '../../common/mypage/home.dart';
 import '../../common/status_utils.dart';
@@ -112,7 +113,11 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
     await fetchUserByProduct();
     setState(() {});
-    showSnack("성공적으로 등록되었습니다!");
+    if (disposed) {
+    showSnack("부산물이 폐기 처리되었습니다.");
+  } else {
+    showSnack("부산물이 성공적으로 추가되었습니다.");
+  }
     return true;
   }
 
@@ -211,12 +216,12 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                                       setModalBodyState(() {});
                                     }
                                   },
-                                  child: Text("부산물 폐기"),
                                   style: OutlinedButton.styleFrom(
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                                     side: BorderSide(color: Colors.black),
                                     foregroundColor: Colors.black,
                                   ),
+                                  child: Text("부산물 폐기"),
                                 ),
                               ),
                               SizedBox(width: 12),
@@ -230,12 +235,12 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                                       setModalBodyState(() {});
                                     }
                                   },
-                                  child: Text("부산물 추가"),
                                   style: ElevatedButton.styleFrom(
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                                     backgroundColor: Colors.black,
                                     foregroundColor: Colors.white,
                                   ),
+                                  child: Text("부산물 추가"),
                                 ),
                               ),
                             ],
@@ -313,17 +318,27 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 /* UI 구현 */
   @override
   Widget build(BuildContext context) {
+    final summaryData = getSummaryData();
+    final filteredData = getFilteredData();
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: Text('부산물 관리 시스템'),
-        actions:[
-          IconButton(icon: Icon(isGridView ? Icons.grid_view : Icons.list, size: 28),
-              onPressed: () => setState(() => isGridView = !isGridView)),
-          IconButton(icon: Icon(Icons.person, size: 40,),
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MyPageScreen(token : widget.token)))),
-          const SizedBox(width: 8),
+        backgroundColor: AppColors.primaryBrown,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text(
+          '부산물 관리 시스템',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        elevation: 4,
+        shadowColor: AppColors.darkBrown,
+        actions: [
+          buildLogoutIconButton(context),
+          buildRefreshIconButton(context, () async {
+            await fetchUserByProduct();
+            await updateData(userByproduct);
+          }),
+          buildMyPageIconButton(context, widget.token),
         ],
       ),
       body: Column(
@@ -343,7 +358,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     );
   }
 
-  
+
   Widget _buildNewProductButton() {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -457,7 +472,18 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
         ),
       );
   }
-  
+
+  // NavTap 관리
+  void onDeliveryRequestTap(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => DeliveryReqAgriculturePage(token: token, userByproduct: userByproduct)),
+    ).then((result) {
+      if (result == true) fetchUserByProduct().then((_) => updateData(userByproduct));
+    });
+  }
+
+
   bool isProcessChecked = true;
   bool isHarvestChecked = true;
 
@@ -506,16 +532,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     return filtered;
   }
 
-  // NavTap 관리
-  void onDeliveryRequestTap(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => DeliveryReqAgriculturePage(token: token, userByproduct: userByproduct)),
-    ).then((result) {
-      if (result == true) fetchUserByProduct().then((_) => updateData(userByproduct));
-    });
-  }
-
 
   Widget _buildWarningBadge(double percent) {
     if (percent < 0.8) return SizedBox.shrink();
@@ -537,55 +553,26 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     );
   }
 
-  Widget _buildProgressBar(double percent, Color color) {
-    return Row(
-      children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: LinearProgressIndicator(
-              value: percent,
-              backgroundColor: Colors.grey[300],
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-              minHeight: 20,
-            ),
-          ),
-        ),
-        SizedBox(width: 10),
-        Text(
-          "${(percent * 100).toInt()}%",
-          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-      ],
-    );
-  }
 
-  Widget _buildActionButtons(Map<String, dynamic> item) {
-    return Row(
-      children: [
-        Expanded(
-          child: SingleActionButton(
-            label: '폐기',
-            onPressed: () {
-              _showAddWeightDialog("부산물 폐기 등록", item['type'], item['name'], true);
-            },
-            backgroundColor: Colors.grey[300]!,
-            foregroundColor: Colors.black,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: SingleActionButton(
-            label: '추가',
-            onPressed: () {
-              _showAddWeightDialog("부산물 무게 추가", item['type'], item['name'], false);
-            },
-            backgroundColor: Colors.grey[300]!,
-            foregroundColor: Colors.black,
-          ),
-        ),
-      ],
-    );
+  /// 요약 정보 계산
+  Map<String, dynamic> getSummaryData() {
+    if (donutData.isEmpty) return {"total": 0, "average": 0, "danger": 0, "warning": 0};
+
+    List<Map<String, dynamic>> filtered = getFilteredData();
+    if (filtered.isEmpty)  return {"total": 0, "average": 0, "danger": 0, "warning": 0};
+
+    double totalWeight = filtered.fold(0, (sum, item) => sum + item["weight"]);
+    double averagePercent = filtered.fold(0.0, (sum, item) => sum + item["percent"]) / filtered.length;
+    int dangerCount = filtered.where((item) => item["percent"] >= 0.9).length;
+    int warningCount = filtered.where((item) => item["percent"] >= 0.7 && item["percent"] < 0.9).length;
+
+    return {
+      "total": totalWeight,
+      "average": averagePercent,
+      "danger": dangerCount,
+      "warning": warningCount,
+      "count": filtered.length,
+    };
   }
 
   Widget _buildHistoryList(String name, List<Map<String, dynamic>> history) {
@@ -649,6 +636,59 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
           ),
         ],
       ),
+    );
+  }
+
+
+
+  Widget _buildActionButtons(Map<String, dynamic> item) {
+    return Row(
+      children: [
+        Expanded(
+          child: SingleActionButton(
+            label: '폐기',
+            onPressed: () {
+              _showAddWeightDialog("부산물 폐기 등록", item['type'], item['name'], true);
+            },
+            backgroundColor: Colors.grey[300]!,
+            foregroundColor: Colors.black,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: SingleActionButton(
+            label: '추가',
+            onPressed: () {
+              _showAddWeightDialog("부산물 무게 추가", item['type'], item['name'], false);
+            },
+            backgroundColor: Colors.grey[300]!,
+            foregroundColor: Colors.black,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProgressBar(double percent, Color color) {
+    return Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: LinearProgressIndicator(
+              value: percent,
+              backgroundColor: Colors.grey[300],
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 20,
+            ),
+          ),
+        ),
+        SizedBox(width: 10),
+        Text(
+          "${(percent * 100).toInt()}%",
+          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 20),
+        ),
+      ],
     );
   }
 
@@ -748,15 +788,34 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                       setModalState(() { selectedByproduct = value;});
                     },
                     controller: weightController,
-                    onSubmit: () async {
-                      final success = await addWeight(disposed, selectedType, selectedByproduct, weightController.text.trim());
+                    onSubmit: () {
+                      final type = selectedType;
+                      final name = selectedByproduct;
+                      final weight = weightController.text.trim();
 
-                      if (!success) Navigator.pop(context, false);
-                      else {
-                        await updateData(userByproduct);
-                        weightController.clear();
-                        Navigator.pop(context, true);
+                      if (type == null || name == null || weight.isEmpty) {
+                        showSnack("무게, 타입, 이름을 모두 입력하세요");
+                        return;
                       }
+
+                      //확인 팝업
+                      showConfirmPopup(
+                        context: context,
+                        typeLabel: type,
+                        productName: name,
+                        weightText: weight,
+                        actionText: _getActionText(label),
+                        onConfirm: () async {
+                          final success = await addWeight(disposed, type, name, weight);
+                          if (!success) {
+                            Navigator.pop(context, false);
+                          } else {
+                            await updateData(userByproduct);
+                            weightController.clear();
+                            Navigator.pop(context, true);
+                          }
+                        },
+                      );
                     },
                   ),
                 ),
@@ -769,11 +828,21 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     return result == true; // null 또는 false → 실패
   }
 
+//팝업 정보
+  String _getActionText(String label) {
+  if (label.contains("무게 추가")) return "추가하시겠습니까?";
+  if (label.contains("폐기")) return "를 폐기하시겠습니까?";
+  if (label.contains("새 부산물")) return "부산물을 등록하시겠습니까?";
+  return "등록하시겠습니까?";
+}
 
   List<Widget> _buildCategoryInputSection({
-    required String label, required bool isFixed,
-    required String? selectedType, required String? selectedByproduct,
-    required ValueChanged<String?> onTypeChanged, required ValueChanged<String?> onByproductChanged,
+    required String label,
+    required bool isFixed,
+    required String? selectedType,
+    required String? selectedByproduct,
+    required ValueChanged<String?> onTypeChanged,
+    required ValueChanged<String?> onByproductChanged,
     required TextEditingController controller,
     required VoidCallback onSubmit,
   }) {

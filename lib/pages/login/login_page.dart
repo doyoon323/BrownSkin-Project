@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:brownskin_app/pages/signup/signup_page.dart';
+import 'package:brownskin_app/pages/signup/role_selection_page.dart';
 import 'package:brownskin_app/pages/agriculture/home_agriculture.dart';
 import 'package:brownskin_app/pages/admin/admin_home.dart';
 import 'package:brownskin_app/pages/transporter/home_transporter.dart';
@@ -213,7 +213,7 @@ class _LoginPageState extends State<LoginPage> {
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const SignUpPage(),
+                              builder: (_) => const RoleSelectionPage(),
                             ),
                           );
                         },

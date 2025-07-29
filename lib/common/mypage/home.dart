@@ -174,6 +174,25 @@ class _MyPageScreenState extends State<MyPageScreen> {
               child: const Text('로그아웃', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
+          /// 로그아웃
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 40),
+              child: TextButton(
+                onPressed: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove('token'); // 토큰 삭제
+
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginPage()), // 로그인 페이지로 이동
+                    (route) => false, // 모든 이전 화면 제거
+                  );
+                },
+                child: const Text('로그아웃', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          )
         ],
       ),
     );

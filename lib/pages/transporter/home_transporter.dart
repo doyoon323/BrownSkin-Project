@@ -139,7 +139,7 @@ void dispose() {
               await fetchMyDeliveries();
               await fetchCompletedDeliveries();
             }),
-            buildProfileIconButton(context: context, token: widget.token),
+            buildMyPageIconButton(context,widget.token),
           ],
           bottom: TabBar(
             controller: _tabController,
@@ -180,7 +180,6 @@ void dispose() {
     elevation: 6,
   );
 }
-
 
 //배송카드 공간
 
@@ -320,12 +319,12 @@ Widget _buildActionButton(Map<String, dynamic> item) {
     try {
       final response = await http.post(url, headers: headers, body: bodys);
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        print('위치 post 성공: ${response.body}');
+        debugPrint('위치 post 성공: ${response.body}');
       } else {
-        print('위치 post 실패: ${response.body}');
+        debugPrint('위치 post 실패: ${response.body}');
       }
     } catch (e) {
-      print('네트워크 오류: $e');
+      debugPrint('네트워크 오류: $e');
     }
   }
 }

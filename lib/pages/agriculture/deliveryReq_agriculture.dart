@@ -72,7 +72,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
       }
       return {
         'id': item['id'],
-        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
+        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kt",
         'status': item['status'],
         'date': dateText,
         'transporter': item['transporter'],
@@ -95,7 +95,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     completedRequests = all.map<Map<String, dynamic>>((item) {
       return { //서버데이터를 리스트타일 형태로 가공
         'id': item['id'],
-        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
+        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kt",
         'status': getStatusLabelForRole(role, item['status']),
         'rawStatus': item['status'],
         'date': item['complete_date'] ?? '',
@@ -140,7 +140,8 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
                 buildRefreshIconButton(context, () async {
                   await fetchMyRequests();
                   await fetchCompletedRequests();
-                }),       
+                }),  
+                buildMyPageIconButton(context, widget.token),
               ],
               bottom: TabBar(
                 labelColor: Colors.white,
@@ -242,7 +243,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
             items: widget.userByproduct[selectedType]!.map((item) {
               return DropdownMenuItem(
                 value: item,
-                child: Text("${item['name']} (남은 무게: ${item['weight_float']}kg)"),
+                child: Text("${item['name']} (남은 무게: ${item['weight_float']}kt)"),
               );
             }).toList(),
             onChanged: (value) {
@@ -269,7 +270,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('무게 입력 (kg)'),
+              const Text('무게 입력 (kt)'),
               const SizedBox(height: 12),
               TextField(
                 controller: weightController,
@@ -284,9 +285,24 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
                 width: double.infinity,
                 child: ActionButtonGroup(
                   buttons: [
-                    ActionButtonData( //팝업 띄우기
+                    ActionButtonData( //확인팝업 띄우기
                       label: '수거 요청 보내기',
-                      onPressed: showConfirmDialog,
+                      onPressed: () {
+                        if (selectedType != null && selectedByproduct != null && weightController.text.trim().isNotEmpty) {
+                          showConfirmPopup(
+                            context: context,
+                            typeLabel: selectedType!,
+                            productName: selectedByproduct!['name'],
+                            weightText: weightController.text.trim(),
+                            actionText: '배송사에 수거 요청해요',
+                            onConfirm: sendDeliveryRequest,
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("모든 정보를 입력하세요")),
+                          );
+                        }
+                      },
                       backgroundColor: AppColors.primaryBrown, 
                     ),
                   ],
@@ -378,59 +394,6 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     );
   }
 
-  //무게 전송 전 확인팝업
-void showConfirmDialog() {
-  final weightText = weightController.text.trim();
-  final productName = selectedByproduct?["name"] ?? '';
-  final typeLabel = selectedType ?? '';
-
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.all(20),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                style: const TextStyle(fontSize: 16, color: Colors.black),
-                children: [
-                  const TextSpan(text: '[ ', style: TextStyle(fontWeight: FontWeight.bold)),
-                  TextSpan(text: typeLabel, style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold)),
-                  const TextSpan(text: ' ] '),
-                  TextSpan(text: productName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  TextSpan(text: ' ${weightText}kg', style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold)),
-                  const TextSpan(text: '\n배송사에 수거 요청해요'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('취소'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    sendDeliveryRequest();
-                  },
-                  child: const Text('수거요청'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
   //수거 요청 전송 함수
   Future<void> sendDeliveryRequest() async {
     final messenger = ScaffoldMessenger.of(context);
@@ -489,4 +452,3 @@ void showConfirmDialog() {
     }
   }
 }
-
