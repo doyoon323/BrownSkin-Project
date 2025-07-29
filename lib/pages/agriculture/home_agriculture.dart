@@ -147,74 +147,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
 
 
-  Widget _buildHistoryList(String name, List<Map<String, dynamic>> history) {
-    final latestWeight = history.isNotEmpty ? history.first["current_weight_float"] : 0.0;
-
-    return Container(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("$name 부산물", style: TextStyle(fontSize: 16)),
-          SizedBox(height: 14),
-          Text(
-            "${latestWeight.toStringAsFixed(1)} $weight_uints",
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 75),
-          Expanded(
-            child: ListView.builder(
-              key: ValueKey(history.length), // ✅ 변화 감지용 key
-              itemCount: history.length,
-              itemBuilder: (context, index) {
-                final entry = history[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(entry["status"], style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                            SizedBox(height: 8),
-                            Text(entry["timestamp"], style: TextStyle(fontSize: 13)),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              "${entry["weight_diff_float"] > 0 ? "+" : ""}${entry["weight_diff_float"].toStringAsFixed(1)} $weight_uints",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: entry["weight_diff_float"] > 0 ? Colors.black87 : Color(0xFFED2939),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text("${entry["current_weight_float"].toStringAsFixed(1)} $weight_uints",
-                                style: TextStyle(fontSize: 13, color: Colors.brown[800])),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-
   void showHistoryPreviewUI(BuildContext context, String type, String name) async {
     await getHistoryData(type, name);
 
@@ -239,7 +171,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                     child: Column(
                       children: [
-                        // 🔹 헤더
                         Padding(
                           padding: const EdgeInsets.only(top: 36, left: 8, right: 8, bottom: 50),
                           child: Row(
@@ -256,7 +187,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                           ),
                         ),
 
-                        // 🔹 내용 영역
                         Expanded(
                           child: StatefulBuilder(
                             builder: (context, setInnerState) {
@@ -267,7 +197,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                           ),
                         ),
 
-                        // 🔹 하단 버튼
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           child: Row(
@@ -327,6 +256,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
   Map<String, List<Map<String, dynamic>>> cachedHistory = {};
   Map<String, DateTime> last_fetch_history = {};
+
   Future<List<Map<String, dynamic>>> getHistoryData(String type, String name) async {
     final key = "$type $name";
     final now = DateTime.now();
@@ -356,11 +286,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
       last_fetch_history[key] = now;
     }
 
-    if (!cachedHistory.containsKey(key))
-      cachedHistory[key] = [];
+    if (!cachedHistory.containsKey(key)) cachedHistory[key] = [];
 
-    final existingKeys = cachedHistory[key]!.map((e) => "${e['timestampFull']}_${e['type']}_${e['name']}")
-        .toSet();
+    final existingKeys = cachedHistory[key]!.map((e) => "${e['timestampFull']}_${e['type']}_${e['name']}").toSet();
 
     final uniqueNewData = filteredData.where((entry) {
       return !existingKeys.contains("${entry['timestampFull']}_${entry['type']}_${entry['name']}");
@@ -383,12 +311,21 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
 
 /* UI 구현 */
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: Home_AppBar(),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        title: Text('부산물 관리 시스템'),
+        actions:[
+          IconButton(icon: Icon(isGridView ? Icons.grid_view : Icons.list, size: 28),
+              onPressed: () => setState(() => isGridView = !isGridView)),
+          IconButton(icon: Icon(Icons.person, size: 40,),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MyPageScreen(token : widget.token)))),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: Column(
         children: [
           _buildSummaryHeader(),
@@ -396,7 +333,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
           _buildByproductInfo()
         ],
       ),
-
       floatingActionButton: _buildNewProductButton(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: bottomNavigationBar(context, [
@@ -407,14 +343,13 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     );
   }
 
+  
   Widget _buildNewProductButton() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         FloatingActionButton(
-          onPressed: () {
-            _showAddWeightDialog("새 부산물 등록",null,null, false);
-          },
+          onPressed: () => _showAddWeightDialog("새 부산물 등록",null,null, false),
           backgroundColor: Colors.grey[300],
           foregroundColor: Colors.white,
           shape: CircleBorder(side: BorderSide(color: Colors.black26)),
@@ -440,7 +375,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 0.8,),
             itemCount: filteredData.length,
             itemBuilder: (context, index) {
-              return _buildCompactGridCard(filteredData[index]);
+              //return _buildCompactGridCard(filteredData[index]);
             })
     );
   }
@@ -522,38 +457,10 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
         ),
       );
   }
-
-  PreferredSizeWidget Home_AppBar(){
-    return AppBar(
-      backgroundColor: Colors.white,
-      title: Text('부산물 관리 시스템'),
-      actions:[
-        IconButton(icon: Icon(isGridView ? Icons.grid_view : Icons.list, size: 28),
-            onPressed: () {
-              setState(() { isGridView = !isGridView;});
-            }),
-        IconButton(icon: Icon(Icons.person, size: 40,),
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => MyPageScreen(token : widget.token)),);
-            }),
-        const SizedBox(width: 8),
-      ],
-    );
-  }
-
-  // NavTap 관리
-  void onDeliveryRequestTap(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => DeliveryReqAgriculturePage(token: token, userByproduct: userByproduct)),
-    ).then((result) {
-      if (result == true) fetchUserByProduct().then((_) => updateData(userByproduct));
-    });
-  }
-
-
+  
   bool isProcessChecked = true;
   bool isHarvestChecked = true;
+
   Widget _buildFilterCheckbox(String label, bool value, Function(bool?) onChanged) {
     return Row(
       children: [
@@ -598,6 +505,17 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     });
     return filtered;
   }
+
+  // NavTap 관리
+  void onDeliveryRequestTap(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => DeliveryReqAgriculturePage(token: token, userByproduct: userByproduct)),
+    ).then((result) {
+      if (result == true) fetchUserByProduct().then((_) => updateData(userByproduct));
+    });
+  }
+
 
   Widget _buildWarningBadge(double percent) {
     if (percent < 0.8) return SizedBox.shrink();
@@ -669,8 +587,71 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
       ],
     );
   }
-  
-  
+
+  Widget _buildHistoryList(String name, List<Map<String, dynamic>> history) {
+    final latestWeight = history.isNotEmpty ? history.first["current_weight_float"] : 0.0;
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("$name 부산물", style: TextStyle(fontSize: 16)),
+          SizedBox(height: 14),
+          Text("${latestWeight.toStringAsFixed(1)} $weight_unit", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          SizedBox(height: 75),
+          Expanded(
+            child: ListView.builder(
+              key: ValueKey(history.length),
+              itemCount: history.length,
+              itemBuilder: (context, index) {
+                final entry = history[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(entry["status"], style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                            SizedBox(height: 8),
+                            Text(entry["timestamp"], style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              "${entry["weight_diff_float"] > 0 ? "+" : ""}${entry["weight_diff_float"].toStringAsFixed(1)} $weight_unit",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: entry["weight_diff_float"] > 0 ? Colors.black87 : Color(0xFFED2939),
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text("${entry["current_weight_float"].toStringAsFixed(1)} $weight_unit",
+                                style: TextStyle(fontSize: 13, color: Colors.brown[800])),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
 
   Widget _buildListItem(Map<String, dynamic> item) {
@@ -703,7 +684,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                           children: [
                             TextSpan(text: "[ ${item['type']} ] "),
                             TextSpan(text: "${item['name']}  "),
-                            TextSpan(text: "${item['weight']}$weight_uints"),
+                            TextSpan(text: "${item['weight']}$weight_unit"),
                           ],
                         ),
                       ),
@@ -820,7 +801,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
         ),
 
       const SizedBox(height: 16),
-      Text('무게 입력 ($weight_uints)'),
+      Text('무게 입력 ($weight_unit)'),
       const SizedBox(height: 8),
       TextField(
         controller: controller,
@@ -832,7 +813,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
           fillColor: Colors.grey[50],
         ),
       ),
-
       const SizedBox(height: 20),
       SingleActionButton(label: '등록하기', onPressed: onSubmit, borderRadius: 12,
       ),
@@ -843,147 +823,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [Text(label), SizedBox(height: 8), dropdown]
-    );
-  }
-
-
-
-  /// 1. 도넛 차트 & 그리드 시각화
-  Widget _buildCompactGridCard(Map<String, dynamic> item) {
-    double percent = item["percent"];
-    Color progressColor = getProgressColor(percent);
-    Color backgroundColor = getBackgroundColor(percent);
-
-    return GestureDetector(
-        onTap: () {
-          showHistoryPreviewUI(context, item['type'], item['name']);
-        },
-        child: Container(
-          margin: EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-                color: progressColor.withOpacity(0.3), width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: progressColor.withOpacity(0.1),
-                spreadRadius: 1,
-                blurRadius: 4,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(12),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // 상태 아이콘 + 이름 + 유형 (중앙 정렬)
-                Icon(getStatusIcon_Progress(percent), color: progressColor,
-                    size: 16),
-                SizedBox(height: 4),
-                Text(
-                  "${item['name']}",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                    color: Colors.grey[800],
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 4),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: item['type'] == '가공'
-                        ? Colors.blue.shade100
-                        : Colors.green.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    item['type'],
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: item['type'] == '가공'
-                          ? Colors.blue.shade700
-                          : Colors.green.shade700,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 8),
-
-                // 원형 진행률 표시
-                CircularPercentIndicator(
-                  radius: 35.0,
-                  lineWidth: 6.0,
-                  animation: true,
-                  animationDuration: 1000,
-                  percent: percent,
-                  center: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "${(percent * 100).toStringAsFixed(0)}%",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          color: progressColor,
-                        ),
-                      ),
-                      Text(
-                        getStatusText(percent),
-                        style: TextStyle(
-                          fontSize: 8,
-                          color: progressColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  circularStrokeCap: CircularStrokeCap.round,
-                  progressColor: progressColor,
-                  backgroundColor: Colors.grey[300]!,
-                ),
-                SizedBox(height: 8),
-
-                // 무게 정보
-                Text(
-                  "${item["weight"]}/${item["threshold"]}$weight_uints",
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                // 위험 상태 표시
-                if (percent >= 0.9)
-                  Container(
-                    margin: EdgeInsets.only(top: 4),
-                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      "처리필요",
-                      style: TextStyle(
-                        color: Colors.red.shade700,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        )
     );
   }
 }

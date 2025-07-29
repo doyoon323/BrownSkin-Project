@@ -78,7 +78,6 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final parsed = jsonDecode(utf8.decode(response.bodyBytes));
-        print("😍😍😍😍😍😍 TEST NOTICE : $parsed");
         if (parsed is Map<String, dynamic>) {
           return parsed;
         } else {
