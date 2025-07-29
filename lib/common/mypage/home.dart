@@ -157,23 +157,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
           const Spacer(),
 
-
-          Padding(
-            padding: const EdgeInsets.only(bottom: 40),
-            child: TextButton(
-              onPressed: () async {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.remove('token');
-
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                      (route) => false,
-                );
-              },
-              child: const Text('로그아웃', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            ),
-          ),
           /// 로그아웃
           Center(
             child: Padding(
