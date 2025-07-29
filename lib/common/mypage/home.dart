@@ -2,6 +2,7 @@ import 'package:brownskin_app/common/api_service.dart';
 import 'package:brownskin_app/common/constants.dart';
 import 'package:brownskin_app/common/mypage/profile.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../pages/login/login_page.dart';
 import 'notice.dart';
 import 'policy.dart';
@@ -160,7 +161,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
           Padding(
             padding: const EdgeInsets.only(bottom: 40),
             child: TextButton(
-              onPressed: () {
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.remove('token');
+
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const LoginPage()),
