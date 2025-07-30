@@ -1,6 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:http/http.dart' as http;
 import 'signup_form_page.dart';
 import 'package:brownskin_app/common/themes.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+
 
 class VerificationPage extends StatefulWidget {
   final String selectedRole;
@@ -13,6 +20,7 @@ class VerificationPage extends StatefulWidget {
 class _VerificationPageState extends State<VerificationPage> {
   String? _selectedType;
   bool _documentUploaded = false;
+  File? _imageFile;
 
   final Map<String, List<Map<String, String>>> typeOptions = {
     'transporter': [
@@ -72,6 +80,7 @@ class _VerificationPageState extends State<VerificationPage> {
                   _buildHeaderSection(),
                   const SizedBox(height: 32),
                   _buildDocumentUploadSection(),
+                  _buildParsedTextSection(),
                   const SizedBox(height: 32),
                   if (requiresType) ...[
                     _buildTypeSelectionSection(availableTypes),
@@ -159,7 +168,18 @@ class _VerificationPageState extends State<VerificationPage> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () {
+          onTap: () async {
+            //카메라 인식
+            //_imageFile = await pickImageFromCamera();
+            //Map<String,String> info = await recognizeTextFromImage(_imageFile!);
+            //print("😚😚😚😚😙info: $info");
+
+            _imageFile = await pickImageFromGallery();
+
+            await parsedTest(_imageFile!);
+
+            print("😚😚😚😚😙: $parsedtext");
+
             setState(() {
               _documentUploaded = !_documentUploaded;
             });
@@ -169,46 +189,60 @@ class _VerificationPageState extends State<VerificationPage> {
             child: Column(
               children: [
                 Container(
-                  width: 60,
-                  height: 60,
+                  width: 200,
+                  height: 200,
                   decoration: BoxDecoration(
-                    color: _documentUploaded 
+                    color: _documentUploaded
                         ? AppColors.primaryBrown.withAlpha(25)
                         : AppColors.accentBrown.withAlpha(76),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    _documentUploaded ? Icons.check_circle : Icons.upload_file,
+                  child: _documentUploaded ? Image.file(File(_imageFile!.path))
+                      : Icon(Icons.upload_file,
                     size: 30,
-                    color: _documentUploaded 
-                        ? AppColors.primaryBrown 
+                    color: _documentUploaded
+                        ? AppColors.primaryBrown
                         : AppColors.lightBrown,
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _documentUploaded ? '사업자 등록증 업로드 완료' : '사업자 등록증 업로드',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryBrown,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _documentUploaded 
-                      ? '문서가 성공적으로 업로드되었습니다'
-                      : '파일을 선택하거나 여기에 드래그하세요',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.primaryBrown.withOpacity(0.6),
-                  ),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildParsedTextSection() {
+    if (parsedtext.isEmpty) return SizedBox.shrink(); // 아무것도 없으면 비워두기
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.only(top: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryBrown.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            parsedtext,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.darkBrown,
+              height: 1.4,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -410,5 +444,90 @@ class _VerificationPageState extends State<VerificationPage> {
         ),
       ),
     );
+  }
+
+
+  //카메라로 사진찍는 코드
+  Future<File?> pickImageFromCamera() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+
+    if (pickedFile != null) return File(pickedFile.path);
+    return null;
+  }
+
+  /*
+  Future<Map<String,String>> recognizeTextFromImage(File _imageFile) async {
+    final InputImage inputImage = InputImage.fromFilePath(_imageFile.path);
+
+    final textRecognizer = TextRecognizer();
+    RecognizedText recognizedText = await textRecognizer.processImage(
+        inputImage);
+    await textRecognizer.close();
+
+    String scannedText = "";
+
+    for (TextBlock block in recognizedText.blocks) {
+      for (TextLine line in block.lines) {
+        scannedText = scannedText + line.text + "\n";
+      }
+    }
+    return parseBusinessLicense(scannedText);
+  }
+  */
+
+
+  Future<File?> pickImageFromGallery() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) return File(pickedFile.path);
+    return null;
+  }
+
+
+  String parsedtext = '';
+
+
+  Future<void> parsedTest(File pickedFile)async {
+    var bytes = File(pickedFile.path.toString()).readAsBytesSync();
+    String img64 = base64Encode(bytes);
+
+    var url = 'https://api.ocr.space/parse/image';
+    var payload = {"base64Image": "data:image/jpg;base64,${img64.toString()}","language" :"kor"};
+    var header = {"apikey" :"K81055865188957"};
+
+    var post = await http.post(Uri.parse(url),body: payload,headers: header);
+    var result = jsonDecode(post.body);
+
+    setState(() {
+      parsedtext = result['ParsedResults'][0]['ParsedText'];
+    });
+  }
+
+  Map<String,String> parseBusinessLicense(String text){
+    final lines = text.split('\n').map((e) => e.trim()).toList();
+    final result = <String, String>{};
+
+    for (final line in lines) {
+      if (line.contains('등록번호')) {
+        result['등록번호'] = RegExp(r'\d{3}-\d{2}-\d{5}')
+            .firstMatch(line)?.group(0) ?? '';
+      } else if (line.contains('상호')) {
+        result['상호'] = line.split(RegExp(r'[:：]')).last.trim();
+      } else if (line.contains('성명')) {
+        result['대표자'] = line.split(RegExp(r'[:：]')).last.trim();
+      } else if (line.contains('개업연월일')) {
+        result['개업일자'] = line.split(RegExp(r'[:：]')).last.trim();
+      } else if (line.contains('소재지')) {
+        result['주소'] = line.split(RegExp(r'[:：]')).last.trim();
+      } else if (line.contains('종류') || line.contains('업태')) {
+        result['업태'] = line.split(RegExp(r'[:：]')).last.trim();
+      } else if (line.contains('종목')) {
+        result['종목'] = line.split(RegExp(r'[:：]')).last.trim();
+      }
+    }
+
+    return result;
   }
 }
