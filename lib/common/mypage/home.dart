@@ -4,7 +4,9 @@ import 'package:brownskin_app/common/mypage/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../pages/login/login_page.dart';
+import 'customer_service.dart';  // ✅ 고객센터 페이지 추가
 import '../themes.dart';
+import '../widgets.dart';
 import 'notice.dart';
 import 'policy.dart';
 
@@ -21,9 +23,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
   bool isLoading = true;
   static const Color mediumbackgroundBrown = Color(0xFF4A3429);
   static const Color lightbackgroundBrown = Color(0xFF433228);
-  static const Color backgroundBrown = Color(0xFFD7CCC8);
   static const Color cardBrown = Color(0xFFEFEBE9);
-
+  static const Color lightBackground = Color(0xFFF8F6F4);
 
   @override
   void initState() {
@@ -59,7 +60,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Widget build(BuildContext context) {
     if (isLoading) {
       return Scaffold(
-        backgroundColor: backgroundBrown,
+        backgroundColor: lightBackground,
         body: Center(
           child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(cardBrown),
@@ -69,28 +70,27 @@ class _MyPageScreenState extends State<MyPageScreen> {
       );
     }
 
-
     return Scaffold(
-      backgroundColor: backgroundBrown,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: AppColors.primaryBrown,
-        foregroundColor: backgroundBrown,
-        title: Text(
-          '마이페이지',
-          style: TextStyle(color: cardBrown, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-        ),
-        centerTitle: true,
+      backgroundColor: lightBackground,
+      appBar: buildCustomAppBar(
+        context: context,
+        title: '마이페이지',
+        showBackButton: true,
+        showActions: false,
       ),
       body: Column(
         children: [
-          /// 상단 프로필 정보 카드
+          /// 상단 프로필 정보 카드 - 흰색 배경에 갈색 테두리
           Container(
             margin: const EdgeInsets.all(20),
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: lightbackgroundBrown,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: lightbackgroundBrown,
+                width: 2,
+              ),
               boxShadow: [
                 BoxShadow(
                   color: mediumbackgroundBrown.withOpacity(0.3),
@@ -149,7 +149,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                   style: TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold,
-                                    color: cardBrown,
+                                    color: mediumbackgroundBrown,
                                     letterSpacing: 0.3,
                                   ),
                                 ),
@@ -171,7 +171,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     "${getRoleString(userInfo['role'] ?? '')} ${userInfo['type'] ?? ''}",
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: cardBrown,
+                                      color: mediumbackgroundBrown,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -185,7 +185,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          color: backgroundBrown.withOpacity(0.4),
+                          color: lightBackground.withOpacity(0.8),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: lightbackgroundBrown.withOpacity(0.3),
@@ -197,7 +197,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             Icon(
                               Icons.location_on,
                               size: 18,
-                              color: cardBrown,
+                              color: mediumbackgroundBrown,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -205,7 +205,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 "${userInfo['addr1'] ?? ''} ${userInfo['addr2'] ?? ''}",
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: cardBrown.withOpacity(0.9),
+                                  color: mediumbackgroundBrown.withOpacity(0.9),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -216,15 +216,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     ],
                   ),
                 ),
-
                 const SizedBox(width: 20),
-                /// 우측 정보수정 버튼
+                /// 우측 정보수정 버튼 - 짙은 갈색 배경에 흰색 텍스트
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: backgroundBrown.withOpacity(0.3),
+                        color: mediumbackgroundBrown.withOpacity(0.2),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -247,8 +246,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       });
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: cardBrown,
-                      foregroundColor: Colors.grey,
+                      backgroundColor: mediumbackgroundBrown,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -258,13 +257,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.edit, size: 20),
+                        Icon(Icons.edit, size: 20, color: Colors.white),
                         const SizedBox(height: 4),
                         Text(
                           '정보수정',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
                       ],
@@ -274,62 +274,48 @@ class _MyPageScreenState extends State<MyPageScreen> {
               ],
             ),
           ),
-
-          /// 메뉴 리스트
+          /// 메뉴 리스트 - 큰 컨테이너 제거하고 개별 카드들만
           Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                color: backgroundBrown,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: backgroundBrown.withOpacity(0.4),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  _buildMenuItem(
-                    icon: Icons.notifications_outlined,
-                    title: '공지사항',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => NoticeListPage(token: widget.token)),
-                      );
-                    },
-                  ),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    height: 1,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          lightbackgroundBrown.withOpacity(0.3),
-                          Colors.transparent,
-                        ],
+            child: Column(
+              children: [
+                _buildMenuItem(
+                  icon: Icons.notifications_outlined,
+                  title: '공지사항',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => NoticeListPage(token: widget.token)),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12), // 카드 간격
+                _buildMenuItem(
+                  icon: Icons.description_outlined,
+                  title: '약관 및 정책',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PolicyListPage()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildMenuItem(
+                  icon: Icons.support_agent,
+                  title: '고객센터',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CustomerServicePage(),
                       ),
-                    ),
-                  ),
-                  _buildMenuItem(
-                    icon: Icons.description_outlined,
-                    title: '약관 및 정책',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const PolicyListPage()),
-                      );
-                    },
-                  ),
-                ],
-              ),
+                    );
+                  },
+                ),
+                const Spacer(), // 남은 공간을 채워서 로그아웃 버튼을 아래로 밀어냄
+              ],
             ),
           ),
-
           /// 로그아웃 버튼
           Container(
             margin: const EdgeInsets.all(20),
@@ -338,7 +324,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: backgroundBrown.withOpacity(0.3),
+                  color: mediumbackgroundBrown.withOpacity(0.2),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -386,17 +372,23 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
-
   Widget _buildMenuItem({
     required IconData icon,
     required String title,
     required VoidCallback onTap,
   }) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4), // 좌우 마진 추가
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: lightbackgroundBrown.withOpacity(0.2),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: mediumbackgroundBrown.withOpacity(0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -404,14 +396,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                lightbackgroundBrown.withOpacity(0.2),
-                lightbackgroundBrown.withOpacity(0.1),
-              ],
-            ),
+            color: mediumbackgroundBrown,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: cardBrown.withOpacity(0.3),
@@ -420,7 +405,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           ),
           child: Icon(
             icon,
-            color: cardBrown,
+            color: Colors.white,
             size: 24,
           ),
         ),
@@ -429,19 +414,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 17,
-            color: cardBrown,
+            color: mediumbackgroundBrown,
             letterSpacing: 0.3,
           ),
         ),
         trailing: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: lightbackgroundBrown.withOpacity(0.3),
+            color: mediumbackgroundBrown,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             Icons.chevron_right,
-            color: cardBrown,
+            color: Colors.white,
             size: 20,
           ),
         ),

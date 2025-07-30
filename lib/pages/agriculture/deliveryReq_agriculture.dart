@@ -129,25 +129,21 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
           return Scaffold(
             backgroundColor: AppColors.backgroundBrown,
             //상단앱바
-            appBar: AppBar(
-              iconTheme: const IconThemeData(color: Colors.white),
-              title: Text('수거 요청 관리', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              backgroundColor: AppColors.primaryBrown,
-              elevation: 4,
-              shadowColor: AppColors.darkBrown ,
-              actions: [ //상단에 새로고침버튼, 로그아웃버튼(공통위젯폴더)
-                buildLogoutIconButton(context),
-                buildRefreshIconButton(context, () async {
-                  await fetchMyRequests();
-                  await fetchCompletedRequests();
-                }),  
-                buildMyPageIconButton(context, widget.token),
-              ],
+            appBar: buildCustomAppBar(
+              context: context,
+              title: '수거 요청 관리',
+              token: widget.token,
+              showBackButton: true,
+              showActions: true,
+              onRefresh: () async {
+                await fetchMyRequests();
+                await fetchCompletedRequests();
+              },
               bottom: TabBar(
+                indicatorColor: Colors.white,
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white70,
-                indicatorColor: Colors.white,
-                labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 tabs: [
                   Tab(text: '수거 요청 보내기'),
                   Tab(text: '나의 요청 이력'),

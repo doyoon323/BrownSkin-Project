@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-
 import '../themes.dart';
+import '../widgets.dart';
 
 class PolicyListPage extends StatelessWidget {
   const PolicyListPage({super.key});
 
-
+  static const Color mediumbackgroundBrown = Color(0xFF4A3429);
   static const Color lightbackgroundBrown = Color(0xFF433228);
   static const Color backgroundBrown = Color(0xFFD7CCC8);
   static const Color cardBrown = Color(0xFFEFEBE9);
+  static const Color lightBackground = Color(0xFFF8F6F4); // 옅은 배경색 추가
 
   @override
   Widget build(BuildContext context) {
@@ -32,13 +33,13 @@ class PolicyListPage extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryBrown,
-        foregroundColor: backgroundBrown,
-        elevation: 0,
-        title: const Text('약관 및 정책', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      appBar: buildCustomAppBar(
+        context: context,
+        title: '약관 및 정책',
+        showBackButton: true,
+        showActions: false,
       ),
-      backgroundColor: backgroundBrown,
+      backgroundColor: lightBackground, // 옅은 배경색으로 변경
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: policies.length,
@@ -64,8 +65,6 @@ class PolicyListPage extends StatelessWidget {
     );
   }
 
-
-
   Widget _buildMenuItem({
     required IconData icon,
     required String title,
@@ -75,7 +74,14 @@ class PolicyListPage extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: lightbackgroundBrown.withOpacity(0.2),
+        color: Colors.white, // 흰색 배경으로 변경
+        boxShadow: [
+          BoxShadow(
+            color: mediumbackgroundBrown.withOpacity(0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -83,14 +89,7 @@ class PolicyListPage extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                lightbackgroundBrown.withOpacity(0.2),
-                lightbackgroundBrown.withOpacity(0.1),
-              ],
-            ),
+            color: mediumbackgroundBrown, // 짙은 갈색 배경으로 변경
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: cardBrown.withOpacity(0.3),
@@ -99,7 +98,7 @@ class PolicyListPage extends StatelessWidget {
           ),
           child: Icon(
             Icons.description_outlined,
-            color: cardBrown,
+            color: Colors.white, // 흰색 아이콘으로 변경
             size: 24,
           ),
         ),
@@ -108,19 +107,19 @@ class PolicyListPage extends StatelessWidget {
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 17,
-            color: Colors.black54,
+            color: mediumbackgroundBrown, // 짙은 갈색 텍스트로 변경
             letterSpacing: 0.3,
           ),
         ),
         trailing: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: lightbackgroundBrown.withOpacity(0.3),
+            color: mediumbackgroundBrown, // 짙은 갈색 배경으로 변경
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             Icons.chevron_right,
-            color: cardBrown,
+            color: Colors.white, // 흰색 아이콘으로 변경
             size: 20,
           ),
         ),
@@ -138,30 +137,51 @@ class PolicyListPage extends StatelessWidget {
 class PolicyDetailPage extends StatelessWidget {
   final String title;
   final String content;
-
   const PolicyDetailPage({
     super.key,
     required this.title,
     required this.content,
   });
+
   static const Color backgroundBrown = Color(0xFFD7CCC8);
+  static const Color lightBackground = Color(0xFFF8F6F4); // 옅은 배경색 추가
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(title,style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
+        title: Text(
+          title,
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+        ),
         backgroundColor: AppColors.primaryBrown,
-        foregroundColor: backgroundBrown,
+        foregroundColor: Colors.white, // 흰색으로 변경
         elevation: 0,
       ),
-      backgroundColor: backgroundBrown,
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      
+      backgroundColor: lightBackground, // 옅은 배경색으로 변경
+      body: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white, // 흰색 배경
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0xFF4A3429).withOpacity(0.08),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: SingleChildScrollView(
           child: Text(
             content,
-            style: const TextStyle(fontSize: 14, height: 1.6),
+            style: TextStyle(
+              fontSize: 14, 
+              height: 1.6,
+              color: Color(0xFF4A3429).withOpacity(0.8), // 짙은 갈색 텍스트
+            ),
           ),
         ),
       ),
@@ -169,10 +189,8 @@ class PolicyDetailPage extends StatelessWidget {
   }
 }
 
-
-const String _termsOfService = '''
-제1조 (목적)
-이 약관은 “브라운스킨 앱”(이하 "서비스")의 이용조건 및 절차, 회원과 회사 간의 권리·의무 및 책임사항을 규정함을 목적으로 합니다.
+const String _termsOfService = '''제1조 (목적)
+이 약관은 "브라운스킨 앱"(이하 "서비스")의 이용조건 및 절차, 회원과 회사 간의 권리·의무 및 책임사항을 규정함을 목적으로 합니다.
 
 제2조 (정의)
 1. "회사"란 본 서비스를 운영하는 주체를 말합니다.
@@ -202,11 +220,9 @@ const String _termsOfService = '''
 1. 회사는 천재지변, 불가항력 등으로 인한 서비스 제공 불가에 대해 책임을 지지 않습니다.
 
 제8조 (준거법 및 관할)
-1. 본 약관은 대한민국 법령에 따르며, 분쟁 발생 시 회사의 본사 소재지 관할 법원을 제1심 관할 법원으로 합니다.
-''';
+1. 본 약관은 대한민국 법령에 따르며, 분쟁 발생 시 회사의 본사 소재지 관할 법원을 제1심 관할 법원으로 합니다.''';
 
-const String _privacyPolicy = '''
-1. 수집하는 개인정보 항목
+const String _privacyPolicy = '''1. 수집하는 개인정보 항목
 - 필수 항목: 이름, 이메일, 휴대전화번호, 주소
 - 선택 항목: 프로필 사진, 서비스 사용 기록
 
@@ -226,12 +242,9 @@ const String _privacyPolicy = '''
   예: Amazon Web Services (서버 운영), Google Analytics (통계 분석)
 
 6. 이용자의 권리
-- 이용자는 개인정보 열람, 정정, 삭제, 처리 정지를 요구할 수 있습니다.
+- 이용자는 개인정보 열람, 정정, 삭제, 처리 정지를 요구할 수 있습니다.''';
 
-''';
-
-const String _locationTerms = '''
-제1조 (목적)
+const String _locationTerms = '''제1조 (목적)
 본 약관은 회사가 제공하는 위치기반서비스의 이용조건 및 절차, 권리·의무를 규정합니다.
 
 제2조 (서비스 내용)
@@ -244,12 +257,9 @@ const String _locationTerms = '''
 이용자는 위치정보 수집·이용·제공에 대해 동의하지 않을 수 있으며, 동의는 언제든 철회할 수 있습니다.
 
 제4조 (보유 및 이용기간)
-수집된 위치정보는 서비스 제공 목적 달성 후 즉시 파기됩니다.
+수집된 위치정보는 서비스 제공 목적 달성 후 즉시 파기됩니다.''';
 
-''';
-
-const String _operationPolicy = '''
-1. 커뮤니티 운영 원칙
+const String _operationPolicy = '''1. 커뮤니티 운영 원칙
 - 이용자는 타인의 권리를 침해하지 않으며, 허위정보 및 광고를 게재하지 않아야 합니다.
 
 2. 제재 기준
@@ -260,5 +270,4 @@ const String _operationPolicy = '''
 - 이용자는 부적절한 콘텐츠를 신고할 수 있으며, 회사는 최대 24시간 내에 조치합니다.
 
 4. 기타
-- 운영정책은 서비스 안정성과 사용자 보호를 위해 수시로 변경될 수 있습니다.
-''';
+- 운영정책은 서비스 안정성과 사용자 보호를 위해 수시로 변경될 수 있습니다.''';

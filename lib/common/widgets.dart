@@ -7,7 +7,6 @@ import 'themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:brownskin_app/pages/login/login_page.dart';
 
-
 //1. 카드
 
 class InfoCard extends StatelessWidget {
@@ -167,32 +166,46 @@ class SingleActionButton extends StatelessWidget {
   }
 }
 
-//3. 앱바 (전처리, 수거, 농가)
-
-PreferredSizeWidget buildCommonAppBar({
+//3. 앱바 
+PreferredSizeWidget buildCustomAppBar({
+  required BuildContext context,
   required String title,
-  required VoidCallback onRefresh,
-  required TabBar? tabBar,
+  String? token,
+  bool showBackButton = false,
+  bool showActions = true,
+  PreferredSizeWidget? bottom,
+  Future<void> Function()? onRefresh,
 }) {
+  // 기본 async 함수 선언 (null 대체용)
+  Future<void> _defaultRefresh() async {}
+
   return AppBar(
-    title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
     backgroundColor: AppColors.primaryBrown,
     elevation: 4,
     shadowColor: AppColors.darkBrown,
-    actions: [
-      Container(
-        margin: const EdgeInsets.only(right: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: IconButton(
-          icon: const Icon(Icons.refresh, color: Colors.white),
-          onPressed: onRefresh,
-        ),
+    centerTitle: true,
+    iconTheme: const IconThemeData(color: Colors.white),
+    title: Text(
+      title,
+      style: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
       ),
-    ],
-    bottom: tabBar ,
+    ),
+    leading: showBackButton
+        ? IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          )
+        : null,
+    actions: showActions && token != null
+        ? [
+            buildLogoutIconButton(context),
+            buildRefreshIconButton(context, onRefresh ?? _defaultRefresh),
+            buildMyPageIconButton(context, token),
+          ]
+        : null,
+    bottom: bottom,
   );
 }
 

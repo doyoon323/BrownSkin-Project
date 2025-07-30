@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:brownskin_app/common/constants.dart';
 import 'package:brownskin_app/common/themes.dart';
+import '../../common/widgets.dart';
 
 class FindAccountPage extends StatefulWidget {
   const FindAccountPage({super.key});
@@ -104,22 +105,13 @@ class _FindAccountPageState extends State<FindAccountPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundBrown,
-      appBar: AppBar(
-        title: const Text(
-          '아이디/비밀번호 찾기',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: AppColors.primaryBrown,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: buildCustomAppBar(
+        context: context,
+        title: '아이디/비밀번호 찾기',
+        showBackButton: true,
+        showActions: false,
       ),
+
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),

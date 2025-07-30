@@ -19,23 +19,19 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   Map<String, TextEditingController> _controllers = {};
   Map<String,dynamic> userData = {};
+  static const Color mediumbackgroundBrown = Color(0xFF4A3429); // 짙은 갈색
+  static const Color lightbackgroundBrown = Color(0xFF433228); // 중간 갈색
+  static const Color lightBackground = Color(0xFFF8F6F4); // 매우 옅은 배경색
 
-
-  static const Color backgroundBrown = Color(0xFFD7CCC8);
-
-
-
-
-  @override void initState() {
+  @override
+  void initState() {
     super.initState();
     _initController();
   }
 
-
   Future<Map<String, dynamic>> getProfile() async {
     return widget.Info;
   }
-
 
   void _initController() async {
     final fetched = await getProfile();
@@ -54,80 +50,90 @@ class _EditProfilePageState extends State<EditProfilePage> {
     });
   }
 
-
   Widget _buildTextField(String label, String key,TextInputType type, {bool readOnly = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: mediumbackgroundBrown)), // 텍스트 색상 변경
           const SizedBox(height: 6),
           TextFormField(
             controller: _controllers[key],
             readOnly: readOnly,
-            keyboardType:  type,
+            keyboardType: type,
+            style: TextStyle(color: mediumbackgroundBrown), // 입력 텍스트 색상 변경
             decoration: InputDecoration(
                 hintText: _controllers[key]?.text ?? '',
+                hintStyle: TextStyle(color: mediumbackgroundBrown.withOpacity(0.6)), // 힌트 텍스트 색상 변경
                 filled: true,
-                fillColor: Colors.black12,
+                fillColor: Colors.white, // 흰색 배경으로 변경
                 contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none)
-        ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: lightbackgroundBrown.withOpacity(0.3), width: 1), // 테두리 추가
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: lightbackgroundBrown.withOpacity(0.3), width: 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: mediumbackgroundBrown, width: 1.5), // 포커스 시 색상 변경
+                )
+            ),
+          ),
+        ],
       ),
-    ])
     );
   }
 
-
-
-Widget _buildBussinessForm() {
-  return Padding(
-    padding: const EdgeInsets.all(24),
-    child: Form(
-      child: Column(
-        children: [
-          _buildTextField('사업자등록번호', 'bizNumber',TextInputType.text, readOnly: true),
-          _buildTextField('상호(법인명)', 'company_name',TextInputType.text, readOnly: true),
-          _buildTextField('사업장주소','address',TextInputType.text, readOnly: true),
-          _buildTextField('업태','bizType', TextInputType.text,readOnly: true),
-          _buildTextField('종목','category', TextInputType.text, readOnly: true)
-          ]
+  Widget _buildBussinessForm() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Form(
+        child: Column(
+          children: [
+            _buildTextField('사업자등록번호', 'bizNumber',TextInputType.text, readOnly: true),
+            _buildTextField('상호(법인명)', 'company_name',TextInputType.text, readOnly: true),
+            _buildTextField('사업장주소','address',TextInputType.text, readOnly: true),
+            _buildTextField('업태','bizType', TextInputType.text,readOnly: true),
+            _buildTextField('종목','category', TextInputType.text, readOnly: true)
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-
-Widget _buildForm() {
-  return Padding(
-    padding: const EdgeInsets.all(24),
-    child: Form(
-      child: Column(
-        children: [
-          _buildTextField('아이디', 'id', TextInputType.text,readOnly: true),
-          _buildPasswordButton('비밀번호'),
-          _buildTextField('이름', 'name', TextInputType.text,readOnly: true),
-          _buildTextField('회사명', 'company_name',TextInputType.text,),
-          _buildPostcodeField('주소','address'),
-        ],
+  Widget _buildForm() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Form(
+        child: Column(
+          children: [
+            _buildTextField('아이디', 'id', TextInputType.text,readOnly: true),
+            _buildPasswordButton('비밀번호'),
+            _buildTextField('이름', 'name', TextInputType.text,readOnly: true),
+            _buildTextField('회사명', 'company_name',TextInputType.text,),
+            _buildPostcodeField('주소','address'),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-Widget _buildPasswordButton(String label){
+  Widget _buildPasswordButton(String label){
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton(
           onPressed: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) =>  ChangePasswordPage()));
+            Navigator.push(context, MaterialPageRoute(builder: (_) => ChangePasswordPage()));
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryBrown,
-            foregroundColor: Colors.white,
+            backgroundColor: mediumbackgroundBrown, // 짙은 갈색 배경
+            foregroundColor: Colors.white, // 흰색 텍스트
             padding: const EdgeInsets.symmetric(vertical: 24),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
@@ -135,53 +141,49 @@ Widget _buildPasswordButton(String label){
         ),
       ),
     );
-}
+  }
 
-
-Widget _buildPostcodeField(String label,String key){
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 16),
-    child: Row(
-      children: [
-        Flexible(fit: FlexFit.tight, flex : 3, child: _buildTextField(label, key,TextInputType.text) ),
-        SizedBox(width: 10),
-        SizedBox(
-          height: 52,
-          child: ActionButtonGroup(
-              buttons: [ ActionButtonData(
-                  label: '주소 검색',
-                  backgroundColor: AppColors.primaryBrown,
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => DaumPostcodeView(
-                            onComplete: (DaumPostcodeModel result) {
-                              Navigator.of(context).pop({'address': result.address,});
-                            }))
-                    );
-                    if (result != null) _controllers[key]!.text = result['address'];
-                  })
-              ]),
-        ),
-      ],
-    ),
-  );
-}
-
+  Widget _buildPostcodeField(String label,String key){
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Flexible(fit: FlexFit.tight, flex : 3, child: _buildTextField(label, key,TextInputType.text) ),
+          SizedBox(width: 10),
+          SizedBox(
+            height: 52,
+            child: ActionButtonGroup(
+                buttons: [ ActionButtonData(
+                    label: '주소 검색',
+                    backgroundColor: mediumbackgroundBrown, // 짙은 갈색 배경
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => DaumPostcodeView(
+                              onComplete: (DaumPostcodeModel result) {
+                                Navigator.of(context).pop({'address': result.address,});
+                              }))
+                      );
+                      if (result != null) _controllers[key]!.text = result['address'];
+                    })
+                ]),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        foregroundColor: backgroundBrown,
-        backgroundColor: AppColors.primaryBrown,
-        shadowColor: Colors.white,
-        title: const Text('정보 수정', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        elevation: 0,
+      appBar: buildCustomAppBar(
+        context: context,
+        title: '정보 수정',
+        showBackButton: true,
+        showActions: false,
       ),
-        backgroundColor: backgroundBrown,
-      body:
-      SingleChildScrollView(
+      backgroundColor: lightBackground, // 옅은 배경색으로 변경
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,32 +194,36 @@ Widget _buildPostcodeField(String label,String key){
           ],
         ),
       ),
-      bottomNavigationBar: _buildSubmitButton()
+      bottomNavigationBar: _buildSubmitButton(),
     );
   }
 
-
   Widget _buildWithdrawal(){
-    return  Align(
+    return Align(
       alignment: Alignment.centerRight,
       child: GestureDetector(
         onTap: () {
           Navigator.push(context,
               MaterialPageRoute(builder: (_) => const WithdrawalPage()));
         },
-        child: const Text('회원탈퇴', style: TextStyle(fontSize: 14, color: AppColors.primaryBrown, decoration: TextDecoration.underline)),
+        child: const Text(
+          '회원탈퇴',
+          style: TextStyle(
+            fontSize: 14,
+            color: mediumbackgroundBrown, // 짙은 갈색으로 변경
+            decoration: TextDecoration.underline
+          )
+        ),
       ),
     );
   }
 
-//회원가입 요청 함수
+  //회원가입 요청 함수
   Future<void> _register() async {
     if (!_validateForm()) return;
-
     try {
       final response = await _submitRegistration();
       if (!mounted) return;
-
       if (response.statusCode == 200) {
         _showMessage('수정이 완료되었습니다.', isSuccess: true, onClose: () {
           Navigator.pop(context,true);
@@ -230,14 +236,12 @@ Widget _buildPostcodeField(String label,String key){
     }
   }
 
-
   bool _validateForm() {
-    if (_controllers['address'] == null) {
+    if (_controllers['address'] == null || _controllers['address']!.text.isEmpty) {
       _showMessage('주소를 입력하세요.');
       return false;
     }
-
-    if (_controllers['company_name'] == null) {
+    if (_controllers['company_name'] == null || _controllers['company_name']!.text.isEmpty) {
       _showMessage('회사명을 입력하세요.');
       return false;
     }
@@ -246,16 +250,13 @@ Widget _buildPostcodeField(String label,String key){
 
   Future<http.Response> _submitRegistration() async {
     final address = (_controllers['address']!.text.trim()).split(RegExp(r'\s+'));
-
     final body = <String, String>{
       'company_name': _controllers['company_name']!.text,
       'addr1': address.length > 0 ? address[0] : '',
       'addr2': address.length > 1 ? address[1] : '',
       'addrDetail': address.length > 2 ? address.sublist(2).join(' ') : '',
     };
-
     final url = Uri.parse('$BASE_URL/auth/api-profile-update');
-
     final response = await http.patch(
       url,
       headers: {'Authorization': 'Token ${widget.token}'},
@@ -264,7 +265,7 @@ Widget _buildPostcodeField(String label,String key){
     return response;
   }
 
-//팝업 메시지 표시
+  //팝업 메시지 표시
   void _showMessage(String message, {bool isSuccess = false, VoidCallback? onClose}) {
     showDialog(
       context: context,
@@ -290,6 +291,7 @@ Widget _buildPostcodeField(String label,String key){
   }
 
   bool _isLoading = false;
+
   Widget _buildSubmitButton() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
@@ -299,7 +301,7 @@ Widget _buildPostcodeField(String label,String key){
         child: ElevatedButton(
           onPressed: _isLoading ? null : _register,
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryBrown,
+            backgroundColor: AppColors.primaryBrown, // 기존 primaryBrown 유지
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),

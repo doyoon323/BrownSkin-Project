@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'signup_form_page.dart';
 import 'package:brownskin_app/common/themes.dart';
+import 'package:brownskin_app/common/widgets.dart';
 
 class VerificationPage extends StatefulWidget {
   final String selectedRole;
@@ -34,21 +35,11 @@ class _VerificationPageState extends State<VerificationPage> {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundBrown,
-      appBar: AppBar(
-        title: const Text(
-          '사업자 인증',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: AppColors.primaryBrown,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: buildCustomAppBar(
+        context: context,
+        title: '사업자 인증',
+        showBackButton: true,
+        showActions: false,
       ),
       body: Container(
         decoration: BoxDecoration(
