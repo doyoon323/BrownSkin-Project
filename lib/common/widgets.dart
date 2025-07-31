@@ -68,12 +68,20 @@ class ActionButtonData {
   final VoidCallback onPressed;
   final ButtonStyle? style;
   final Color backgroundColor;
+  final Color? foregroundColor;
+  final double? fontSize;
+  final EdgeInsetsGeometry? padding;
+  final double borderRadius;
 
   const ActionButtonData({
     required this.label,
     required this.onPressed,
     this.style,
     this.backgroundColor = AppColors.primaryBrown,
+    this.foregroundColor,
+    this.fontSize,
+    this.padding,
+    this.borderRadius = 12,
   });
 }
 
@@ -84,6 +92,8 @@ class ActionButtonGroup extends StatelessWidget {
   final EdgeInsets padding;
   final double elevation;
 
+  final bool expanded;
+
   const ActionButtonGroup({
     super.key,
     required this.buttons,
@@ -91,6 +101,7 @@ class ActionButtonGroup extends StatelessWidget {
     this.borderRadius = const BorderRadius.all(Radius.circular(12)),
     this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     this.elevation = 3.0,
+    this.expanded = false
   });
 
   @override
@@ -102,7 +113,7 @@ class ActionButtonGroup extends StatelessWidget {
         final btn = entry.value;
         final isLast = index == buttons.length - 1;
 
-        return Padding(
+        final buttonWidget = Padding(
           padding: isLast ? EdgeInsets.zero : spacing,
           child: ElevatedButton(
             onPressed: btn.onPressed,
@@ -113,39 +124,23 @@ class ActionButtonGroup extends StatelessWidget {
               elevation: elevation,
               shape: RoundedRectangleBorder(borderRadius: borderRadius),
             ),
-            child: Text(
-              btn.label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+            child: Text(btn.label, style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         );
+
+        return expanded ? Expanded(child: buttonWidget) : buttonWidget;
       }).toList(),
     );
   }
 }
 
 
+class ActionButton extends StatelessWidget {
+  final ActionButtonData data;
 
-//2-2 single button (추후 통합)
-
-class SingleActionButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
-  final Color backgroundColor;
-  final Color foregroundColor;
-  final double borderRadius;
-  final double? fontSize;
-  final EdgeInsetsGeometry? padding;
-
-  const SingleActionButton({
+  const ActionButton({
     super.key,
-    required this.label,
-    required this.onPressed,
-    this.backgroundColor = Colors.black,
-    this.foregroundColor = Colors.white,
-    this.borderRadius = 2,
-    this.fontSize = 14,
-    this.padding = const EdgeInsets.symmetric(vertical: 16)
+    required this.data,
   });
 
   @override
@@ -153,14 +148,20 @@ class SingleActionButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          padding: padding,
-          backgroundColor: backgroundColor,
-          foregroundColor: foregroundColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(borderRadius),),
+        onPressed: data.onPressed,
+        style: data.style ??
+            ElevatedButton.styleFrom(
+              backgroundColor: data.backgroundColor,
+              foregroundColor: data.foregroundColor ?? Colors.white,
+              padding: data.padding ?? const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(data.borderRadius),
+              ),
+            ),
+        child: Text(
+          data.label,
+          style: TextStyle(fontSize: data.fontSize ?? 14),
         ),
-        child: Text(label, style: TextStyle(fontSize: fontSize))
       ),
     );
   }
@@ -439,6 +440,70 @@ Widget buildMyPageIconButton(BuildContext context, String token, {Color? color})
         MaterialPageRoute(builder: (context) => MyPageScreen(token: token)),
       );
     },
+  );
+}
+
+
+//12. 체크 박스
+class FilterCheckbox extends StatelessWidget {
+  final String label;
+  final bool value;
+  final ValueChanged<bool?> onChanged;
+  final color;
+
+  const FilterCheckbox({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.color = const Color(0xFFEFEBE9),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Theme(
+          data: ThemeData(unselectedWidgetColor: Colors.black26),
+          child: Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(border: Border.all(color: Colors.black26)),
+            child: Checkbox(
+              value: value,
+              onChanged: onChanged,
+              checkColor: Colors.black,
+              activeColor: color,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ),
+        SizedBox(width: 6),
+        Text(label, style: TextStyle(fontSize: 14)),
+      ],
+    );
+  }
+}
+
+//13. 진행바
+
+Widget buildProgressBar(double percent, Color color, Color backgroundcolor) {
+  return Row(
+    children: [
+      Expanded(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: LinearProgressIndicator(
+            value: percent,
+            backgroundColor: backgroundcolor,
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+            minHeight: 20,
+          ),
+        ),
+      ),
+      SizedBox(width: 10),
+      Text("${(percent * 100).toInt()}%", style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 20)),
+    ],
   );
 }
 

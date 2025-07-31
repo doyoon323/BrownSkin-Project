@@ -19,12 +19,19 @@ class AgriHome extends StatefulWidget {
 class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, WidgetsBindingObserver {
   String get token => widget.token;
   Map<String, List<Map<String, dynamic>>> userByproduct = {};
-  List<Map<String, dynamic>> donutData = [];
+  List<Map<String, dynamic>> productData = [];
   final TextEditingController weightController = TextEditingController();
 
   // UI 상태 관리
   String sortBy = "name"; // 정렬 기준 : name, status
   Timer? _timer;
+  bool isProcessChecked = true;
+  bool isHarvestChecked = true;
+
+  List<DropdownMenuItem<String>> sortOptions = [
+    DropdownMenuItem(value: "name", child: Text("이름순")),
+    DropdownMenuItem(value: "status", child: Text("위험도순")),
+  ];
 
   static const Color lightbackgroundBrown = Color(0xFF8D6E63);
   static const Color backgroundBrown = Color(0xFFD7CCC8);
@@ -114,11 +121,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
     await fetchUserByProduct();
     setState(() {});
-    if (disposed) {
-    showSnack("부산물이 폐기 처리되었습니다.");
-  } else {
-    showSnack("부산물이 성공적으로 추가되었습니다.");
-  }
+    if (disposed) showSnack("부산물이 폐기 처리되었습니다.");
+    else showSnack("부산물이 성공적으로 추가되었습니다.");
+
     return true;
   }
 
@@ -133,7 +138,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
       for (final item in products)
         tempList.add(transformItem(type, item, defaultThreshold));
     }
-    setState(() { donutData = tempList;});
+    setState(() { productData = tempList;});
   }
 
 
@@ -141,7 +146,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   Map<String, dynamic> transformItem(String type, Map<String, dynamic> item, int defaultThreshold,) {
     final threshold = (item["threshold"] ?? defaultThreshold) as num;
     final weight = (item["weight_float"] ?? 0) as num;
-
     return {
       "name": item['name'],
       "type": type,
@@ -150,6 +154,508 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
       "percent": (weight / threshold).clamp(0.0, 1.0),
     };
   }
+
+
+
+/* UI 구현 */
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: backgroundBrown,
+      appBar: buildCustomAppBar(
+        context: context,
+        title: '부산물 관리',
+        token: widget.token,
+        showBackButton: false,
+        showActions: true,
+        onRefresh: () async {
+          await fetchUserByProduct();
+          await updateData(userByproduct); // 또는 fetchUserByProduct + updateData
+        },
+      ),
+
+      body: Column(
+        children: [
+          SizedBox(height: 15),
+          _buildSummaryHeader(),
+          _buildSortSection(),
+          _buildByproductInfo()
+        ],
+      ),
+      floatingActionButton: _buildNewProductButton(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: bottomNavigationBar(context, [
+          BottomNavItem(icon: Icons.home_rounded, label: '홈', isSelected: true, onTap: () {}),
+          BottomNavItem(icon: Icons.local_shipping_rounded, label: '배송 요청', onTap: () => onDeliveryRequestTap(context))
+        ], color: cardBrown)
+    );
+  }
+
+  int _getDangerCount(List<Map<String, dynamic>> data) {
+    return data.where((item) => item["percent"] >= 0.9).length;
+  }
+
+
+  Widget _buildSummaryHeader(){
+    List<Map<String, dynamic>> filtered = getFilteredData();
+    int dangerCount = (productData.isEmpty || filtered.isEmpty) ? 0 : _getDangerCount(filtered);
+
+    return Container(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    decoration: BoxDecoration(color: Color(0xC8DF3838), borderRadius: BorderRadius.circular(8)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(padding: EdgeInsets.only(right: 16), child: Icon(Icons.warning, color: cardBrown, size: 20)),
+                            Text("포화 위험 품목", style: TextStyle(color: cardBrown, fontSize: 16)),
+                          ],
+                        ),
+                        Text("${dangerCount}개", style: TextStyle(color: cardBrown, fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+  }
+
+  Widget _buildSortSection(){
+    return
+      Container(
+        margin: EdgeInsets.only(bottom: 16),
+        padding: EdgeInsets.all(6),
+        decoration: BoxDecoration(color: Colors.black.withOpacity(0.03), borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                FilterCheckbox(label: "가공", value: isProcessChecked, onChanged: (v) => setState(() => isProcessChecked = v!)),
+                FilterCheckbox(label: "수확", value: isHarvestChecked, onChanged: (v) => setState(() => isHarvestChecked = v!)),
+              ],
+            ),
+            /// 우측: 정렬 드롭다운
+            Container(
+              decoration: BoxDecoration(color: cardBrown, borderRadius: BorderRadius.circular(12),),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: sortBy,
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  items: sortOptions,
+                  onChanged: (value) { setState(() { sortBy = value!;});},
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+  }
+
+
+  Widget _buildNewProductButton() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FloatingActionButton(
+          onPressed: () => _showAddWeightDialog("새 부산물 등록",null,null, false),
+          backgroundColor: lightbackgroundBrown,
+          foregroundColor: cardBrown,
+          shape: CircleBorder(side: BorderSide(color: Colors.black26)),
+          child: Icon(Icons.add, size: 45),
+        ),
+        SizedBox(height: 15),
+        Text('부산물 종류 등록', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),),
+      ],
+    );
+  }
+
+  Widget _buildByproductInfo(){
+    final filteredData = getFilteredData();
+    return Expanded(
+        child: ListView.separated(
+          padding: EdgeInsets.symmetric(vertical: 5),
+          itemCount: filteredData.length,
+          itemBuilder: (context, index) => _buildListItem(filteredData[index]),
+          separatorBuilder: (context, index) => SizedBox(height: 8),
+        )
+    );
+  }
+
+
+  Widget _buildListItem(Map<String, dynamic> item) {
+    final double percent = item["percent"] ?? 0.0 ;
+    final Color progressColor = getProgressColor(percent);
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBrown,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: cardBrown, spreadRadius: 1, blurRadius: 4, offset: Offset(0, 2))],
+        border: Border.all(color: Colors.grey.withOpacity(0.8), width: 1.0),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(top: 20),
+                      child: Text(
+                          "[ ${item['type']} ] ${item['name']}  ${item['weight']}$weight_unit",
+                          style: TextStyle(fontSize: 20, color: Colors.black, fontWeight: FontWeight.bold)
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton(
+                onPressed: () => showHistoryPreviewUI(context, item['type'], item['name']),
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                  side: BorderSide(color: Colors.black),
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                ),
+                child: Text("재고 내역", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900)),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          buildProgressBar(percent, progressColor, backgroundBrown),
+          SizedBox(height: 10),
+          _buildActionButtons(item),
+        ],
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> getFilteredData() {
+    List<Map<String, dynamic>> filtered = productData.where((item) {
+      if (item["type"] == "가공" && !isProcessChecked) return false;
+      if (item["type"] == "수확" && !isHarvestChecked) return false;
+      return true;
+    }).toList();
+
+    if (filtered.isEmpty) return [];
+    // 정렬
+    filtered.sort((a, b) {
+      switch (sortBy) {
+        case "status":
+          return getStatusPriority(b["percent"]).compareTo(getStatusPriority(a["percent"]));
+        default:
+          return a["name"].compareTo(b["name"]);
+      }
+    });
+    return filtered;
+  }
+
+  // NavTap 관리
+  void onDeliveryRequestTap(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => DeliveryReqAgriculturePage(token: token, userByproduct: userByproduct)),
+    ).then((result) {
+      if (result == true) fetchUserByProduct().then((_) => updateData(userByproduct));
+    });
+  }
+
+  Widget _buildActionButtons(Map<String, dynamic> item) {
+    return ActionButtonGroup(
+      buttons: [
+        ActionButtonData(
+          label: '폐기',
+          onPressed: () =>_showAddWeightDialog("부산물 폐기 등록", item['type'], item['name'], true),
+          backgroundColor: lightbackgroundBrown,
+        ),
+        ActionButtonData(
+          label: '추가',
+          onPressed: () => _showAddWeightDialog("부산물 무게 추가", item['type'], item['name'], false),
+          backgroundColor: lightbackgroundBrown,
+        ),
+      ],
+      spacing: const EdgeInsets.only(right: 12),
+      borderRadius: BorderRadius.circular(10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      elevation: 2,
+      expanded: true,
+    );
+  }
+
+
+//팝업 정보
+  String _getActionText(String label) {
+  if (label.contains("무게 추가")) return "추가하시겠습니까?";
+  if (label.contains("폐기")) return "를 폐기하시겠습니까?";
+  if (label.contains("새 부산물")) return "부산물을 등록하시겠습니까?";
+  return "등록하시겠습니까?";
+}
+
+
+  Future<bool> _showAddWeightDialog(String label, String? type, String? name, bool disposed) async {
+    final isFixed = type != null && name != null;
+    String? selectedType = type;
+    String? selectedByproduct = name;
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return _buildWeightModalContent(
+              label: label,
+              isFixed: isFixed,
+              selectedType: selectedType,
+              selectedByproduct: selectedByproduct,
+              onTypeChanged: (value) {
+                setModalState(() {
+                  selectedType = value;
+                  selectedByproduct = null;
+                });
+              },
+              onByproductChanged: (value) => setModalState(() => selectedByproduct = value),
+              controller: weightController,
+              onSubmit: () => _handleWeightSubmit(
+                label: label,
+                disposed: disposed,
+                selectedType: selectedType,
+                selectedByproduct: selectedByproduct,
+                controller: weightController,
+                context: context,
+              ),
+            );
+          },
+        );
+      },
+    );
+    return result == true;
+  }
+
+
+  Widget _buildWeightModalContent({
+    required String label,
+    required bool isFixed,
+    required String? selectedType,
+    required String? selectedByproduct,
+    required ValueChanged<String?> onTypeChanged,
+    required ValueChanged<String?> onByproductChanged,
+    required TextEditingController controller,
+    required VoidCallback onSubmit,
+  }) {
+    return Container(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      decoration: BoxDecoration(color: cardBrown, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(label, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            const SizedBox(height: 20),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('부산물 유형 선택'),
+                SizedBox(height: 8),
+                CommonDropdownField(
+                  value: selectedType,
+                  items: ['가공', '수확'],
+                  onChanged: isFixed ? null : onTypeChanged,
+                  isEnabled: !isFixed,
+                  hintText: '유형을 선택해주세요',
+                ),
+              ],
+            ),
+
+            if (selectedType != null)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('품목 선택'),
+                  SizedBox(height: 8),
+                  CommonDropdownField(
+                    value: selectedByproduct,
+                    items: byproductsCategory.where((item) => item['type'] == selectedType).map((item) => item['name']!).toList(),
+                    onChanged: isFixed ? null : onByproductChanged,
+                    isEnabled: !isFixed,
+                    hintText: '품목을 선택해주세요',
+                  ),
+                ],
+              ),
+
+            const SizedBox(height: 16),
+            Text('무게 입력 ($weight_unit)'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                hintText: '예: 100',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
+            ),
+            const SizedBox(height: 20),
+            ActionButton(
+              data: ActionButtonData(label: '등록하기', onPressed: onSubmit, backgroundColor: lightbackgroundBrown)
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  void _handleWeightSubmit({
+    required String label,
+    required bool disposed,
+    required String? selectedType,
+    required String? selectedByproduct,
+    required TextEditingController controller,
+    required BuildContext context,
+  }) {
+    final type = selectedType;
+    final name = selectedByproduct;
+    final weight = controller.text.trim();
+
+    if (type == null || name == null || weight.isEmpty) {
+      showSnack("무게, 타입, 이름을 모두 입력하세요");
+      return;
+    }
+    showConfirmPopup(
+      context: context,
+      typeLabel: type,
+      productName: name,
+      weightText: weight,
+      actionText: _getActionText(label),
+      onConfirm: () async {
+        final success = await addWeight(disposed, type, name, weight);
+        if (success) {
+          await updateData(userByproduct);
+          controller.clear();
+          Navigator.pop(context, true);
+        } else {
+          Navigator.pop(context, false);
+        }
+      },
+    );
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  Widget _buildHistoryList(String name, List<Map<String, dynamic>> history) {
+    final latestWeight = history.isNotEmpty ? history.first["current_weight_float"] : 0.0;
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("$name 부산물", style: TextStyle(fontSize: 16)),
+          SizedBox(height: 14),
+          Text("${latestWeight.toStringAsFixed(1)} $weight_unit", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          SizedBox(height: 75),
+          Expanded(
+            child: ListView.builder(
+              key: ValueKey(history.length),
+              itemCount: history.length,
+              itemBuilder: (context, index) {
+                final entry = history[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(entry["status"], style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                            SizedBox(height: 8),
+                            Text(entry["timestamp"], style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              "${entry["weight_diff_float"] > 0 ? "+" : ""}${entry["weight_diff_float"].toStringAsFixed(1)} $weight_unit",
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: entry["weight_diff_float"] > 0 ? Colors.black87 : Color(0xFFED2939)),
+                            ),
+                            SizedBox(height: 8),
+                            Text("${entry["current_weight_float"].toStringAsFixed(1)} $weight_unit",
+                                style: TextStyle(fontSize: 13, color: Colors.brown[800])),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
 
 
@@ -307,580 +813,5 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     }).toList();
 
     return List<Map<String, dynamic>>.from(cachedHistory[key]!);
-  }
-
-
-
-
-
-
-/* UI 구현 */
-  @override
-  Widget build(BuildContext context) {
-
-    return Scaffold(
-      backgroundColor: backgroundBrown,
-      appBar: buildCustomAppBar(
-        context: context,
-        title: '부산물 관리',
-        token: widget.token,
-        showBackButton: false,
-        showActions: true,
-        onRefresh: () async {
-          await fetchUserByProduct();
-          await updateData(userByproduct); // 또는 fetchUserByProduct + updateData
-        },
-      ),
- 
-      body: Column(
-        children: [
-          SizedBox(height: 15),
-          _buildSummaryHeader(),
-          _buildCheckbox(),
-          _buildByproductInfo()
-        ],
-      ),
-      floatingActionButton: _buildNewProductButton(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: bottomNavigationBar(context, [
-          BottomNavItem(icon: Icons.home_rounded, label: '홈', isSelected: true, onTap: () {}),
-          BottomNavItem(icon: Icons.local_shipping_rounded, label: '배송 요청', onTap: () => onDeliveryRequestTap(context))
-        ],
-        color: cardBrown
-      ),
-    );
-  }
-
-
-  Widget _buildNewProductButton() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FloatingActionButton(
-          onPressed: () => _showAddWeightDialog("새 부산물 등록",null,null, false),
-          backgroundColor: lightbackgroundBrown,
-          foregroundColor: cardBrown,
-          shape: CircleBorder(side: BorderSide(color: Colors.black26)),
-          child: Icon(Icons.add, size: 45),
-        ),
-        SizedBox(height: 15),
-        Text('부산물 종류 등록', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),),
-      ],
-    );
-  }
-
-  Widget _buildByproductInfo(){
-    final filteredData = getFilteredData();
-    return Expanded(
-        child: ListView.builder(
-            padding: EdgeInsets.symmetric(vertical: 5),
-            itemCount: filteredData.length,
-            itemBuilder: (context, index) {
-              return _buildListItem(filteredData[index]);
-            })
-    );
-  }
-
-  Widget _buildSummaryHeader(){
-    List<Map<String, dynamic>> filtered = getFilteredData();
-    Map<String,dynamic> DangerData;
-
-    if (donutData.isEmpty || filtered.isEmpty) DangerData = {"danger": 0};
-    else {
-      int dangerCount = filtered.where((item) => item["percent"] >= 0.9).length;
-      DangerData = {"danger": dangerCount};
-    }
-    return Container(
-        padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    decoration: BoxDecoration(color: Color(0xC8DF3838), borderRadius: BorderRadius.circular(8)),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Padding(padding: EdgeInsets.only(right: 16), child: Icon(Icons.warning, color: cardBrown, size: 20)),
-                            Text("포화 위험 품목", style: TextStyle(color: cardBrown, fontSize: 16)),
-                          ],
-                        ),
-                        Text("${DangerData['danger']}개", style: TextStyle(color: cardBrown, fontSize: 16)),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-  }
-
-  Widget _buildCheckbox(){
-    return
-      Container(
-        margin: EdgeInsets.only(bottom: 16),
-        padding: EdgeInsets.all(6),
-        decoration: BoxDecoration(color: Colors.black.withOpacity(0.03), borderRadius: BorderRadius.circular(12)),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                _buildFilterCheckbox("가공", isProcessChecked, (newValue) {
-                  setState(() { isProcessChecked = newValue!; });
-                }),
-                SizedBox(width: 4),
-                _buildFilterCheckbox("수확", isHarvestChecked, (newValue) {
-                  setState(() { isHarvestChecked = newValue!; });
-                }),
-              ],
-            ),
-            /// 우측: 정렬 드롭다운
-            Container(
-              decoration: BoxDecoration(color: cardBrown, borderRadius: BorderRadius.circular(12),),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: sortBy,
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  items: [DropdownMenuItem(value: "name", child: Text("이름순")), DropdownMenuItem(value: "status", child: Text("위험도순")),],
-                  onChanged: (value) { setState(() { sortBy = value!;});},
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-  }
-
-  // NavTap 관리
-  void onDeliveryRequestTap(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => DeliveryReqAgriculturePage(token: token, userByproduct: userByproduct)),
-    ).then((result) {
-      if (result == true) fetchUserByProduct().then((_) => updateData(userByproduct));
-    });
-  }
-
-
-  bool isProcessChecked = true;
-  bool isHarvestChecked = true;
-
-  Widget _buildFilterCheckbox(String label, bool value, Function(bool?) onChanged) {
-    return Row(
-      children: [
-        Theme(
-          data: ThemeData(unselectedWidgetColor: Colors.black26),
-          child: Container(
-            width: 22,
-            height: 22,
-            decoration: BoxDecoration(border: Border.all(color: Colors.black26, width: 1)),
-            child: Checkbox(
-              value: value,
-              onChanged: onChanged,
-              checkColor: Colors.black,
-              activeColor: cardBrown,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-            ),
-          ),
-        ),
-        SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 14)),
-      ],
-    );
-  }
-
-
-  List<Map<String, dynamic>> getFilteredData() {
-    List<Map<String, dynamic>> filtered = donutData.where((item) {
-      if (item["type"] == "가공" && !isProcessChecked) return false;
-      if (item["type"] == "수확" && !isHarvestChecked) return false;
-      return true;
-    }).toList();
-
-    // 정렬
-    filtered.sort((a, b) {
-      switch (sortBy) {
-        case "status":
-          return getStatusPriority(b["percent"]).compareTo(getStatusPriority(a["percent"]));
-        default:
-          return a["name"].compareTo(b["name"]);
-      }
-    });
-    return filtered;
-  }
-
-
-  Widget _buildWarningBadge(double percent) {
-    if (percent < 0.8) return SizedBox.shrink();
-    return Positioned(
-      top: 0,
-      left: 0,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4)),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.warning, size: 12, color: Colors.black87),
-            SizedBox(width: 4),
-            Text("위험", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black)),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-  /// 요약 정보 계산
-  Map<String, dynamic> getSummaryData() {
-    if (donutData.isEmpty) return {"total": 0, "average": 0, "danger": 0, "warning": 0};
-
-    List<Map<String, dynamic>> filtered = getFilteredData();
-    if (filtered.isEmpty)  return {"total": 0, "average": 0, "danger": 0, "warning": 0};
-
-    double totalWeight = filtered.fold(0, (sum, item) => sum + item["weight"]);
-    double averagePercent = filtered.fold(0.0, (sum, item) => sum + item["percent"]) / filtered.length;
-    int dangerCount = filtered.where((item) => item["percent"] >= 0.9).length;
-    int warningCount = filtered.where((item) => item["percent"] >= 0.7 && item["percent"] < 0.9).length;
-
-    return {
-      "total": totalWeight,
-      "average": averagePercent,
-      "danger": dangerCount,
-      "warning": warningCount,
-      "count": filtered.length,
-    };
-  }
-
-  Widget _buildHistoryList(String name, List<Map<String, dynamic>> history) {
-    final latestWeight = history.isNotEmpty ? history.first["current_weight_float"] : 0.0;
-
-    return Container(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("$name 부산물", style: TextStyle(fontSize: 16)),
-          SizedBox(height: 14),
-          Text("${latestWeight.toStringAsFixed(1)} $weight_unit", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          SizedBox(height: 75),
-          Expanded(
-            child: ListView.builder(
-              key: ValueKey(history.length),
-              itemCount: history.length,
-              itemBuilder: (context, index) {
-                final entry = history[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(entry["status"], style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                            SizedBox(height: 8),
-                            Text(entry["timestamp"], style: TextStyle(fontSize: 13)),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              "${entry["weight_diff_float"] > 0 ? "+" : ""}${entry["weight_diff_float"].toStringAsFixed(1)} $weight_unit",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: entry["weight_diff_float"] > 0 ? Colors.black87 : Color(0xFFED2939),
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text("${entry["current_weight_float"].toStringAsFixed(1)} $weight_unit",
-                                style: TextStyle(fontSize: 13, color: Colors.brown[800])),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-
-
-  Widget _buildActionButtons(Map<String, dynamic> item) {
-    return Row(
-      children: [
-        Expanded(
-          child: SingleActionButton(
-            label: '폐기',
-            onPressed: () {
-              _showAddWeightDialog("부산물 폐기 등록", item['type'], item['name'], true);
-            },
-            backgroundColor: lightbackgroundBrown,
-            foregroundColor: Colors.white,
-            borderRadius: 10,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: SingleActionButton(
-            label: '추가',
-            onPressed: () {
-              _showAddWeightDialog("부산물 무게 추가", item['type'], item['name'], false);
-            },
-            backgroundColor: lightbackgroundBrown,
-            foregroundColor: Colors.white,
-            borderRadius: 10,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProgressBar(double percent, Color color) {
-    return Row(
-      children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: LinearProgressIndicator(
-              value: percent,
-              backgroundColor: backgroundBrown,
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-              minHeight: 20,
-            ),
-          ),
-        ),
-        SizedBox(width: 10),
-        Text(
-          "${(percent * 100).toInt()}%",
-          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-      ],
-    );
-  }
-
-
-
-  Widget _buildListItem(Map<String, dynamic> item) {
-    double percent = item["percent"];
-    Color progressColor = getProgressColor(percent);
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardBrown,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: cardBrown.withOpacity(0.1), spreadRadius: 1, blurRadius: 4, offset: Offset(0, 2))],
-        border: Border.all(color: Colors.grey.withOpacity(0.6), width: 1.0,)
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Stack(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.only(top: 20),
-                      child: RichText(
-                        text: TextSpan(
-                          style: TextStyle(fontSize: 20, color: Colors.black, fontWeight: FontWeight.bold),
-                          children: [
-                            TextSpan(text: "[ ${item['type']} ] "),
-                            TextSpan(text: "${item['name']}  "),
-                            TextSpan(text: "${item['weight']}$weight_unit"),
-                          ],
-                        ),
-                      ),
-                    ),
-                    _buildWarningBadge(percent)
-                  ],
-                ),
-              ),
-
-              OutlinedButton(
-                onPressed: () {
-                  showHistoryPreviewUI(context, item['type'], item['name']);
-                },
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2),),
-                  side: BorderSide(color: Colors.black),
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                ),
-                child: Text("재고 내역", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900)),
-              ),
-            ],
-          ),
-          SizedBox(height: 20),
-          _buildProgressBar(percent, progressColor),
-          SizedBox(height: 10),
-          _buildActionButtons(item)
-        ],
-      ),
-    );
-  }
-
-
-  /// 부산물 추가 다이얼로그
-  Future<bool> _showAddWeightDialog(String label, String? type, String? name, bool disposed) async {
-    final isFixed = type != null && name != null;
-    String? selectedType = type;
-    String? selectedByproduct = name;
-
-    final result = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom,),
-              decoration: BoxDecoration(color: cardBrown, borderRadius: BorderRadius.vertical(top: Radius.circular(20)),),
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: _buildCategoryInputSection( label: label, isFixed: isFixed, selectedType: selectedType, selectedByproduct: selectedByproduct,
-                    onTypeChanged: (value) {
-                      setModalState(() {
-                        selectedType = value;
-                        selectedByproduct = null;
-                      });
-                    },
-                    onByproductChanged: (value) {
-                      setModalState(() { selectedByproduct = value;});
-                    },
-                    controller: weightController,
-                    onSubmit: () {
-                      final type = selectedType;
-                      final name = selectedByproduct;
-                      final weight = weightController.text.trim();
-
-                      if (type == null || name == null || weight.isEmpty) {
-                        showSnack("무게, 타입, 이름을 모두 입력하세요");
-                        return;
-                      }
-
-                      //확인 팝업
-                      showConfirmPopup(
-                        context: context,
-                        typeLabel: type,
-                        productName: name,
-                        weightText: weight,
-                        actionText: _getActionText(label),
-                        onConfirm: () async {
-                          final success = await addWeight(disposed, type, name, weight);
-                          if (!success) {
-                            Navigator.pop(context, false);
-                          } else {
-                            await updateData(userByproduct);
-                            weightController.clear();
-                            Navigator.pop(context, true);
-                          }
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-    return result == true; // null 또는 false → 실패
-  }
-
-//팝업 정보
-  String _getActionText(String label) {
-  if (label.contains("무게 추가")) return "추가하시겠습니까?";
-  if (label.contains("폐기")) return "를 폐기하시겠습니까?";
-  if (label.contains("새 부산물")) return "부산물을 등록하시겠습니까?";
-  return "등록하시겠습니까?";
-}
-
-  List<Widget> _buildCategoryInputSection({
-    required String label,
-    required bool isFixed,
-    required String? selectedType,
-    required String? selectedByproduct,
-    required ValueChanged<String?> onTypeChanged,
-    required ValueChanged<String?> onByproductChanged,
-    required TextEditingController controller,
-    required VoidCallback onSubmit,
-  }) {
-    return [
-      Text(label, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center,),
-      const SizedBox(height: 20),
-
-      _buildDropdownSection(
-          label: '부산물 유형 선택',
-          dropdown: isFixed ? CommonDropdownField(value: selectedType, items: [selectedType!], onChanged: null, isEnabled: false)
-            : CommonDropdownField(value: selectedType, items: ['가공', '수확'], onChanged: onTypeChanged, hintText: '유형을 선택해주세요')
-      ),
-
-      if (selectedType != null)
-        _buildDropdownSection(
-          label: '품목 선택',
-          dropdown: isFixed ? CommonDropdownField(value: selectedByproduct, items: [selectedByproduct ?? ''], onChanged: null, isEnabled: false)
-              : CommonDropdownField(
-            value: selectedByproduct,
-            items: byproductsCategory.where((item) => item['type'] == selectedType)
-                .map((item) => item['name']!).toList(),
-            onChanged: onByproductChanged,
-            hintText: '품목을 선택해주세요',
-          )
-        ),
-
-      const SizedBox(height: 16),
-      Text('무게 입력 ($weight_unit)'),
-      const SizedBox(height: 8),
-      TextField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        decoration: InputDecoration(
-          hintText: '예: 100',
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          filled: true,
-          fillColor: Colors.grey[50],
-        ),
-      ),
-      const SizedBox(height: 20),
-      SingleActionButton(label: '등록하기', onPressed: onSubmit, backgroundColor: lightbackgroundBrown , borderRadius: 12,
-      ),
-    ];
-  }
-
-  Widget _buildDropdownSection({required String label, required Widget dropdown}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [Text(label), SizedBox(height: 8), dropdown]
-    );
   }
 }
