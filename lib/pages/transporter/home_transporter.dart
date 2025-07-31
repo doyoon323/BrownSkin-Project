@@ -128,29 +128,32 @@ void dispose() {
       backgroundColor: AppColors.backgroundBrown,
 
       //상단 앱바(제목, 새로고침)
-      appBar: AppBar(
-          title: Text('배송 시스템', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          backgroundColor: AppColors.primaryBrown,
-          elevation: 4,
-          shadowColor: AppColors.darkBrown ,
-          actions: [ //상단에 새로고침버튼, 로그아웃버튼(공통위젯폴더)
-            buildLogoutIconButton(context),
-            buildRefreshIconButton(context, () async {
-              await fetchMyDeliveries();
-              await fetchCompletedDeliveries();
-            }),
-            buildMyPageIconButton(context,widget.token),
+      appBar: buildCustomAppBar(
+        context: context,
+        title: '배송 시스템', // 또는 '전처리 시스템'
+        token: widget.token,
+        showBackButton: false,
+        showActions: true,
+        onRefresh: () async {
+          await fetchMyDeliveries(); // or await fetchPreprocessItems();
+          await fetchCompletedDeliveries(); // or other relevant function
+        },
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          tabs: [
+            Tab(text: '수거 요청'),
+            Tab(text: '수거 대기'),
+            Tab(text: '배송중'),
+            Tab(text: '완료/거절'),
           ],
-          bottom: TabBar(
-            controller: _tabController,
-            indicatorColor: Colors.white,
-            indicatorWeight: 3,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            tabs: ['수거 요청', '수거 대기', '배송중', '완료/거절'].map((title) => Tab(text: title)).toList(),
-          ),
         ),
+      ),
+
 
       //각 탭에 따라서 표시할 요청 나눔
       body: TabBarView(

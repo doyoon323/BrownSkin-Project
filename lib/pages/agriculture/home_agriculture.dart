@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'package:intl/intl.dart';
 import 'package:brownskin_app/pages/agriculture/deliveryReq_agriculture.dart';
-import 'package:brownskin_app/common/themes.dart';
 import '../../common/api_service.dart';
 import '../../common/status_utils.dart';
 import '../../common/widgets.dart';
@@ -321,24 +320,18 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
 
     return Scaffold(
       backgroundColor: backgroundBrown,
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryBrown,
-        iconTheme: const IconThemeData(color: cardBrown),
-        title: const Text(
-          '부산물 관리',
-          style: TextStyle(color: cardBrown, fontWeight: FontWeight.bold),
-        ),
-        elevation: 4,
-        shadowColor: AppColors.darkBrown,
-        actions: [
-          buildLogoutIconButton(context,backgroundColor: AppColors.primaryBrown),
-          buildRefreshIconButton(context, () async {
-            await fetchUserByProduct();
-            await updateData(userByproduct);
-          }, backgroundColor: AppColors.primaryBrown),
-          buildMyPageIconButton(context, widget.token),
-        ],
+      appBar: buildCustomAppBar(
+        context: context,
+        title: '부산물 관리',
+        token: widget.token,
+        showBackButton: false,
+        showActions: true,
+        onRefresh: () async {
+          await fetchUserByProduct();
+          await updateData(userByproduct); // 또는 fetchUserByProduct + updateData
+        },
       ),
+ 
       body: Column(
         children: [
           SizedBox(height: 15),

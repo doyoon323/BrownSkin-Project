@@ -180,29 +180,30 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
         backgroundColor: AppColors.backgroundBrown,
 
         //상단앱바
-        appBar: AppBar(
-          title: Text('전처리 시스템', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          backgroundColor: AppColors.primaryBrown,
-          elevation: 4,
-          shadowColor: AppColors.darkBrown ,
-          actions: [ //상단에 새로고침버튼, 로그아웃버튼(공통위젯폴더)
-            buildLogoutIconButton(context),
-            buildRefreshIconButton(context, fetchPreprocessItems),
-            buildMyPageIconButton(context, widget.token),
-            ],
-          bottom: TabBar( //하단에는 탭 세 개
+        appBar: buildCustomAppBar(
+          context: context,
+          title: '전처리 시스템',
+          token: widget.token,
+          showBackButton: false,
+          showActions: true,
+          onRefresh: () async {
+            await fetchPreprocessItems();
+          },
+          bottom: const TabBar(
             indicatorColor: Colors.white,
             indicatorWeight: 3,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            tabs: const [
+            labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            tabs: [
               Tab(text: '입고'),
               Tab(text: '작업중'),
               Tab(text: '작업완료'),
             ],
           ),
         ),
+
+
         body: TabBarView( //각 탭이 뭔지: 아래에 각각 정의돼있음
           children: [
             _buildReceivedTab(), //탭1: 입고

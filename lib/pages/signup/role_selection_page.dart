@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'verification_page.dart';
 import 'package:brownskin_app/common/themes.dart';
+import 'package:brownskin_app/common/widgets.dart';
 
 class RoleSelectionPage extends StatelessWidget {
   const RoleSelectionPage({super.key});
@@ -40,17 +41,11 @@ class RoleSelectionPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundBrown,
-      appBar: AppBar(
-        title: const Text(
-          '회원 유형 선택',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: AppColors.primaryBrown,
-        elevation: 0,
-        centerTitle: true,
+      appBar: buildCustomAppBar(
+        context: context,
+        title: '회원 유형 선택',
+        showBackButton: true,
+        showActions: false,
       ),
       body: Container(
         decoration: BoxDecoration(

@@ -6,11 +6,10 @@ import 'dart:async';
 import 'package:brownskin_app/pages/admin/setThreshold_admin.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../common/location_service.dart';
-import '../../common/mypage/home.dart';
-import '../../common/themes.dart';
 import '../../common/widgets.dart';
 import 'admin_data_provider.dart';
 import 'admin_marker_factory.dart';
+
 
 
 class AdminHomePage extends StatefulWidget {
@@ -240,15 +239,17 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-          backgroundColor: AppColors.primaryBrown,
-          title: Text('부산물 관리 시스템', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          actions:[
-            buildMyPageIconButton(context, widget.token),
-            buildLogoutIconButton(context,backgroundColor: AppColors.primaryBrown),
-            const SizedBox(width: 8),
-          ]
+      appBar: buildCustomAppBar(
+        context: context,
+        title: '부산물 관리 시스템', 
+        token: widget.token,
+        showBackButton: false,
+        showActions: true,
+        onRefresh: () async {
+          await reloadMarkers(); 
+        },
       ),
+
       body: SafeArea(
         child: Stack(
           children: [

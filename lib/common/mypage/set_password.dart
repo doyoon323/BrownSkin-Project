@@ -2,10 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../constants.dart';
 import '../themes.dart';
-
+import '../widgets.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -18,12 +17,13 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   final _oldPWController = TextEditingController();
   final _newPWController = TextEditingController();
   final _checkPWController = TextEditingController();
-
   bool _obscureOld = true;
   bool _obscureNew = true;
   bool _obscureCheck = true;
 
-  static const Color backgroundBrown = Color(0xFFD7CCC8);
+  static const Color mediumbackgroundBrown = Color(0xFF4A3429); // 짙은 갈색
+  static const Color lightbackgroundBrown = Color(0xFF433228); // 중간 갈색
+  static const Color lightBackground = Color(0xFFF8F6F4); // 매우 옅은 배경색
 
   @override
   void dispose() {
@@ -36,7 +36,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _validPW() {
     final newPW = _newPWController.text;
     final checkPW = _checkPWController.text;
-
     if (newPW.length < 8) {
       _showMessage("비밀번호는 최소 8자 이상이어야 합니다.");
       return false;
@@ -51,9 +50,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   Future<void> _postPW() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
-
     final uri = Uri.parse('$BASE_URL/auth/api-password-change');
-
     final request = http.MultipartRequest('PATCH', uri)
       ..headers['Authorization'] = 'Token $token'
       ..fields['current_password'] = _oldPWController.text
@@ -116,20 +113,44 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }
 
   Widget _buildLabel(String text) {
-    return Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),);
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: mediumbackgroundBrown, // 텍스트 색상 변경
+      ),
+    );
   }
 
   Widget _buildPasswordField(TextEditingController controller, {required bool obscure, required VoidCallback toggle}) {
     return TextField(
       controller: controller,
       obscureText: obscure,
+      style: TextStyle(color: mediumbackgroundBrown), // 입력 텍스트 색상 변경
       decoration: InputDecoration(
         suffixIcon: IconButton(
-          icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
+          icon: Icon(
+            obscure ? Icons.visibility_off : Icons.visibility,
+            color: mediumbackgroundBrown.withOpacity(0.7), // 아이콘 색상 변경
+          ),
           onPressed: toggle,
         ),
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        filled: true,
+        fillColor: Colors.white, // 흰색 배경으로 변경
+        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: lightbackgroundBrown.withOpacity(0.3), width: 1), // 테두리 추가
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: lightbackgroundBrown.withOpacity(0.3), width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: mediumbackgroundBrown, width: 1.5), // 포커스 시 색상 변경
+        ),
       ),
     );
   }
@@ -137,11 +158,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundBrown,
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryBrown,
-        foregroundColor: backgroundBrown,
-        title: const Text('비밀번호 변경', style: TextStyle(fontWeight: FontWeight.bold,color: Colors.white)),
+      backgroundColor: lightBackground, // 옅은 배경색으로 변경
+      appBar: buildCustomAppBar(
+        context: context,
+        title: '비밀번호 변경',
+        showBackButton: true,
+        showActions: false,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -156,7 +178,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               toggle: () => setState(() => _obscureOld = !_obscureOld),
             ),
             const SizedBox(height: 25),
-
             _buildLabel('새 비밀번호'),
             const SizedBox(height: 14),
             _buildPasswordField(
@@ -165,7 +186,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               toggle: () => setState(() => _obscureNew = !_obscureNew),
             ),
             const SizedBox(height: 25),
-
             _buildLabel('새 비밀번호 확인'),
             const SizedBox(height: 14),
             _buildPasswordField(
@@ -181,7 +201,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   if (_validPW()) _postPW();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBrown,
+                  backgroundColor: AppColors.primaryBrown, // 기존 primaryBrown 유지
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

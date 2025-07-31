@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:brownskin_app/pages/login/find_idpw.dart';
 import 'package:brownskin_app/pages/signup/role_selection_page.dart';
 import 'package:brownskin_app/pages/agriculture/home_agriculture.dart';
 import 'package:brownskin_app/pages/admin/admin_home.dart';
@@ -147,8 +148,9 @@ class _LoginPageState extends State<LoginPage> {
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                       const Text(
                         '로그인',
                         style: TextStyle(
@@ -156,28 +158,47 @@ class _LoginPageState extends State<LoginPage> {
                           fontWeight: FontWeight.bold,
                           color: Colors.brown,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        '계정에 로그인하여 시작하세요',
-                        style: TextStyle(color: Colors.black54),
+                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),
-                      _buildLabeledField(
+                     Padding(
+                      padding: const EdgeInsets.only(bottom: 16), // 아이디 입력 필드 여백
+                      child: _buildLabeledField(
                         '아이디',
                         _usernameController,
                         false,
                         Icons.person,
                       ),
-                      _buildLabeledField(
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4), // 비밀번호 입력 필드 여백 줄임!
+                      child: _buildLabeledField(
                         '비밀번호',
                         _passwordController,
                         true,
                         Icons.lock,
                       ),
-                      const SizedBox(height: 16),
+                    ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Padding(
+                          padding: EdgeInsets.only(top: 0),
+                          child: TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const FindAccountPage()),
+                            );
+                          },
+                          child: const Text(
+                            '아이디 | 비밀번호 찾기',
+                            style: TextStyle(color: Colors.brown),
+                          ),
+                        ),
+                      ),
+                    ),
+                      const SizedBox(height: 8),
                       SizedBox(
-                        width: double.infinity,
                         height: 48,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -193,38 +214,32 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      Row(
-                        children: const [
-                          Expanded(child: Divider(color: Colors.black26)),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              '또는',
-                              style: TextStyle(color: Colors.black54),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 48,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.brown),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          Expanded(child: Divider(color: Colors.black26)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const RoleSelectionPage(),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          '계정이 없으신가요? 회원가입',
-                          style: TextStyle(color: Colors.brown),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+                            );
+                          },
+                          child: const Text(
+                            '회원가입',
+                            style: TextStyle(color: Colors.brown, fontSize: 16),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
+
               ),
               const SizedBox(height: 16),
               const Text(
@@ -244,9 +259,7 @@ class _LoginPageState extends State<LoginPage> {
     bool obscure,
     IconData icon,
   ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextField(
+    return TextField(
         controller: controller,
         obscureText: obscure,
         decoration: InputDecoration(
@@ -256,9 +269,8 @@ class _LoginPageState extends State<LoginPage> {
           filled: true,
           fillColor: Colors.white,
         ),
-      ),
-    );
-  }
+      );
+    }
   //여기까지 디자인
 }
 
