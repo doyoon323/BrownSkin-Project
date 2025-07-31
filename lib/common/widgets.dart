@@ -506,4 +506,3 @@ Widget buildProgressBar(double percent, Color color, Color backgroundcolor) {
     ],
   );
 }
-

@@ -2,11 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:brownskin_app/common/constants.dart';
-import 'package:intl/intl.dart';
 import 'package:brownskin_app/pages/agriculture/deliveryReq_agriculture.dart';
 import '../../common/api_service.dart';
 import '../../common/status_utils.dart';
 import '../../common/widgets.dart';
+import 'dispose_history.dart';
 
 class AgriHome extends StatefulWidget {
   final String token;
@@ -298,14 +298,13 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
   Widget _buildListItem(Map<String, dynamic> item) {
     final double percent = item["percent"] ?? 0.0 ;
     final Color progressColor = getProgressColor(percent);
-
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardBrown,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: cardBrown, spreadRadius: 1, blurRadius: 4, offset: Offset(0, 2))],
+        boxShadow: [ BoxShadow(color: cardBrown, spreadRadius: 1, blurRadius: 4, offset: Offset(0, 2)) ],
         border: Border.all(color: Colors.grey.withOpacity(0.8), width: 1.0),
       ),
       child: Column(
@@ -315,20 +314,30 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Stack(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.only(top: 20),
-                      child: Text(
-                          "[ ${item['type']} ] ${item['name']}  ${item['weight']}$weight_unit",
-                          style: TextStyle(fontSize: 20, color: Colors.black, fontWeight: FontWeight.bold)
-                      ),
-                    ),
-                  ],
+                child:Padding(
+                  padding: EdgeInsets.only(top: 20),
+                  child: Text(
+                      "[ ${item['type']} ] ${item['name']}  ${item['weight']}$weight_unit",
+                      style: TextStyle(fontSize: 20, color: Colors.black, fontWeight: FontWeight.bold)
+                  ),
                 ),
               ),
               OutlinedButton(
-                onPressed: () => showHistoryPreviewUI(context, item['type'], item['name']),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => HistoryPage(
+                        type: item['type'],
+                        name: item['name'],
+                        token: token,
+                        onAddWeightDialog: _showAddWeightDialog,
+                        cardBrown: cardBrown,
+                        lightbackgroundBrown: lightbackgroundBrown,
+                      ),
+                    ),
+                  );
+                },
                 style: OutlinedButton.styleFrom(
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
                   side: BorderSide(color: Colors.black),
@@ -486,7 +495,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                 ),
               ],
             ),
-
             if (selectedType != null)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -502,7 +510,6 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
                   ),
                 ],
               ),
-
             const SizedBox(height: 16),
             Text('무게 입력 ($weight_unit)'),
             const SizedBox(height: 8),
@@ -517,9 +524,7 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
               ),
             ),
             const SizedBox(height: 20),
-            ActionButton(
-              data: ActionButtonData(label: '등록하기', onPressed: onSubmit, backgroundColor: lightbackgroundBrown)
-            )
+            ActionButton(data: ActionButtonData(label: '등록하기', onPressed: onSubmit, backgroundColor: lightbackgroundBrown))
           ],
         ),
       ),
@@ -560,258 +565,5 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
         }
       },
     );
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  Widget _buildHistoryList(String name, List<Map<String, dynamic>> history) {
-    final latestWeight = history.isNotEmpty ? history.first["current_weight_float"] : 0.0;
-
-    return Container(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("$name 부산물", style: TextStyle(fontSize: 16)),
-          SizedBox(height: 14),
-          Text("${latestWeight.toStringAsFixed(1)} $weight_unit", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          SizedBox(height: 75),
-          Expanded(
-            child: ListView.builder(
-              key: ValueKey(history.length),
-              itemCount: history.length,
-              itemBuilder: (context, index) {
-                final entry = history[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 10.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(entry["status"], style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                            SizedBox(height: 8),
-                            Text(entry["timestamp"], style: TextStyle(fontSize: 13)),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              "${entry["weight_diff_float"] > 0 ? "+" : ""}${entry["weight_diff_float"].toStringAsFixed(1)} $weight_unit",
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: entry["weight_diff_float"] > 0 ? Colors.black87 : Color(0xFFED2939)),
-                            ),
-                            SizedBox(height: 8),
-                            Text("${entry["current_weight_float"].toStringAsFixed(1)} $weight_unit",
-                                style: TextStyle(fontSize: 13, color: Colors.brown[800])),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-
-
-
-  void showHistoryPreviewUI(BuildContext context, String type, String name) async {
-    await getHistoryData(type, name);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 1.0,
-          minChildSize: 1.0,
-          maxChildSize: 1.0,
-          expand: true,
-          builder: (_, scrollController) {
-            late void Function(void Function()) setModalBodyState;
-
-            return StatefulBuilder(
-              builder: (context, setOuterState) {
-                return SafeArea(
-                  child: Material(
-                    color: cardBrown,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 36, left: 8, right: 8, bottom: 50),
-                          child: Row(
-                            children: [
-                              InkWell(
-                                onTap: () => Navigator.pop(context),
-                                borderRadius: BorderRadius.circular(20),
-                                child: Padding(padding: const EdgeInsets.all(8.0), child: Icon(Icons.arrow_back, size: 24),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        Expanded(
-                          child: StatefulBuilder(
-                            builder: (context, setInnerState) {
-                              setModalBodyState = setInnerState;
-
-                              return _buildHistoryList(name, cachedHistory["$type $name"] ?? []);
-                            },
-                          ),
-                        ),
-
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () async {
-                                    final added = await _showAddWeightDialog("부산물 폐기 등록", type, name, true);
-                                    if (added) {
-                                      final newData = await getHistoryData(type, name);
-                                      cachedHistory["$type $name"] = newData;
-                                      setModalBodyState(() {});
-                                    }
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                    side: BorderSide(color: lightbackgroundBrown),
-                                    foregroundColor: lightbackgroundBrown,
-                                  ),
-                                  child: Text("부산물 폐기"),
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () async {
-                                    final added = await _showAddWeightDialog("부산물 무게 추가", type, name, false);
-                                    if(added){
-                                      final newData = await getHistoryData(type, name);
-                                      cachedHistory["$type $name"] = newData;
-                                      setModalBodyState(() {});
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                    backgroundColor: lightbackgroundBrown,
-                                    foregroundColor: cardBrown,
-                                  ),
-                                  child: Text("부산물 추가"),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-
-
-  Map<String, List<Map<String, dynamic>>> cachedHistory = {};
-  Map<String, DateTime> last_fetch_history = {};
-
-  Future<List<Map<String, dynamic>>> getHistoryData(String type, String name) async {
-    final key = "$type $name";
-    final now = DateTime.now();
-
-    final fetchFromDate = last_fetch_history[key] ?? now.subtract(const Duration(days: 30));
-    final fetchFrom = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(fetchFromDate);
-
-    final url = '$BASE_URL/api/dispose-history?type=$type&name=$name&fetch_from=$fetchFrom';
-    final response = await ApiService.fetchList(url: url, token: token);
-
-    final List<Map<String, dynamic>> filteredData = response.map((entry) {
-      return {
-        'type': entry['type'],
-        'name': entry['name'],
-        'weight_diff_float': entry['weight_diff_float'],
-        'current_weight_float': entry['current_weight_float'],
-        'status': entry['status'] == "disposed" ? "추가" : entry['status'] == "abondoned" ? "폐기" : "수거",
-        'timestamp': entry['timestamp'].substring(0, 10),
-        'timestampFull': entry['timestamp']
-      };
-    }).toList();
-
-    if (filteredData.isNotEmpty) {
-      filteredData.sort((a, b) => DateTime.parse(b['timestamp']).compareTo(DateTime.parse(a['timestamp'])));
-      last_fetch_history[key] = DateTime.parse(filteredData.first['timestamp']);
-    } else {
-      last_fetch_history[key] = now;
-    }
-
-    if (!cachedHistory.containsKey(key)) cachedHistory[key] = [];
-
-    final existingKeys = cachedHistory[key]!.map((e) => "${e['timestampFull']}_${e['type']}_${e['name']}").toSet();
-
-    final uniqueNewData = filteredData.where((entry) {
-      return !existingKeys.contains("${entry['timestampFull']}_${entry['type']}_${entry['name']}");
-    }).toList();
-
-    cachedHistory[key] = [...uniqueNewData, ...cachedHistory[key]!];
-
-    final limitDate = now.subtract(Duration(days: 30));
-    cachedHistory[key] = cachedHistory[key]!.where((entry) {
-      final entryDate = DateTime.parse(entry['timestamp']);
-      return entryDate.isAfter(limitDate) || entryDate.isAtSameMomentAs(limitDate);
-    }).toList();
-
-    return List<Map<String, dynamic>>.from(cachedHistory[key]!);
   }
 }
