@@ -160,15 +160,15 @@ class _VerificationPageState extends State<VerificationPage> {
           borderRadius: BorderRadius.circular(16),
           onTap: () async {
             //카메라 인식
-            //_imageFile = await pickImageFromCamera();
+            _imageFile = await pickImageFromCamera();
             //Map<String,String> info = await recognizeTextFromImage(_imageFile!);
             //print("😚😚😚😚😙info: $info");
 
-            _imageFile = await pickImageFromGallery();
+            //_imageFile = await pickImageFromGallery();
 
             await parsedTest(_imageFile!);
 
-            print("😚😚😚😚😙: $parsedtext");
+            //print("😚😚😚😚😙: $parsedtext");
 
             setState(() {
               _documentUploaded = !_documentUploaded;
