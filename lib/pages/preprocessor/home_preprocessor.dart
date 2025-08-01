@@ -64,6 +64,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
       initialDate: DateTime.now().add(const Duration(days: 3)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 30)),
+      helpText: '📅 예상 출고일 선택', 
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -121,8 +122,13 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
           content: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
+            style: TextStyle(                   // ✅ 입력 텍스트 색상 강제 지정
+            color: AppColors.darkBrown,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
             decoration: InputDecoration(
-              labelText: '최종 무게 (kg)',
+              labelText: '최종 무게 (kt)',
               labelStyle: TextStyle(color: AppColors.primaryBrown),
               focusedBorder: UnderlineInputBorder(
                 borderSide: BorderSide(color: AppColors.primaryBrown, width: 2),
@@ -239,7 +245,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
             margin: const EdgeInsets.only(bottom: 12),
             child: InfoCard(
               title: "${item['name']} (${item['type']})",
-              subtitle: "무게: ${displayWeight}kg\n상태: 입고\n입고일: ${item['req_date']}",
+              subtitle: "무게: ${displayWeight}kt\n상태: 입고\n입고일: ${item['req_date']}",
               trailing: ActionButtonGroup(
                 buttons: [
                   ActionButtonData(
@@ -281,7 +287,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
             margin: const EdgeInsets.only(bottom: 12),
             child: InfoCard(
               title: "${item['name']} (${item['type']})",
-              subtitle: "무게: ${displayWeight}kg\n상태: 작업중\n작업시작일: ${item['start_date']}\n예상출고일: ${item['expected_complete_date']}",
+              subtitle: "무게: ${displayWeight}kt\n상태: 작업중\n작업시작일: ${item['start_date']}\n예상출고일: ${item['expected_complete_date']}",
               trailing: ActionButtonGroup(
                 buttons: [
                   ActionButtonData(
@@ -454,7 +460,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  "${finalWeight.toStringAsFixed(1)}kg",
+                                  "${finalWeight.toStringAsFixed(1)}kt",
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -515,7 +521,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
                               subtitle: Padding(
                                 padding: const EdgeInsets.only(top: 8),
                                 child: Text(
-                                  "최종무게: ${finalWeight.toStringAsFixed(1)}kg\n상태: 완료\n작업완료일: ${item['complete_date']}\n수율: ${yield.toStringAsFixed(1)}%",
+                                  "최종무게: ${finalWeight.toStringAsFixed(1)}kt\n상태: 완료\n작업완료일: ${item['complete_date']}\n수율: ${yield.toStringAsFixed(1)}%",
                                   style: TextStyle(color: AppColors.darkBrown , height: 1.4),
                                 ),
                               ),
