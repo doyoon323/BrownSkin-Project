@@ -446,26 +446,6 @@ class _VerificationPageState extends State<VerificationPage> {
     return null;
   }
 
-  /*
-  Future<Map<String,String>> recognizeTextFromImage(File _imageFile) async {
-    final InputImage inputImage = InputImage.fromFilePath(_imageFile.path);
-
-    final textRecognizer = TextRecognizer();
-    RecognizedText recognizedText = await textRecognizer.processImage(
-        inputImage);
-    await textRecognizer.close();
-
-    String scannedText = "";
-
-    for (TextBlock block in recognizedText.blocks) {
-      for (TextLine line in block.lines) {
-        scannedText = scannedText + line.text + "\n";
-      }
-    }
-    return parseBusinessLicense(scannedText);
-  }
-  */
-
 
   Future<File?> pickImageFromGallery() async {
     final picker = ImagePicker();
@@ -495,29 +475,4 @@ class _VerificationPageState extends State<VerificationPage> {
     });
   }
 
-  Map<String,String> parseBusinessLicense(String text){
-    final lines = text.split('\n').map((e) => e.trim()).toList();
-    final result = <String, String>{};
-
-    for (final line in lines) {
-      if (line.contains('등록번호')) {
-        result['등록번호'] = RegExp(r'\d{3}-\d{2}-\d{5}')
-            .firstMatch(line)?.group(0) ?? '';
-      } else if (line.contains('상호')) {
-        result['상호'] = line.split(RegExp(r'[:：]')).last.trim();
-      } else if (line.contains('성명')) {
-        result['대표자'] = line.split(RegExp(r'[:：]')).last.trim();
-      } else if (line.contains('개업연월일')) {
-        result['개업일자'] = line.split(RegExp(r'[:：]')).last.trim();
-      } else if (line.contains('소재지')) {
-        result['주소'] = line.split(RegExp(r'[:：]')).last.trim();
-      } else if (line.contains('종류') || line.contains('업태')) {
-        result['업태'] = line.split(RegExp(r'[:：]')).last.trim();
-      } else if (line.contains('종목')) {
-        result['종목'] = line.split(RegExp(r'[:：]')).last.trim();
-      }
-    }
-
-    return result;
-  }
 }
