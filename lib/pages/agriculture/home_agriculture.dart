@@ -368,7 +368,9 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     filtered.sort((a, b) {
       switch (sortBy) {
         case "status":
-          return getStatusPriority(b["percent"]).compareTo(getStatusPriority(a["percent"]));
+          int priorityDiff = getStatusPriority(b["percent"]).compareTo(getStatusPriority(a["percent"]));
+          if (priorityDiff != 0) return priorityDiff;
+          return b["percent"].compareTo(a["percent"]);
         default:
           return a["name"].compareTo(b["name"]);
       }
