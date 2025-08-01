@@ -29,8 +29,7 @@ class AdminData {
       },
     );
 
-    final Map<String, dynamic> body = await ApiService.fetchMap(
-        url: url.toString(), token: token);
+    final Map<String, dynamic> body = await ApiService.fetchMap(url: url.toString(), token: token);
     if (addr2 != null) return body;
 
     lastTotalWeight = body["total_weight"];

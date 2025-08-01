@@ -132,6 +132,8 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
 
     for (final province in provinces)
       result[province] = await adminData.getWeightData(selectedType, selectedByproductName, province, null);
+
+    print("${adminData.lastTotalWeight}");
     return result;
   }
 
@@ -203,6 +205,7 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
       await reloadDistrictMarkers();
       reloadProvinceMarkers();
     }
+
 
     isLoading = false;
     _drawZoomMarker(zoom);
