@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'verification_page.dart';
+import 'verification_page.dart'; //다음 단계
 import 'package:brownskin_app/common/themes.dart';
 import 'package:brownskin_app/common/widgets.dart';
 

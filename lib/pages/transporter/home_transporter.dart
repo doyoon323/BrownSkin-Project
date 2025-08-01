@@ -86,7 +86,7 @@ void dispose() {
         }
         return { //서버데이터를 리스트타일 표시용 데이터로 가공
           'id': item['id'],
-          'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
+          'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kt",
           'status': getStatusLabelForRole(role, item['status']),
           'rawStatus': item['status'],
           'date': dateText,
@@ -110,7 +110,7 @@ void dispose() {
     completedRequests = all.map<Map<String, dynamic>>((item) {
       return { //서버데이터를 리스트타일 형태로 가공
         'id': item['id'],
-        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kg",
+        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kt",
         'status': getStatusLabelForRole(role, item['status']),
         'rawStatus': item['status'],
         'date': item['complete_date'] ?? '',
