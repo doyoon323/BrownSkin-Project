@@ -162,7 +162,7 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
     final provinceWeightData = await adminData.getWeightData(selectedType, selectedByproductName, null, null,);
     final markers = await markerHelper.generateProvinceMarkers(provinceWeightData, threshold!, _onProvinceMarkerTap,);
     _provinceMarkers = markers;
-    total_weight = adminData.lastTotalWeight;
+    setState(() => total_weight = adminData.lastTotalWeight );
   }
 
 
