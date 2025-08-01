@@ -241,7 +241,7 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
     return Scaffold(
       appBar: buildCustomAppBar(
         context: context,
-        title: '부산물 관리 시스템', 
+        title: '관리자 시스템', 
         token: widget.token,
         showBackButton: false,
         showActions: true,
