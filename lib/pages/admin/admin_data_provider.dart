@@ -11,8 +11,7 @@ class AdminData {
 
   /// 실제 업체가 존재하는 구 데이터 동적 로드
   Future<List<String>> fetchDistrictData(String province) async {
-    final body = await ApiService.fetchMap(
-        url: "$BASE_URL/api/addr-list?addr1=$province", token: token);
+    final body = await ApiService.fetchMap(url: "$BASE_URL/api/addr-list?addr1=$province", token: token);
     final List<dynamic> result = body['addr2_list'];
     return result.map((e) => e.toString()).toList();
   }
@@ -31,17 +30,15 @@ class AdminData {
 
     final Map<String, dynamic> body = await ApiService.fetchMap(url: url.toString(), token: token);
     if (addr2 != null) return body;
+    else if (addr1 == null) lastTotalWeight = body["total_weight"];
 
-    lastTotalWeight = body["total_weight"];
     return body["results"] ?? {};
   }
 
 
   /// 현재 선택된 카테고리의 임계치 반환
   Future<double> getThreshold(String type, String? byproduct) async {
-    final body = await ApiService.fetchMap(
-        url: "$BASE_URL/api/threshold?type=$type&name=$byproduct",
-        token: token);
+    final body = await ApiService.fetchMap(url: "$BASE_URL/api/threshold?type=$type&name=$byproduct", token: token);
     if (body['weight_float'] is num)  return (body['weight_float'] as num).toDouble();
     else return -1;
   }
