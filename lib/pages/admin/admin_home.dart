@@ -70,7 +70,7 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
 
   Future<void> initData() async {
     threshold = await adminData.getThreshold(selectedType, selectedByproductName);
-    final provinceWeightData = await adminData.getWeightData(selectedType, selectedByproductName, null, null,);
+    final provinceWeightData = await adminData.getWeightData(selectedType, selectedByproductName, null, null);
     _provinceMarkers = await markerHelper.generateProvinceMarkers(provinceWeightData, threshold!, _onProvinceMarkerTap,);
     total_weight = adminData.lastTotalWeight ?? 0.0 ;
 
