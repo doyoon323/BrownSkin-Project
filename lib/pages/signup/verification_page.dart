@@ -6,6 +6,7 @@ import 'signup_form_page.dart';
 import 'package:brownskin_app/common/themes.dart';
 import 'package:brownskin_app/common/widgets.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img;
 import 'dart:io';
 
 
@@ -160,13 +161,13 @@ class _VerificationPageState extends State<VerificationPage> {
           borderRadius: BorderRadius.circular(16),
           onTap: () async {
             //카메라 인식
-            //_imageFile = await pickImageFromCamera()
+            _imageFile = await pickImageFromCamera();
 
 
-            _imageFile = await pickImageFromGallery();
+            //_imageFile = await pickImageFromGallery();
             await parsedTest(_imageFile!);
             //print("😚😚😚😚😙: $parsedtext");
-
+            debugPrint("!!!\n!!!imageFile size: ${_imageFile?.lengthSync()}\n!!!");
             setState(() {
               _documentUploaded = !_documentUploaded;
             });
@@ -435,7 +436,7 @@ class _VerificationPageState extends State<VerificationPage> {
 
 
   /// 에뮬레이터에서는 동작하나, 실제 배포하여 테스트했을 때 돌아가지 않음
-/*
+
   //카메라로 사진찍는 코드
   Future<File?> pickImageFromCamera() async {
     final picker = ImagePicker();
@@ -445,7 +446,7 @@ class _VerificationPageState extends State<VerificationPage> {
     return null;
   }
 
- */
+
 
 
   Future<File?> pickImageFromGallery() async {
@@ -460,8 +461,20 @@ class _VerificationPageState extends State<VerificationPage> {
   String parsedtext = '';
 
 
-  Future<void> parsedTest(File pickedFile)async {
-    var bytes = File(pickedFile.path.toString()).readAsBytesSync();
+  Future<void> parsedTest(File pickedFile) async {
+    File processedFile = pickedFile;
+
+    // 파일 크기 확인 (1024KB = 1048576 bytes)
+    int fileSizeInBytes = pickedFile.lengthSync();
+    debugPrint("Original file size: ${fileSizeInBytes / 1024} KB");
+
+    if (fileSizeInBytes > 1048576) { // 1024KB 초과시 압축
+      debugPrint("File size exceeds 1024KB, compressing...");
+      processedFile = await compressImage(pickedFile);
+      debugPrint("Compressed file size: ${processedFile.lengthSync() / 1024} KB");
+    }
+
+    var bytes = processedFile.readAsBytesSync();
     String img64 = base64Encode(bytes);
 
     var url = 'https://api.ocr.space/parse/image';
@@ -476,4 +489,34 @@ class _VerificationPageState extends State<VerificationPage> {
     });
   }
 
+  // 이미지 압축 함수
+  Future<File> compressImage(File file) async {
+    // 원본 이미지 읽기
+    final bytes = await file.readAsBytes();
+    final image = img.decodeImage(bytes);
+
+    if (image == null) {
+      throw Exception('이미지를 읽을 수 없습니다.');
+    }
+
+    // 이미지 크기 조정 (긴 쪽을 기준으로 최대 1920px로 제한)
+    img.Image resizedImage;
+    if (image.width > image.height) {
+      // 가로가 더 긴 경우
+      resizedImage = img.copyResize(image, width: 1920);
+    } else {
+      // 세로가 더 긴 경우
+      resizedImage = img.copyResize(image, height: 1920);
+    }
+
+    // JPEG로 인코딩 (품질 85%)
+    final compressedBytes = img.encodeJpg(resizedImage, quality: 85);
+
+    // 압축된 파일을 임시 파일로 저장
+    final tempDir = Directory.systemTemp;
+    final tempFile = File('${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
+    await tempFile.writeAsBytes(compressedBytes);
+
+    return tempFile;
+  }
 }

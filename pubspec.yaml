@@ -35,6 +35,7 @@ dependencies:
   webview_flutter_android: ^3.11.0
 
   image_picker : ^1.0.4
+  image: ^3.0.1
   permission_handler: ^11.0.0
 
 
