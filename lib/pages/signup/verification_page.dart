@@ -161,12 +161,9 @@ class _VerificationPageState extends State<VerificationPage> {
           borderRadius: BorderRadius.circular(16),
           onTap: () async {
             //카메라 인식
-            _imageFile = await pickImageFromCamera();
-
-
-            //_imageFile = await pickImageFromGallery();
+            //_imageFile = await pickImageFromCamera();
+            _imageFile = await pickImageFromGallery();
             await parsedTest(_imageFile!);
-            //print("😚😚😚😚😙: $parsedtext");
             debugPrint("!!!\n!!!imageFile size: ${_imageFile?.lengthSync()}\n!!!");
             setState(() {
               _documentUploaded = !_documentUploaded;
@@ -532,9 +529,6 @@ class _VerificationPageState extends State<VerificationPage> {
       ),
     );
   }
-
-
-  /// 에뮬레이터에서는 동작하나, 실제 배포하여 테스트했을 때 돌아가지 않음
 
   //카메라로 사진찍는 코드
   Future<File?> pickImageFromCamera() async {
