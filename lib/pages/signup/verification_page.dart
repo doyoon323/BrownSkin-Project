@@ -6,6 +6,7 @@ import 'signup_form_page.dart';
 import 'package:brownskin_app/common/themes.dart';
 import 'package:brownskin_app/common/widgets.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img;
 import 'dart:io';
 
 
@@ -160,13 +161,10 @@ class _VerificationPageState extends State<VerificationPage> {
           borderRadius: BorderRadius.circular(16),
           onTap: () async {
             //카메라 인식
-            //_imageFile = await pickImageFromCamera()
-
-
+            //_imageFile = await pickImageFromCamera();
             _imageFile = await pickImageFromGallery();
             await parsedTest(_imageFile!);
-            //print("😚😚😚😚😙: $parsedtext");
-
+            debugPrint("!!!\n!!!imageFile size: ${_imageFile?.lengthSync()}\n!!!");
             setState(() {
               _documentUploaded = !_documentUploaded;
             });
@@ -200,6 +198,10 @@ class _VerificationPageState extends State<VerificationPage> {
     );
   }
 
+  String parsedtext = '';
+  String parsedBIN = ''; // 추출된 사업자등록번호
+  final TextEditingController _binController = TextEditingController(); // 사업자등록번호 수정용 컨트롤러
+
   Widget _buildParsedTextSection() {
     if (parsedtext.isEmpty) return SizedBox.shrink(); // 아무것도 없으면 비워두기
 
@@ -221,6 +223,101 @@ class _VerificationPageState extends State<VerificationPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 사업자등록번호 섹션
+          if (true) ...[ // BIN 없을 때 표시 없애려면 조건 추가
+            Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBrown,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '추출된 사업자번호',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryBrown,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: AppColors.accentBrown.withOpacity(0.5),
+                  width: 1,
+                ),
+                borderRadius: BorderRadius.circular(8),
+                color: AppColors.backgroundBrown.withOpacity(0.1),
+              ),
+              child: TextField(
+                controller: _binController,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryBrown,
+                  letterSpacing: 1.0,
+                ),
+                decoration: InputDecoration(
+                  hintText: '000-00-00000',
+                  hintStyle: TextStyle(
+                    color: AppColors.lightBrown,
+                    fontWeight: FontWeight.normal,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  suffixIcon: Icon(
+                    Icons.edit,
+                    color: AppColors.primaryBrown.withOpacity(0.6),
+                    size: 18,
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    parsedBIN = value;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+            Divider(
+              color: AppColors.accentBrown.withOpacity(0.3),
+              thickness: 1,
+            ),
+            const SizedBox(height: 20),
+          ],
+          // OCR 원본 텍스트 섹션
+          Row(
+            children: [
+              Container(
+                width: 3,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: AppColors.lightBrown,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'OCR 원본 텍스트',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.lightBrown,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           Text(
             parsedtext,
             style: TextStyle(
@@ -433,9 +530,6 @@ class _VerificationPageState extends State<VerificationPage> {
     );
   }
 
-
-  /// 에뮬레이터에서는 동작하나, 실제 배포하여 테스트했을 때 돌아가지 않음
-/*
   //카메라로 사진찍는 코드
   Future<File?> pickImageFromCamera() async {
     final picker = ImagePicker();
@@ -445,7 +539,7 @@ class _VerificationPageState extends State<VerificationPage> {
     return null;
   }
 
- */
+
 
 
   Future<File?> pickImageFromGallery() async {
@@ -457,11 +551,21 @@ class _VerificationPageState extends State<VerificationPage> {
   }
 
 
-  String parsedtext = '';
 
+  Future<void> parsedTest(File pickedFile) async {
+    File processedFile = pickedFile;
 
-  Future<void> parsedTest(File pickedFile)async {
-    var bytes = File(pickedFile.path.toString()).readAsBytesSync();
+    // 파일 크기 확인 (1024KB = 1048576 bytes)
+    int fileSizeInBytes = pickedFile.lengthSync();
+    debugPrint("Original file size: ${fileSizeInBytes / 1024} KB");
+
+    if (fileSizeInBytes > 1048576) { // 1024KB 초과시 압축
+      debugPrint("File size exceeds 1024KB, compressing...");
+      processedFile = await compressImage(pickedFile);
+      debugPrint("Compressed file size: ${processedFile.lengthSync() / 1024} KB");
+    }
+
+    var bytes = processedFile.readAsBytesSync();
     String img64 = base64Encode(bytes);
 
     var url = 'https://api.ocr.space/parse/image';
@@ -474,6 +578,96 @@ class _VerificationPageState extends State<VerificationPage> {
     setState(() {
       parsedtext = result['ParsedResults'][0]['ParsedText'];
     });
+
+    // 사업자등록번호 추출
+    await extractBusinessNumber(parsedtext);
   }
 
+  // LLM API를 통해 사업자등록번호 추출하는 함수
+  Future<void> extractBusinessNumber(String parsedText) async {
+    if (parsedText.isEmpty) {
+      debugPrint("ParsedText is empty, cannot extract business number");
+      return;
+    }
+
+    debugPrint("Extracting business number from: $parsedText");
+
+    var url = 'https://api.groq.com/openai/v1/chat/completions';
+    var payload = {
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "messages": [
+        {
+          "role": "system",
+          "content": "당신은 한국의 사업자등록증에서 사업자등록번호만 정확히 추출하는 전문가입니다. 사업자등록번호는 XXX-XX-XXXXX 형식의 10자리 숫자입니다. 다른 정보는 무시하고 사업자등록번호만 반환하세요."
+        },
+        {
+          "role": "user",
+          "content": "다음 텍스트는 문자인식(OCR)을 통해 추출한 사업자등록증 이미지의 결과입니다. 일부 글자가 깨져 있거나, 숫자 대신 알파벳이나 한자가 들어갔을 수 있습니다.당신의 임무는 다음과 같습니다:1. 텍스트에서 사업자등록번호를 하나 추출하세요.2. 형식은 반드시 `000-00-00000` (숫자만, 하이픈 포함) 형식이어야 합니다.3. 만약 숫자처럼 보이는 알파벳이나 한자가 있다면 자동으로 숫자로 정정하세요.- 예: `I` → `1`, `O` → `0`, `S` → `5`, `B` → `8` 등4. 알파벳이나 한자가 포함된 번호는 절대 그대로 출력하지 마세요.5. 가장 먼저 등장하는 사업자등록번호 하나만 출력하세요.6. 출력은 번호 하나만, 아무 설명 없이 출력하세요. (예: `123-45-67890`)다음은 OCR 결과입니다:$parsedText"
+        }
+      ],
+    };
+
+    var header = {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer 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"
+    };
+
+    try {
+      var post = await http.post(
+        Uri.parse(url),
+        body: jsonEncode(payload),
+        headers: header
+      );
+
+      var result = jsonDecode(post.body);
+      debugPrint("LLM Result: $result");
+
+      String extractedBIN = result['choices'][0]['message']['content'].trim();
+
+      if (extractedBIN.isEmpty || !RegExp(r'^\d{3}-\d{2}-\d{5}$').hasMatch(extractedBIN)) {
+        debugPrint("Invalid business number format: $extractedBIN");
+        extractedBIN = "인식 실패. 직접 입력해주세요.";
+      }
+
+      setState(() {
+        parsedBIN = extractedBIN;
+        _binController.text = extractedBIN; // 텍스트박스에 자동으로 표시
+      });
+
+      debugPrint("Extracted Business Number: $parsedBIN");
+    } catch (e) {
+      debugPrint("Error extracting business number: $e");
+    }
+  }
+
+  // 이미지 압축 함수
+  Future<File> compressImage(File file) async {
+    // 원본 이미지 읽기
+    final bytes = await file.readAsBytes();
+    final image = img.decodeImage(bytes);
+
+    if (image == null) {
+      throw Exception('이미지를 읽을 수 없습니다.');
+    }
+
+    // 이미지 크기 조정 (긴 쪽을 기준으로 최대 1920px로 제한)
+    img.Image resizedImage;
+    if (image.width > image.height) {
+      // 가로가 더 긴 경우
+      resizedImage = img.copyResize(image, width: 1920);
+    } else {
+      // 세로가 더 긴 경우
+      resizedImage = img.copyResize(image, height: 1920);
+    }
+
+    // JPEG로 인코딩 (품질 85%)
+    final compressedBytes = img.encodeJpg(resizedImage, quality: 85);
+
+    // 압축된 파일을 임시 파일로 저장
+    final tempDir = Directory.systemTemp;
+    final tempFile = File('${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
+    await tempFile.writeAsBytes(compressedBytes);
+
+    return tempFile;
+  }
 }

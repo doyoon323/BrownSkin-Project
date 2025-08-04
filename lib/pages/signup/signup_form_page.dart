@@ -44,10 +44,6 @@ class _SignUpFormPageState extends State<SignUpFormPage> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_controllers['password']!.text != _controllers['password2']!.text) {
-      _showError('비밀번호가 일치하지 않습니다.');
-      return;
-    }
 
     setState(() => _isLoading = true);
 
@@ -276,8 +272,11 @@ class _SignUpFormPageState extends State<SignUpFormPage> {
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return '$label을(를) 입력하세요.';
-          if (key == 'password' && value.length < 6) {
-            return '비밀번호는 6자 이상이어야 합니다.';
+          if (key == 'password' && value.length < 8) {
+            return '비밀번호는 8자 이상이어야 합니다.';
+          }
+          if (key == 'password2' && value != _controllers['password']!.text) {
+            return '비밀번호가 일치하지 않습니다.';
           }
           return null;
         },
