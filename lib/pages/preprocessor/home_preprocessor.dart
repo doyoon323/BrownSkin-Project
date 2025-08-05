@@ -124,8 +124,8 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
             controller: controller,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
-              // 0이상의 숫자, 소수 둘째자리까지. "10" 또는 "10.1" 또는 "10.12"만 허용
-              FilteringTextInputFormatter.allow(RegExp(r'^(?:\d+|\d+\.\d{1,2})$')),
+              // 0이상의 숫자, 소수 둘째자리까지. "10", "10.", "10.1", "10.12" 모두 허용하고, "10.123"은 막습니다.
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}$')),
             ],
             style: TextStyle(                   // ✅ 입력 텍스트 색상 강제 지정
             color: AppColors.darkBrown,
@@ -169,6 +169,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
     final finalWeight = double.tryParse(text);
 
     if (finalWeight == null || finalWeight <= 0) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('유효한 양수 무게를 입력하세요.')),
       );
@@ -178,6 +179,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
     final originalWeight = double.tryParse(item['weight_float']?.toString() ?? '');
 
     if (originalWeight != null && finalWeight > originalWeight) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('최종 무게는 입고 무게보다 클 수 없습니다.')),
       );
