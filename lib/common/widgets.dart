@@ -1,6 +1,7 @@
 //공통위젯들을 뽑아놓은 파일입니다...
 
 
+import 'package:brownskin_app/common/constants.dart';
 import 'package:flutter/material.dart';
 import 'mypage/home.dart';
 import 'themes.dart';
@@ -400,7 +401,7 @@ void showConfirmPopup({
                   TextSpan(text: typeLabel, style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold)),
                   const TextSpan(text: ' ] '),
                   TextSpan(text: productName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  TextSpan(text: ' ${weightText}kg', style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold)),
+                  TextSpan(text: ' ${weightText}$weight_unit', style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold)),
                   TextSpan(text: '\n$actionText'),
                 ],
               ),
