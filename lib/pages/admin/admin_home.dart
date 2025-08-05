@@ -101,7 +101,7 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
   }
 
   Future<void> lazyLoadDistrictMarker(double zoom) async {
-    if (zoom <= 7) return;
+    if (zoom <= 8) return;
 
     final bounds = await _controller!.getVisibleRegion();
     final visibleDistricts = await _getVisibleDistricts(bounds);
@@ -133,7 +133,6 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
     for (final province in provinces)
       result[province] = await adminData.getWeightData(selectedType, selectedByproductName, province, null);
 
-    print("${adminData.lastTotalWeight}");
     return result;
   }
 
@@ -198,7 +197,7 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
     final zoom = await _controller?.getZoomLevel() ?? 7.0;
     setState(()  => isLoading = true);
 
-    if (zoom <= 7) {
+    if (zoom <= 8) {
       await reloadProvinceMarkers();
       reloadDistrictMarkers();
     } else {
@@ -213,16 +212,16 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
 
 
   void _drawZoomMarker(double zoom) {
-    setState(() => currentMarkers = zoom <= 7 ? _provinceMarkers : _districtMarkers);
+    setState(() => currentMarkers = zoom <= 8 ? _provinceMarkers : _districtMarkers);
   }
 
 
   Widget _buildMapSection() {
-    final _center = LatLng(36.5,127.8);
+    final center = LatLng(36.5,127.8);
     return GoogleMap(
       polygons: polygonService.getPolygons(),
       mapType: MapType.normal,
-      initialCameraPosition: CameraPosition(target: _center , zoom: 7),
+      initialCameraPosition: CameraPosition(target: center , zoom: 7),
       onMapCreated: (controller) async {
         _controller = controller;
         final String style = await DefaultAssetBundle.of(context).loadString('assets/map_style.json');
