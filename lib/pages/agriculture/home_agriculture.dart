@@ -425,6 +425,8 @@ class AgriHomeState extends State<AgriHome> with TickerProviderStateMixin, Widge
     String? selectedType = type;
     String? selectedByproduct = name;
 
+    weightController.clear();
+
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,

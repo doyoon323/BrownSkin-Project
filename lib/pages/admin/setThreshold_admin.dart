@@ -99,11 +99,6 @@ class CommonCards {
             ),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(50)),
-                  child: const Icon(Icons.check_circle, color: Colors.white, size: 24)
-                ),
                 const SizedBox(width: 16),
                 const Expanded(
                   child: Column(
