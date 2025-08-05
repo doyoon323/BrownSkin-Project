@@ -511,7 +511,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       children: [
         const Divider(),
         _buildInfoRow('타입/이름', "${_deliveryInfo!.byprodType} / ${_deliveryInfo!.byprodName}"),
-        _buildInfoRow('무게', "${_deliveryInfo!.byprodWeight} kg"),
+        _buildInfoRow('무게', "${_deliveryInfo!.byprodWeight} $weight_unit"),
         /* 밑은 이제 _buildStatusTimeline에서 표시하므로 불필요
         _buildInfoRow('요청 날짜', _deliveryInfo!.reqDate),
         ?_currentStatus != DeliveryStatus.accepted

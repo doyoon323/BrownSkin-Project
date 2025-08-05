@@ -348,7 +348,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage> with Tick
                 children: [
                   const Icon(Icons.check_circle, color: Colors.brown, size: 20),
                   const SizedBox(width: 12),
-                  Text('현재 설정된 임계값: ${currentThreshold}kg', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                  Text('현재 설정된 임계값: ${currentThreshold}$weight_unit', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
                 ],
               ),
             ),
@@ -358,7 +358,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage> with Tick
             children: [
               Icon(Icons.edit, size: 16, color: Color(0xFF64748B)),
               SizedBox(width: 8),
-              Text('새로운 임계값 (kg)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+              Text('새로운 임계값 (t)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
             ],
           ),
           const SizedBox(height: 8),
@@ -373,7 +373,7 @@ class _SetThresholdAdminPageState extends State<SetThresholdAdminPage> with Tick
               },
             decoration: InputDecoration(hintText: '예: 100',
               hintStyle: TextStyle(color: Colors.grey.shade400),
-              suffixText: 'kg',
+              suffixText: 't',
               suffixStyle: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),

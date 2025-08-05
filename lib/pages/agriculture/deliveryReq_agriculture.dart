@@ -72,7 +72,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
       }
       return {
         'id': item['id'],
-        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kt",
+        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}$weight_unit",
         'status': item['status'],
         'date': dateText,
         'transporter': item['transporter'],
@@ -95,7 +95,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
     completedRequests = all.map<Map<String, dynamic>>((item) {
       return { //서버데이터를 리스트타일 형태로 가공
         'id': item['id'],
-        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}kt",
+        'item': "${item['name']} (${item['type']}) ${item['weight_float'] ?? 0}$weight_unit",
         'status': getStatusLabelForRole(role, item['status']),
         'rawStatus': item['status'],
         'date': item['complete_date'] ?? '',
@@ -239,7 +239,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
             items: widget.userByproduct[selectedType]!.map((item) {
               return DropdownMenuItem(
                 value: item,
-                child: Text("${item['name']} (남은 무게: ${item['weight_float']}kt)"),
+                child: Text("${item['name']} (남은 무게: ${item['weight_float']}$weight_unit)"),
               );
             }).toList(),
             onChanged: (value) {
@@ -266,7 +266,7 @@ class _DeliveryReqAgriculturePageState extends State<DeliveryReqAgriculturePage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('무게 입력 (kt)'),
+              const Text('무게 입력 ($weight_unit)'),
               const SizedBox(height: 12),
               TextField(
                 controller: weightController,

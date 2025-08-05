@@ -128,7 +128,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
             fontSize: 16,
           ),
             decoration: InputDecoration(
-              labelText: '최종 무게 (kt)',
+              labelText: '최종 무게 ($weight_unit)',
               labelStyle: TextStyle(color: AppColors.primaryBrown),
               focusedBorder: UnderlineInputBorder(
                 borderSide: BorderSide(color: AppColors.primaryBrown, width: 2),
@@ -245,7 +245,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
             margin: const EdgeInsets.only(bottom: 12),
             child: InfoCard(
               title: "${item['name']} (${item['type']})",
-              subtitle: "무게: ${displayWeight}kt\n상태: 입고\n입고일: ${item['req_date']}",
+              subtitle: "무게: ${displayWeight}$weight_unit\n상태: 입고\n입고일: ${item['req_date']}",
               trailing: ActionButtonGroup(
                 buttons: [
                   ActionButtonData(
@@ -287,7 +287,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
             margin: const EdgeInsets.only(bottom: 12),
             child: InfoCard(
               title: "${item['name']} (${item['type']})",
-              subtitle: "무게: ${displayWeight}kt\n상태: 작업중\n작업시작일: ${item['start_date']}\n예상출고일: ${item['expected_complete_date']}",
+              subtitle: "무게: ${displayWeight}$weight_unit\n상태: 작업중\n작업시작일: ${item['start_date']}\n예상출고일: ${item['expected_complete_date']}",
               trailing: ActionButtonGroup(
                 buttons: [
                   ActionButtonData(
@@ -460,7 +460,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  "${finalWeight.toStringAsFixed(1)}kt",
+                                  "${finalWeight.toStringAsFixed(1)}$weight_unit",
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -521,7 +521,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
                               subtitle: Padding(
                                 padding: const EdgeInsets.only(top: 8),
                                 child: Text(
-                                  "최종무게: ${finalWeight.toStringAsFixed(1)}kt\n상태: 완료\n작업완료일: ${item['complete_date']}\n수율: ${yield.toStringAsFixed(1)}%",
+                                  "최종무게: ${finalWeight.toStringAsFixed(1)}$weight_unit\n상태: 완료\n작업완료일: ${item['complete_date']}\n수율: ${yield.toStringAsFixed(1)}%",
                                   style: TextStyle(color: AppColors.darkBrown , height: 1.4),
                                 ),
                               ),

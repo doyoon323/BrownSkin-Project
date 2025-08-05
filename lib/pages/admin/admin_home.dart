@@ -416,7 +416,7 @@ class _AdminHomePageState extends State<AdminHomePage> with TickerProviderStateM
       {
         'title': '총 무게량',
         'value': total_weight?.toStringAsFixed(1) ?? '-',
-        'unit': 'kt',
+        'unit': 't',
         'icon': Icons.scale_rounded,
         'gradient': const LinearGradient(colors:[Color(0xFF4E3730), Color(0xFF5A2805)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         'percentage': null,
