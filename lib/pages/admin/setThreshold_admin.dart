@@ -92,8 +92,8 @@ class CommonCards {
           scale: scaleAnimation.value,
           child: Container(
             padding: const EdgeInsets.all(20),
-            color: Colors.brown,
             decoration: BoxDecoration(
+              color: Colors.brown,
               borderRadius: BorderRadius.circular(16),
               boxShadow: const [BoxShadow(color:Colors.brown, blurRadius: 15, offset: Offset(0, 6))],
             ),
