@@ -5,6 +5,7 @@ import 'package:percent_indicator/percent_indicator.dart';
 import 'package:brownskin_app/common/api_service.dart';
 import 'package:brownskin_app/common/themes.dart';
 import 'package:brownskin_app/common/widgets.dart';
+import 'package:flutter/services.dart';
 
 class PreprocessorHomePage extends StatefulWidget {
   final String token; //로그인 후 받은 토큰. 모든 API 호출 시 authorization 헤더에 필요
@@ -121,7 +122,11 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
           title: Text('최종 무게 입력', style: TextStyle(color: AppColors.darkBrown, fontWeight: FontWeight.bold)),
           content: TextField(
             controller: controller,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              // 0이상의 숫자, 소수 둘째자리까지. "10" 또는 "10.1" 또는 "10.12"만 허용
+              FilteringTextInputFormatter.allow(RegExp(r'^(?:\d+|\d+\.\d{1,2})$')),
+            ],
             style: TextStyle(                   // ✅ 입력 텍스트 색상 강제 지정
             color: AppColors.darkBrown,
             fontWeight: FontWeight.bold,
@@ -159,15 +164,32 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
       ),
     );
 
-    if (confirmed == true && controller.text.trim().isNotEmpty) { //사용자가 확인 눌렀고 무게가 빈 문자열x
-      final finalWeight = controller.text.trim(); //그 무게를 finalweight로 저장
+   if (confirmed == true) {
+    final text = controller.text.trim();
+    final finalWeight = double.tryParse(text);
+
+    if (finalWeight == null || finalWeight <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('유효한 양수 무게를 입력하세요.')),
+      );
+      return;
+    }
+
+    final originalWeight = double.tryParse(item['weight_float']?.toString() ?? '');
+
+    if (originalWeight != null && finalWeight > originalWeight) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('최종 무게는 입고 무게보다 클 수 없습니다.')),
+      );
+      return;
+    } //그 무게를 finalweight로 저장
       //성공 시 완료처리 post
       final response = await ApiService.postWithToken(
         endpoint: '/api/complete-preprocess',
         token: widget.token,
         body: {
           "id": item['id'].toString(),
-          "final_weight": finalWeight, //여기에 최종무게 넣어서 보냄
+          "final_weight": finalWeight.toStringAsFixed(2), // 소수 둘째자리로 제한하여 전송, 여기에 최종무게 넣어서 보냄
         },
       );
       //성공 시 리스트 새로고침
@@ -245,7 +267,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
             margin: const EdgeInsets.only(bottom: 12),
             child: InfoCard(
               title: "${item['name']} (${item['type']})",
-              subtitle: "무게: ${displayWeight}$weight_unit\n상태: 입고\n입고일: ${item['req_date']}",
+              subtitle: "무게: $displayWeight$weight_unit\n상태: 입고\n입고일: ${item['req_date']}",
               trailing: ActionButtonGroup(
                 buttons: [
                   ActionButtonData(
@@ -287,7 +309,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
             margin: const EdgeInsets.only(bottom: 12),
             child: InfoCard(
               title: "${item['name']} (${item['type']})",
-              subtitle: "무게: ${displayWeight}$weight_unit\n상태: 작업중\n작업시작일: ${item['start_date']}\n예상출고일: ${item['expected_complete_date']}",
+              subtitle: "무게: $displayWeight$weight_unit\n상태: 작업중\n작업시작일: ${item['start_date']}\n예상출고일: ${item['expected_complete_date']}",
               trailing: ActionButtonGroup(
                 buttons: [
                   ActionButtonData(
