@@ -525,6 +525,7 @@ class _PreprocessorHomePageState extends State<PreprocessorHomePage> {
                                   style: TextStyle(color: AppColors.darkBrown , height: 1.4),
                                 ),
                               ),
+
                               trailing: ElevatedButton( //출고버튼(아직 동작x)
                                 onPressed: () {},
                                 style: ElevatedButton.styleFrom(
