@@ -53,8 +53,12 @@ class AdminMarker {
 
       final weight = (provinceWeights[province] as num?)?.toDouble() ?? 0.0;
 
+      final String shortProvince =
+      province.length > 2 ? province.substring(0, 2) : province;
+
+
       return await _createMarker(
-        label: province,
+        label: shortProvince,
         id: province,
         latLng: latLng,
         weight: weight,
@@ -225,6 +229,7 @@ class AdminMarker {
         [0.0, 1.0],
       );
 
+
     canvas.drawCircle(
       center,
       radius,
@@ -232,11 +237,8 @@ class AdminMarker {
     );
 
     // 텍스트 처리
-    final String shortProvince =
-    province.length > 2 ? province.substring(0, 2) : province;
-
     final double baseFontSize = size / 4.2;
-    final double provinceFontSize = shortProvince.length >= 5 ? baseFontSize * 0.8 : baseFontSize;
+    final double provinceFontSize = province.length >= 4 ? baseFontSize * 0.8 : baseFontSize;
 
     final textPainter = TextPainter(
       textDirection: TextDirection.ltr,
@@ -246,7 +248,7 @@ class AdminMarker {
     textPainter.text = TextSpan(
       children: [
         TextSpan(
-          text: "$shortProvince\n",
+          text: "$province\n",
           style: TextStyle(
             fontSize: provinceFontSize,
             color: const Color(0xFFF2F2F2),
