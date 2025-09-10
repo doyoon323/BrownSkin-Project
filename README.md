@@ -1,16 +1,38 @@
-# brownskin_app
+# BrownSkin - 농부산물 통합 관리 앱
+> 농가부터 유통, 전처리, 관리자까지 부산물 전 과정을 디>지털화한 역할 기반 관리 앱
 
-A new Flutter project.
+[시연 영상 보기](https://github.com/사용자명/리포지토리/releases/download/v1.0-demo/demo.mp4)
 
-## Getting Started
+[노션 링크](https://www.notion.so/26a17c3b0034816cb75cd30c42574cf1)
+> 프로젝트 기간 동안 진행한 모든 기록을 Notion에서 확인할 수 있습니다. 앱 시연 영상.zip 과 주요 개발 내용이 포함되어 있습니다.
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## 🎯 프로젝트 목표
+본 프로젝트의 최종 목표는 부산물 발생지인 농가부터 유통 
+및 가공 단계까지 전 과정을 연결하는 **통합 관리 MVP 앱**
+을 개발하는 것입니다.
+이를 위해 부산물 배출 주체인 **농가**, 운송을 담당하는 **유통업체**, 부산물을 가공하는 **전처리 업체**, 전체 과>정과 농가별 농부산물 통계를 관리하는 **관리자**의 4개 역
+할로 기능을 구분하여 구현합니다.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+이 구조를 통해 부산물 순환 과정을 디지털화하고, 각 주체 
+간 **실시간 정보 공유**와 효율적인 **자원 순환 체계**를 
+구축합니다.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+> 농부산물의 발생부터 수거-전처리-관리까지 전 과정을 디>
+지털화하여, 데이터 기반의 관리 및 운영이 가능하도록 설계
+되었습니다.
+> 기업 요구사항인 실시간 모니터링, 데이터 시각화, 역할별
+ 핵심 기능을 충실히 구현하였으며, 현장 적용 시 임계치 경
+고 알림을 통해 운영 효율을 크게 향상시킬 수 있습니다.
+
+---
+
+## 📱 앱 작동 구조
+1. **농가**: 부산물 종류·무게 기록 → 임계치 도달 시 수거
+ 요청
+2. **배송사**: 요청 확인 → 농부산물 수거 → 전처리사로 운
+송 → 상태 업데이트
+3. **전처리사**: 전처리 진행 → 농부산물 상태 갱신
+4. **관리자**: 전국 농가 데이터 확인 → 임계치 설정 → 데>
+이터 엑셀/CSV 추출 → 공지사항 관리
