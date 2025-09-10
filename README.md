@@ -1,10 +1,10 @@
 # BrownSkin - 농부산물 통합 관리 앱
-> 농가부터 유통, 전처리, 관리자까지 부산물 전 과정을 디>지털화한 역할 기반 관리 앱
+> 농가부터 유통, 전처리, 관리자까지 부산물 전 과정을 디지털화한 역할 기반 관리 앱
 
-[시연 영상 보기](https://github.com/사용자명/리포지토리/releases/download/v1.0-demo/demo.mp4)
+[시연 영상 보기](https://drive.google.com/file/d/1_536o29JGKqB2zJD2I53TtTlrU8-Du7w/view?usp=sharing)
 
 [노션 링크](https://www.notion.so/26a17c3b0034816cb75cd30c42574cf1)
-> 프로젝트 기간 동안 진행한 모든 기록을 Notion에서 확인할 수 있습니다. 앱 시연 영상.zip 과 주요 개발 내용이 포함되어 있습니다.
+- 프로젝트 기간 동안 진행한 모든 기록을 Notion에서 확인할 수 있습니다. 앱 시연 영상.zip 과 주요 개발 내용이 포함되어 있습니다.
 
 ---
 
